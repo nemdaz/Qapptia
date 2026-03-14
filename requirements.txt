@@ -2,3 +2,4 @@ pystray
 keyboard
 Pillow
 mouse
+customtkinter

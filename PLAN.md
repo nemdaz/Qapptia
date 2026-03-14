@@ -48,9 +48,16 @@ El script principal implementa tres "modos" de captura:
     - Opciones en el menú: "Iniciar Flujo" y "Detener Flujo".
     - `mouse.hook()` que intercepta la pulsación izquierda y manda a invocar `capture_screen()` automáticamente.
 
+### Interfaz Visual y Persistencia
+Se añadió soporte persistente e interfaz para que la app sea configurable al vuelo.
+1. `config.py`: Módulo para salvar y leer propiedades de un `config.json`.
+2. `gui.py`: Ventana de configuraciones construida en `customtkinter`.
+    - **General**: Configurar directorio final, formato de nombramiento usando tokens de fecha (ej: YYYYMMDD_HHmmSS) y compresión general.
+    - **Capturas**: Timer para Modo Manual, atajos configurables globalmente en Modo Atajo, y atajos de interrupción temporales en el Modo de Flujo agrupados individualmente mediante frames.
+
 ### Verificación
-1. Instalar dependencias requeridas.
+1. Instalar dependencias requeridas (incluyendo las nuevas).
 2. Ejecutar `python main.py`.
-3. Validar que el icono aparece en la bandeja del sistema (al lado del reloj).
-4. Presionar `Ctrl + Shift + S` (actualizado a `Ctrl + Shift + K`) estando en cualquier ventana y verificar que el archivo png apareció en "Descargas".
-5. Usar el menú de la bandeja para salir de forma limpia.
+3. Entrar a Ajustes (click secundario en Systray). Interfaz debe presentar `dark-mode` y tener subtítulos/help tooltips correctos.
+4. Validar las acciones que modifiquen el archivo `config.json` en tiempo real y cómo Main atrapa los ajustes.
+5. `git commit` guardado hacia la rama de integración `develop`.
