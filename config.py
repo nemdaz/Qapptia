@@ -4,12 +4,15 @@ import os
 CONFIG_FILE = "config.json"
 
 DEFAULT_CONFIG = {
-    "save_path": os.path.join(os.environ.get('USERPROFILE', ''), 'Downloads'),
+    "save_path": os.path.join(os.environ.get('USERPROFILE', ''), 'Documents', 'QAScreens'),
     "filename_format": "Screenshot_YYYYMMDD_HHmmSS",
     "image_quality": 100,
+    "subfolder_month": False,
+    "subfolder_day": False,
+    "subfolder_hour": False,
     "manual_timer": 0,
     "shortcut_key": "ctrl+shift+k",
-    "flow_pause_key": ""
+    "flow_pause_key": "ctrl+shift"
 }
 
 current_config = DEFAULT_CONFIG.copy()

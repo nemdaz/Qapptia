@@ -50,14 +50,14 @@ El script principal implementa tres "modos" de captura:
 
 ### Interfaz Visual y Persistencia
 Se añadió soporte persistente e interfaz para que la app sea configurable al vuelo.
-1. `config.py`: Módulo para salvar y leer propiedades de un `config.json`.
-2. `gui.py`: Ventana de configuraciones construida en `customtkinter`.
-    - **General**: Configurar directorio final, formato de nombramiento usando tokens de fecha (ej: YYYYMMDD_HHmmSS) y compresión general.
-    - **Capturas**: Timer para Modo Manual, atajos configurables globalmente en Modo Atajo, y atajos de interrupción temporales en el Modo de Flujo agrupados individualmente mediante frames.
+1. `config.py`: Módulo para salvar y leer propiedades de un `config.json`. Ahora usa un default guardado en `Documents/QAScreens`.
+2. `gui.py`: Ventana de configuraciones interactiva en `customtkinter`.
+    - **General**: Configurar directorio base, formato de nombramiento usando tokens de fecha (ej: YYYYMMDD_HHmmSS), compresión general de imágenes y creación de subcarpetas en base al Mes, Día y Hora (crecimiento en árbol si varias se juntan). También incluye una ayuda de formato como tooltip (`transient`).
+    - **Capturas**: Timer para Modo Manual, atajos configurables globalmente en Modo Atajo (graba 3 teclas en tiempo real), y atajos de interrupción temporales en el Modo de Flujo (graba 2 teclas) agrupados individualmente mediante frames.
 
 ### Verificación
-1. Instalar dependencias requeridas (incluyendo las nuevas).
+1. Instalar dependencias requeridas.
 2. Ejecutar `python main.py`.
-3. Entrar a Ajustes (click secundario en Systray). Interfaz debe presentar `dark-mode` y tener subtítulos/help tooltips correctos.
-4. Validar las acciones que modifiquen el archivo `config.json` en tiempo real y cómo Main atrapa los ajustes.
+3. Entrar a Ajustes (click secundario en Systray). Interfaz debe presentar `dark-mode` y tener subtítulos y captura en caliente de los teclados.
+4. Validar que guardar datos modifica el archivo `config.json` en tiempo real y cómo Main atrapa los ajustes.
 5. `git commit` guardado hacia la rama de integración `develop`.

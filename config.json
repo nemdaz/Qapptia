@@ -2,8 +2,11 @@
     "save_path": "C:\\Users\\cndaz\\Downloads",
     "filename_format": "NDAZA_YYYYMMDD_HHmmSS",
     "image_quality": 100,
+    "subfolder_month": true,
+    "subfolder_day": false,
+    "subfolder_hour": false,
     "manual_timer": 0,
     "shortcut_key": "ctrl+shift+k",
-    "flow_pause_key": "",
+    "flow_pause_key": "ctrl+shift",
     "filename_prefix": "screenshot_"
 }

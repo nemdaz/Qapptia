@@ -11,7 +11,7 @@ class ConfigApp(ctk.CTk):
         self.on_close_callback = on_close_callback
         
         self.title("Configuración de Capturador")
-        self.geometry("500x420")
+        self.geometry("540x480")
         self.resizable(False, False)
         
         # Tabs
@@ -59,16 +59,52 @@ class ConfigApp(ctk.CTk):
         ctk.CTkLabel(self.tab_general, text="Calidad JPG/PNG:").grid(row=2, column=0, padx=10, pady=10, sticky="w")
         self.slider_quality = ctk.CTkSlider(self.tab_general, from_=10, to=100, number_of_steps=90)
         self.slider_quality.set(config.get("image_quality"))
-        self.slider_quality.grid(row=2, column=1, padx=10, pady=10, columnspan=2, sticky="w")
+        # Subcarpetas
+        ctk.CTkLabel(self.tab_general, text="Organizar en subcarpetas:").grid(row=3, column=0, padx=10, pady=10, sticky="nw")
+        
+        frame_subs = ctk.CTkFrame(self.tab_general, fg_color="transparent")
+        frame_subs.grid(row=3, column=1, columnspan=2, padx=10, pady=10, sticky="w")
+        
+        self.chk_month = ctk.CTkCheckBox(frame_subs, text="Por Mes (YYYY-MM)")
+        self.chk_month.pack(anchor="w", pady=2)
+        if config.get("subfolder_month"): self.chk_month.select()
+        
+        self.chk_day = ctk.CTkCheckBox(frame_subs, text="Por Día (YYYY-MM-DD)")
+        self.chk_day.pack(anchor="w", pady=2)
+        if config.get("subfolder_day"): self.chk_day.select()
+        
+        self.chk_hour = ctk.CTkCheckBox(frame_subs, text="Por Hora (YYYY-MM-DD HH)")
+        self.chk_hour.pack(anchor="w", pady=2)
+        if config.get("subfolder_hour"): self.chk_hour.select()
         
     def show_format_help(self):
-        # Un pequeño popup custom ya que ctk no tiene tooltips nativos por defecto
         help_win = ctk.CTkToplevel(self)
         help_win.title("Ayuda de Formato")
-        help_win.geometry("300x150")
+        
+        # Tamaño incrementado para que el texto encaje perfectamente
+        win_width = 350
+        win_height = 200
+        
+        # Centrar relativo a la ventana principal
+        self.update_idletasks()
+        main_x = self.winfo_rootx()
+        main_y = self.winfo_rooty()
+        main_width = self.winfo_width()
+        main_height = self.winfo_height()
+        
+        pos_x = main_x + (main_width // 2) - (win_width // 2)
+        pos_y = main_y + (main_height // 2) - (win_height // 2)
+        
+        help_win.geometry(f"{win_width}x{win_height}+{pos_x}+{pos_y}")
         help_win.resizable(False, False)
-        # Asegurar que está por encima
+        
+        # Usar transiet para ocultar botón maximizar e iconificar 
+        # sin deformar los pixeles del botón de cerrar 
+        help_win.transient(self)
+        
+        # Asegurar que está por encima y enfocada
         help_win.attributes("-topmost", True)
+        help_win.focus_force()
         
         msg = ("Usa los siguientes valores para formatear la fecha:\n\n"
                "YYYY = Año (4 dígitos)\n"
@@ -105,8 +141,14 @@ class ConfigApp(ctk.CTk):
         
         ctk.CTkLabel(container_atajo, text="Combinación Global:").grid(row=0, column=0, padx=10, pady=5, sticky="w")
         self.entry_shortcut = ctk.CTkEntry(container_atajo, width=150)
-        self.entry_shortcut.insert(0, config.get("shortcut_key"))
+        
+        shortcut_val = config.get("shortcut_key") or "ctrl+shift+k"
+        self.entry_shortcut.insert(0, str(shortcut_val).upper())
         self.entry_shortcut.grid(row=0, column=1, padx=10, pady=5, sticky="w")
+        self.enable_shortcut_recording(self.entry_shortcut, 3)
+        
+        self.btn_reset_atajo = ctk.CTkButton(container_atajo, text="Restablecer", width=80, command=self.reset_atajo)
+        self.btn_reset_atajo.grid(row=0, column=2, padx=10, pady=5)
         
         # --- Modo Flujo ---
         frame_flujo = ctk.CTkFrame(self.tab_capturas)
@@ -118,8 +160,14 @@ class ConfigApp(ctk.CTk):
         
         ctk.CTkLabel(container_flujo, text="Pausa Temporal (Teclas):").grid(row=0, column=0, padx=10, pady=5, sticky="w")
         self.entry_pause = ctk.CTkEntry(container_flujo, width=150)
-        self.entry_pause.insert(0, config.get("flow_pause_key"))
+        
+        pause_val = config.get("flow_pause_key")
+        if pause_val is None or pause_val == "":
+            pause_val = "CTRL+SHIFT"
+            
+        self.entry_pause.insert(0, str(pause_val).upper())
         self.entry_pause.grid(row=0, column=1, padx=10, pady=5, sticky="w")
+        self.enable_shortcut_recording(self.entry_pause, 2)
         
         self.btn_clear_pause = ctk.CTkButton(container_flujo, text="Limpiar", width=60, command=self.clear_pause)
         self.btn_clear_pause.grid(row=0, column=2, padx=10, pady=5)
@@ -132,19 +180,63 @@ class ConfigApp(ctk.CTk):
             
     def clear_pause(self):
         self.entry_pause.delete(0, 'end')
+        if hasattr(self.entry_pause, '_recorded_keys'):
+            self.entry_pause._recorded_keys = []
+        
+    def reset_atajo(self):
+        self.entry_shortcut.delete(0, 'end')
+        self.entry_shortcut.insert(0, "CTRL+SHIFT+K")
+        self.entry_shortcut._recorded_keys = ["ctrl", "shift", "k"]
+
+    def enable_shortcut_recording(self, entry, max_keys):
+        entry._recorded_keys = []
+        
+        def on_focus(e):
+            entry._recorded_keys = []
+            entry.delete(0, 'end')
+            
+        def on_key(e):
+            if e.keysym.lower() == 'tab':
+                return
+                
+            if e.keysym.lower() == 'backspace':
+                entry._recorded_keys = []
+                entry.delete(0, 'end')
+                return "break"
+                
+            sym = e.keysym.lower()
+            if 'control' in sym: sym = 'ctrl'
+            elif 'shift' in sym: sym = 'shift'
+            elif 'alt' in sym: sym = 'alt'
+            elif 'win' in sym or 'super' in sym: sym = 'windows'
+            
+            if sym not in entry._recorded_keys and len(entry._recorded_keys) < max_keys:
+                entry._recorded_keys.append(sym)
+                val = "+".join(entry._recorded_keys).upper()
+                entry.delete(0, 'end')
+                entry.insert(0, val)
+                
+            return "break"
+            
+        entry.bind("<FocusIn>", on_focus)
+        entry.bind("<KeyPress>", on_key)
         
     def save_and_close(self):
         config.set("save_path", self.entry_path.get())
         config.set("filename_format", self.entry_prefix.get())
         config.set("image_quality", int(self.slider_quality.get()))
         
+        config.set("subfolder_month", bool(self.chk_month.get()))
+        config.set("subfolder_day", bool(self.chk_day.get()))
+        config.set("subfolder_hour", bool(self.chk_hour.get()))
+        
         try:
             config.set("manual_timer", int(self.entry_timer.get()))
         except ValueError:
             pass
             
-        config.set("shortcut_key", self.entry_shortcut.get())
-        config.set("flow_pause_key", self.entry_pause.get())
+        config.set("shortcut_key", self.entry_shortcut.get().lower())
+        config.set("flow_pause_key", self.entry_pause.get().lower())
         
         if self.on_close_callback:
             self.on_close_callback()

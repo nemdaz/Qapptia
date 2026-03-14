@@ -7,6 +7,7 @@ import os
 import winsound
 import time
 import config
+import threading
 
 # Estado global del flujo
 is_flow_active = False
@@ -19,9 +20,27 @@ def create_image():
     image = Image.new('RGB', (64, 64), color=(0, 128, 255))
     return image
 
-def capture_screen():
+def play_beep():
     try:
-        downloads_path = config.get("save_path")
+        winsound.Beep(1500, 150)
+    except:
+        pass
+
+def capture_screen(play_sound=True):
+    try:
+        base_path = config.get("save_path")
+        
+        now = datetime.datetime.now()
+        subfolders = []
+        if config.get("subfolder_month"):
+            subfolders.append(now.strftime("%Y-%m"))
+        if config.get("subfolder_day"):
+            subfolders.append(now.strftime("%Y-%m-%d"))
+        if config.get("subfolder_hour"):
+            subfolders.append(now.strftime("%Y-%m-%d %H"))
+            
+        downloads_path = os.path.join(base_path, *subfolders) if subfolders else base_path
+        
         if not os.path.exists(downloads_path):
              os.makedirs(downloads_path)
         
@@ -29,7 +48,6 @@ def capture_screen():
         if not formato_crudo:
             formato_crudo = "Screenshot_YYYYMMDD_HHmmSS"
             
-        now = datetime.datetime.now()
         # Parseando tokens amigables
         format_str = formato_crudo.replace("YYYY", "%Y").replace("MM", "%m").replace("DD", "%d").replace("HH", "%H").replace("mm", "%M").replace("SS", "%S")
         
@@ -40,8 +58,9 @@ def capture_screen():
         screen = ImageGrab.grab()
         screen.save(filepath, 'PNG', quality=config.get("image_quality"))
         
-        # Emitir un sonido corto
-        winsound.Beep(1500, 150)
+        # Emitir un sonido corto en un hilo separado para evitar bloqueos
+        if play_sound:
+            threading.Thread(target=play_beep, daemon=True).start()
         
         print(f"Pantalla capturada y guardada en {filepath}")
     except Exception as e:
@@ -68,8 +87,8 @@ def on_click(event):
                 except Exception as e:
                     print(f"Error evaluando tecla de pausa: {e}")
 
-            print("Clic detectado en modo flujo, capturando pantalla...")
-            capture_screen()
+            print("Clic detectado en modo flujo, capturando pantalla silenciosamente...")
+            capture_screen(play_sound=False)
 
 def toggle_flow(icon, item):
     global is_flow_active
