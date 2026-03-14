@@ -67,15 +67,18 @@ class ConfigApp(ctk.CTk):
         
         self.chk_month = ctk.CTkCheckBox(frame_subs, text="Por Mes (YYYY-MM)")
         self.chk_month.pack(anchor="w", pady=2)
-        if config.get("subfolder_month"): self.chk_month.select()
+        if bool(config.get("subfolder_month")): 
+            self.chk_month.select()
         
         self.chk_day = ctk.CTkCheckBox(frame_subs, text="Por Día (YYYY-MM-DD)")
         self.chk_day.pack(anchor="w", pady=2)
-        if config.get("subfolder_day"): self.chk_day.select()
+        if bool(config.get("subfolder_day")): 
+            self.chk_day.select()
         
         self.chk_hour = ctk.CTkCheckBox(frame_subs, text="Por Hora (YYYY-MM-DD HH)")
         self.chk_hour.pack(anchor="w", pady=2)
-        if config.get("subfolder_hour"): self.chk_hour.select()
+        if bool(config.get("subfolder_hour")): 
+            self.chk_hour.select()
         
     def show_format_help(self):
         help_win = ctk.CTkToplevel(self)

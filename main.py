@@ -28,7 +28,7 @@ def play_beep():
 
 def capture_screen(play_sound=True):
     try:
-        base_path = config.get("save_path")
+        base_path = os.path.expandvars(config.get("save_path"))
         
         now = datetime.datetime.now()
         subfolders = []
