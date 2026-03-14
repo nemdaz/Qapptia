@@ -1,0 +1,4 @@
+pystray
+keyboard
+Pillow
+mouse
