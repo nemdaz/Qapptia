@@ -1,7 +1,7 @@
 import keyboard
 import pystray
 import mouse
-from PIL import ImageGrab, Image
+from PIL import ImageGrab, Image, ImageDraw
 import datetime
 import os
 import winsound
@@ -58,6 +58,44 @@ def capture_screen(play_sound=True, flow_session_path=None):
 
         # Capturar la pantalla completa
         screen = ImageGrab.grab()
+        
+        # Superponer Cursor si está habilitado
+        if config.get("show_mouse"):
+            try:
+                # Obtener coordenadas del mouse
+                x, y = mouse.get_position()
+                
+                # Dibujar halo resaltador si está configurado
+                if config.get("highlight_mouse"):
+                    # Crear una capa transparente del tamaño de la captura
+                    overlay = Image.new('RGBA', screen.size, (0,0,0,0))
+                    d_ctx = ImageDraw.Draw(overlay)
+                    
+                    radio = 25
+                    halo_box = [x - radio, y - radio, x + radio, y + radio]
+                    # Halo amarillo translúcido
+                    d_ctx.ellipse(halo_box, fill=(255, 255, 0, 100))
+                    
+                    # Componer el halo sobre la imagen
+                    screen = screen.convert("RGBA")
+                    screen = Image.alpha_composite(screen, overlay)
+                    screen = screen.convert("RGB")
+                    
+                # Dibujar el cursor base (forma básica imitando la flecha blanca borde negro)
+                d = ImageDraw.Draw(screen)
+                cursor_points = [
+                    (x, y), 
+                    (x, y + 17), 
+                    (x + 4, y + 13), 
+                    (x + 7, y + 20), 
+                    (x + 10, y + 19), 
+                    (x + 7, y + 12), 
+                    (x + 12, y + 12)
+                ]
+                d.polygon(cursor_points, fill="white", outline="black")
+                
+            except Exception as ptr_e:
+                print(f"Error dibujando el mouse: {ptr_e}")
         
         # Validar existencia de descarga y guardar finalmente
         try:

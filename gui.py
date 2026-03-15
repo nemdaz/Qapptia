@@ -82,6 +82,33 @@ class ConfigApp(ctk.CTk):
         self.chk_hour.pack(anchor="w", pady=2)
         if bool(config.get("subfolder_hour")): 
             self.chk_hour.select()
+            
+        # Opciones del Mouse
+        ctk.CTkLabel(self.tab_general, text="Cursor:").grid(row=4, column=0, padx=10, pady=10, sticky="nw")
+        
+        frame_mouse = ctk.CTkFrame(self.tab_general, fg_color="transparent")
+        frame_mouse.grid(row=4, column=1, columnspan=2, padx=10, pady=10, sticky="w")
+        
+        self.chk_mouse = ctk.CTkCheckBox(frame_mouse, text="Capturar", command=self.toggle_highlight_state)
+        self.chk_mouse.pack(anchor="w", pady=2)
+        if bool(config.get("show_mouse")): 
+            self.chk_mouse.select()
+            
+        self.chk_highlight = ctk.CTkCheckBox(frame_mouse, text="Resaltar (Halo)")
+        self.chk_highlight.pack(anchor="w", pady=2)
+        if bool(config.get("highlight_mouse")): 
+            self.chk_highlight.select()
+        else:
+            self.chk_highlight.deselect()
+            
+        self.toggle_highlight_state() # Init state visual
+        
+    def toggle_highlight_state(self):
+        if self.chk_mouse.get() == 1:
+            self.chk_highlight.configure(state="normal")
+        else:
+            self.chk_highlight.configure(state="disabled")
+            self.chk_highlight.deselect()
         
     def show_format_help(self):
         help_win = ctk.CTkToplevel(self)
@@ -235,6 +262,9 @@ class ConfigApp(ctk.CTk):
         config.set("subfolder_month", bool(self.chk_month.get()))
         config.set("subfolder_day", bool(self.chk_day.get()))
         config.set("subfolder_hour", bool(self.chk_hour.get()))
+        
+        config.set("show_mouse", bool(self.chk_mouse.get()))
+        config.set("highlight_mouse", bool(self.chk_highlight.get()))
         
         try:
             config.set("manual_timer", int(self.entry_timer.get()))

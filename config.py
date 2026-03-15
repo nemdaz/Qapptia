@@ -10,6 +10,8 @@ DEFAULT_CONFIG = {
     "subfolder_month": True,
     "subfolder_day": True,
     "subfolder_hour": False,
+    "show_mouse": True,
+    "highlight_mouse": False,
     "manual_timer": 0,
     "shortcut_key": "ctrl+shift+k",
     "flow_pause_key": "ctrl+shift"
