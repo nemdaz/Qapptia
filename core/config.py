@@ -1,6 +1,6 @@
 import json
 import os
-from constants import CONFIG_FILE, DEFAULT_CONFIG
+from core.constants import CONFIG_FILE, DEFAULT_CONFIG
 
 current_config = DEFAULT_CONFIG.copy()
 

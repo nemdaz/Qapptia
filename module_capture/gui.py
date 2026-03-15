@@ -1,7 +1,12 @@
 import customtkinter as ctk
-import config
-from tkinter import filedialog
+import sys
 import os
+
+# Al ser script standalone, aseguramos que la raíz del proyecto esté en el Path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from core import config
+from tkinter import filedialog
 
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
