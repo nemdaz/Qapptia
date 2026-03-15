@@ -2,7 +2,7 @@ import customtkinter as ctk
 import sys
 import os
 
-# Al ser script standalone, aseguramos que la raíz del proyecto esté en el Path
+# Configurar ruta base del proyecto
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core import config
@@ -48,9 +48,9 @@ class ConfigApp(ctk.CTk):
         ctk.CTkLabel(self.tab_general, text="Formato de Nombre:").grid(row=1, column=0, padx=10, pady=10, sticky="w")
         self.entry_prefix = ctk.CTkEntry(self.tab_general, width=200, placeholder_text="Screenshot_YYYYMMDD_HHmmSS")
         
-        # Support default migration from old prefix to format
+        # Migración de formato de nombre
         val = config.get("filename_format")
-        if not val: # Fallback al viejo prefix temporal
+        if not val:
             old_prefix = config.get("filename_prefix") or "screenshot_"
             val = old_prefix + "YYYYMMDD_HHmmSS"
             
@@ -136,8 +136,7 @@ class ConfigApp(ctk.CTk):
         help_win.geometry(f"{win_width}x{win_height}+{pos_x}+{pos_y}")
         help_win.resizable(False, False)
         
-        # Usar transiet para ocultar botón maximizar e iconificar 
-        # sin deformar los pixeles del botón de cerrar 
+        # Enlazar ventana principal para comportamiento modal visual
         help_win.transient(self)
         
         # Asegurar que está por encima y enfocada

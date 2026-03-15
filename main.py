@@ -82,16 +82,20 @@ def capture_manual(icon, item):
         print("Captura manual solicitada...")
     capture_screen()
 
-# INVOCACIÓN MULTIPROCESO DE GUI
+# Invocación de interfaces gráficas
 def open_config(icon, item):
-    print("Iniciando Configuración en un subproceso aislado...")
+    print("Iniciando Configuración...")
     script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "module_capture", "gui.py")
     subprocess.Popen([sys.executable, script_path])
     
-    # Recargamos la config local automáticamente cada 5 segundos si está abierta
-    # Solo para mantener sincronizados los atajos
+    # Recargar configuración para sincronizar atajos
     config.load_config()
     setup_hotkeys()
+
+def open_editor(icon, item):
+    print("Iniciando Editor de Capturas...")
+    script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "module_editor", "editor.py")
+    subprocess.Popen([sys.executable, script_path])
 
 # Configuración del menú del System Tray
 def quit_app(icon, item):
@@ -133,6 +137,7 @@ def main():
     menu = pystray.Menu(
         pystray.MenuItem('Capturar ahora (Manual)', capture_manual),
         pystray.MenuItem(lambda text: 'Detener Flujo' if is_flow_active else 'Iniciar Flujo', toggle_flow),
+        pystray.MenuItem('Abrir Editor (Galería)', open_editor),
         pystray.MenuItem('Configuración...', open_config),
         pystray.MenuItem('Salir', quit_app)
     )
