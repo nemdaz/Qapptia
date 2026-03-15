@@ -1,13 +1,13 @@
 import keyboard
 import pystray
 import mouse
-from PIL import ImageGrab, Image, ImageDraw
+from PIL import ImageGrab, Image
 import datetime
 import os
-import winsound
 import time
 import config
 import threading
+import utils
 
 # Estado global del flujo
 is_flow_active = False
@@ -20,12 +20,6 @@ current_flow_folder_path = None
 def create_image():
     image = Image.new('RGB', (64, 64), color=(0, 128, 255))
     return image
-
-def play_beep():
-    try:
-        winsound.Beep(1500, 150)
-    except:
-        pass
 
 def capture_screen(play_sound=True, flow_session_path=None):
     try:
@@ -46,56 +40,23 @@ def capture_screen(play_sound=True, flow_session_path=None):
                 
             downloads_path = os.path.join(base_path, *subfolders) if subfolders else base_path
         
+        # Parseando tokens amigables usando las utils
         formato_crudo = config.get("filename_format")
-        if not formato_crudo:
-            formato_crudo = "Screenshot_YYYYMMDD_HHmmSS"
-            
-        # Parseando tokens amigables
-        format_str = formato_crudo.replace("YYYY", "%Y").replace("MM", "%m").replace("DD", "%d").replace("HH", "%H").replace("mm", "%M").replace("SS", "%S")
-        
-        filename = now.strftime(format_str) + ".png"
+        filename = utils.parse_filename_format(formato_crudo, now)
         filepath = os.path.join(downloads_path, filename)
 
         # Capturar la pantalla completa
         screen = ImageGrab.grab()
         
-        # Superponer Cursor si está habilitado
+        # Superponer Cursor si está habilitado mediante las utilidades aisladas
         if config.get("show_mouse"):
             try:
                 # Obtener coordenadas del mouse
                 x, y = mouse.get_position()
-                
-                # Dibujar halo resaltador si está configurado
-                if config.get("highlight_mouse"):
-                    # Crear una capa transparente del tamaño de la captura
-                    overlay = Image.new('RGBA', screen.size, (0,0,0,0))
-                    d_ctx = ImageDraw.Draw(overlay)
-                    
-                    radio = 25
-                    halo_box = [x - radio, y - radio, x + radio, y + radio]
-                    # Halo amarillo translúcido
-                    d_ctx.ellipse(halo_box, fill=(255, 255, 0, 100))
-                    
-                    # Componer el halo sobre la imagen
-                    screen = screen.convert("RGBA")
-                    screen = Image.alpha_composite(screen, overlay)
-                    screen = screen.convert("RGB")
-                    
-                # Dibujar el cursor base (forma básica imitando la flecha blanca borde negro)
-                d = ImageDraw.Draw(screen)
-                cursor_points = [
-                    (x, y), 
-                    (x, y + 17), 
-                    (x + 4, y + 13), 
-                    (x + 7, y + 20), 
-                    (x + 10, y + 19), 
-                    (x + 7, y + 12), 
-                    (x + 12, y + 12)
-                ]
-                d.polygon(cursor_points, fill="white", outline="black")
-                
+                hl = config.get("highlight_mouse")
+                screen = utils.draw_mouse_overlay(screen, x, y, hl)
             except Exception as ptr_e:
-                print(f"Error dibujando el mouse: {ptr_e}")
+                 print(f"Error despachando request de dibujo de mouse: {ptr_e}")
         
         # Validar existencia de descarga y guardar finalmente
         try:
@@ -107,9 +68,9 @@ def capture_screen(play_sound=True, flow_session_path=None):
             os.makedirs(downloads_path, exist_ok=True)
             screen.save(filepath, 'PNG', quality=config.get("image_quality"))
         
-        # Emitir un sonido corto en un hilo separado para evitar bloqueos
+        # Emitir un sonido corto en un hilo separado mediante proxy de las utils
         if play_sound:
-            threading.Thread(target=play_beep, daemon=True).start()
+            threading.Thread(target=utils.play_beep_async, daemon=True).start()
         
         print(f"Pantalla capturada y guardada en {filepath}")
     except Exception as e:

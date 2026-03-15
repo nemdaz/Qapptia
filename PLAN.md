@@ -38,6 +38,18 @@ Contiene las dependencias:
 - `keyboard`
 - `mouse` (Para interceptar eventos de click)
 - `Pillow`
+- `customtkinter`
+
+#### `constants.py` (NUEVO)
+Almacenará estructuras estáticas y globales:
+- `DEFAULT_CONFIG` (Diccionario base que evita hardcodear valores por defecto a lo largo del programa).
+- Valores de estado estático y strings repetitivos (ej. `CONFIG_FILE = "config.json"`).
+
+#### `utils.py` (NUEVO)
+Aislará todas las funciones puras o transversales (helpers) que no tienen que ver explícitamente con los manejadores de los hotkeys o lógica de vistas:
+- `play_beep_async()`: Reproducción de sonido en threading.
+- `draw_mouse_overlay(image, highlight)`: Extrayendo la lógica pesada de `Pillow` para dibujar el cursor y halo sobre un canvas.
+- `get_parsed_filename()`: Parseador de los tokens de tiempo `YYYYMMDD_HHmmSS`.
 
 #### `main.py`
 El script principal implementa tres "modos" de captura:
