@@ -1,6 +1,7 @@
 import customtkinter as ctk
 import config
 from tkinter import filedialog
+import os
 
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
@@ -59,6 +60,8 @@ class ConfigApp(ctk.CTk):
         ctk.CTkLabel(self.tab_general, text="Calidad JPG/PNG:").grid(row=2, column=0, padx=10, pady=10, sticky="w")
         self.slider_quality = ctk.CTkSlider(self.tab_general, from_=10, to=100, number_of_steps=90)
         self.slider_quality.set(config.get("image_quality"))
+        self.slider_quality.grid(row=2, column=1, padx=10, pady=10, columnspan=2, sticky="w")
+        
         # Subcarpetas
         ctk.CTkLabel(self.tab_general, text="Organizar en subcarpetas:").grid(row=3, column=0, padx=10, pady=10, sticky="nw")
         

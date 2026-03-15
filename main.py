@@ -14,6 +14,7 @@ is_flow_active = False
 should_open_gui = False
 should_exit = False
 current_hotkey_hook = None
+current_flow_folder_path = None
 
 # Genera un icono simple (un cuadrado de color sólido)
 def create_image():
@@ -26,23 +27,24 @@ def play_beep():
     except:
         pass
 
-def capture_screen(play_sound=True):
+def capture_screen(play_sound=True, flow_session_path=None):
     try:
-        base_path = os.path.expandvars(config.get("save_path"))
-        
         now = datetime.datetime.now()
-        subfolders = []
-        if config.get("subfolder_month"):
-            subfolders.append(now.strftime("%Y-%m"))
-        if config.get("subfolder_day"):
-            subfolders.append(now.strftime("%Y-%m-%d"))
-        if config.get("subfolder_hour"):
-            subfolders.append(now.strftime("%Y-%m-%d %H"))
+        # Usamos la carpeta del flujo si se envió, de lo contrario usamos la lógica normal
+        if flow_session_path:
+            downloads_path = flow_session_path
+        else:
+            base_path = os.path.expandvars(config.get("save_path"))
             
-        downloads_path = os.path.join(base_path, *subfolders) if subfolders else base_path
-        
-        if not os.path.exists(downloads_path):
-             os.makedirs(downloads_path)
+            subfolders = []
+            if config.get("subfolder_month"):
+                subfolders.append(now.strftime("%Y-%m"))
+            if config.get("subfolder_day"):
+                subfolders.append(now.strftime("%Y-%m-%d"))
+            if config.get("subfolder_hour"):
+                subfolders.append(now.strftime("%Y-%m-%d %H"))
+                
+            downloads_path = os.path.join(base_path, *subfolders) if subfolders else base_path
         
         formato_crudo = config.get("filename_format")
         if not formato_crudo:
@@ -56,7 +58,16 @@ def capture_screen(play_sound=True):
 
         # Capturar la pantalla completa
         screen = ImageGrab.grab()
-        screen.save(filepath, 'PNG', quality=config.get("image_quality"))
+        
+        # Validar existencia de descarga y guardar finalmente
+        try:
+            if not os.path.exists(downloads_path):
+                 os.makedirs(downloads_path)
+            screen.save(filepath, 'PNG', quality=config.get("image_quality"))
+        except FileNotFoundError:
+            # Reintento robusto si la carpeta fue borrada simultáneamente en media ejecución
+            os.makedirs(downloads_path, exist_ok=True)
+            screen.save(filepath, 'PNG', quality=config.get("image_quality"))
         
         # Emitir un sonido corto en un hilo separado para evitar bloqueos
         if play_sound:
@@ -88,14 +99,34 @@ def on_click(event):
                     print(f"Error evaluando tecla de pausa: {e}")
 
             print("Clic detectado en modo flujo, capturando pantalla silenciosamente...")
-            capture_screen(play_sound=False)
+            capture_screen(play_sound=False, flow_session_path=current_flow_folder_path)
 
 def toggle_flow(icon, item):
-    global is_flow_active
+    global is_flow_active, current_flow_folder_path
     is_flow_active = not is_flow_active
     estado = "activado" if is_flow_active else "desactivado"
     print(f"Modo flujo de captura {estado}.")
-    # pystray actualiza el texto con el lambda en Windows automáticamente
+    
+    if is_flow_active:
+        base_path = os.path.expandvars(config.get("save_path"))
+        now = datetime.datetime.now()
+        folder_name = f"{now.strftime('%Y-%m-%d %H%M%S')} Flujo"
+        
+        subfolders = []
+        if config.get("subfolder_month"):
+            subfolders.append(now.strftime("%Y-%m"))
+        if config.get("subfolder_day"):
+            subfolders.append(now.strftime("%Y-%m-%d"))
+        if config.get("subfolder_hour"):
+            subfolders.append(now.strftime("%Y-%m-%d %H"))
+            
+        parent_path = os.path.join(base_path, *subfolders) if subfolders else base_path
+        current_flow_folder_path = os.path.join(parent_path, folder_name)
+        
+        if not os.path.exists(current_flow_folder_path):
+            os.makedirs(current_flow_folder_path, exist_ok=True)
+    else:
+        current_flow_folder_path = None
 
 def capture_manual(icon, item):
     timer = config.get("manual_timer")
