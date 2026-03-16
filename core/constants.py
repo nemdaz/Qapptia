@@ -12,6 +12,6 @@ DEFAULT_CONFIG = {
     "show_mouse": True,
     "highlight_mouse": False,
     "manual_timer": 0,
-    "shortcut_key": "ctrl+shift+k",
+    "shortcut_key": "ctrl+shift+q",
     "flow_pause_key": "ctrl+shift"
 }

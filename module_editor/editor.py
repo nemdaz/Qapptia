@@ -12,6 +12,7 @@ from core import assets
 from module_editor import constants
 from module_editor.utils import Tooltip
 from module_editor.editor_sidebar import EditorSidebar
+from module_editor.editor_canvas import VectorCanvas
 
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
@@ -51,23 +52,44 @@ class EditorApp(ctk.CTk):
         self.btn_rotate.pack(side="left", padx=10, pady=10)
         Tooltip(self.btn_rotate, "Rotar")
         
+        icon_copy_file = assets.get_icon("copy_file", size=constants.ICON_SIZE)
+        self.btn_copy_file = ctk.CTkButton(self.frame_toolbar, text="", image=icon_copy_file, width=40, state="disabled")
+        self.btn_copy_file.pack(side="left", padx=5, pady=10)
+        Tooltip(self.btn_copy_file, "Copiar Archivo")
+        
+        icon_copy_clip = assets.get_icon("copy_clip", size=constants.ICON_SIZE)
+        self.btn_copy_clip = ctk.CTkButton(self.frame_toolbar, text="", image=icon_copy_clip, width=40, state="disabled")
+        self.btn_copy_clip.pack(side="left", padx=5, pady=10)
+        Tooltip(self.btn_copy_clip, "Copiar al Portapapeles")
+        
         icon_save = assets.get_icon("save", size=constants.ICON_SIZE)
         self.btn_save = ctk.CTkButton(self.frame_toolbar, text="", image=icon_save, width=40, command=self.save_rotation, state="disabled", fg_color="green", hover_color="darkgreen")
         self.btn_save.pack(side="left", padx=5, pady=10)
         Tooltip(self.btn_save, "Guardar")
         
+        # Divisor
+        ctk.CTkFrame(self.frame_toolbar, width=2, height=30, fg_color="gray30").pack(side="left", padx=10, pady=10)
+        
+        icon_arrow = assets.get_icon("arrow", size=constants.ICON_SIZE)
+        self.btn_arrow = ctk.CTkButton(self.frame_toolbar, text="", image=icon_arrow, width=40, command=lambda: self.vector_canvas.set_draw_mode("arrow"))
+        self.btn_arrow.pack(side="left", padx=5, pady=10)
+        Tooltip(self.btn_arrow, "Dibujar Flecha")
+        
+        icon_rect = assets.get_icon("rect", size=constants.ICON_SIZE)
+        self.btn_rect = ctk.CTkButton(self.frame_toolbar, text="", image=icon_rect, width=40, command=lambda: self.vector_canvas.set_draw_mode("rect"))
+        self.btn_rect.pack(side="left", padx=5, pady=10)
+        Tooltip(self.btn_rect, "Dibujar Rectángulo")
+        
         self.lbl_status = ctk.CTkLabel(self.frame_toolbar, text="Listo")
         self.lbl_status.pack(side="right", padx=10, pady=10)
         
-        # --- Área Principal (Imagen) ---
+        # --- Área de imagen (ahora Canvas Interactivo) ---
         self.frame_image = ctk.CTkFrame(self)
         self.frame_image.grid(row=1, column=0, sticky="nsew", padx=(10, 5), pady=10)
         
-        self.lbl_image = ctk.CTkLabel(self.frame_image, text="Por favor seleccione una imagen\no tome su primera captura.")
-        self.lbl_image.pack(expand=True, fill="both", padx=10, pady=10)
-        
-        # Evento de Resize para estirar la imagen dinámicamente
-        self.frame_image.bind("<Configure>", self.on_resize)
+        # Inyectando el motor de lienzo interactivo para manejar renders, recuadros y drag and drop de vectores
+        self.vector_canvas = VectorCanvas(self.frame_image)
+        self.vector_canvas.pack(fill="both", expand=True, padx=5, pady=5)
         
         # --- Drag Handle ---
         self.drag_handle = ctk.CTkFrame(self, width=5, cursor="sb_h_double_arrow", fg_color="transparent")
@@ -83,7 +105,7 @@ class EditorApp(ctk.CTk):
     def load_latest_image(self):
         base_path = os.path.expandvars(config.get("save_path"))
         if not os.path.exists(base_path):
-            self.lbl_image.configure(text="La ruta de guardado configurada no existe.")
+            self.lbl_status.configure(text="La ruta de guardado configurada no existe.")
             return
             
         # Buscar el archivo .png/.jpg más reciente
@@ -94,70 +116,35 @@ class EditorApp(ctk.CTk):
                     list_of_files.append(os.path.join(root, file))
                     
         if not list_of_files:
-            self.lbl_image.configure(text="No hay capturas en el directorio configurado.")
+            self.lbl_status.configure(text="No hay capturas en el directorio configurado.")
             return
             
         latest_file = max(list_of_files, key=os.path.getmtime)
         self.show_image(latest_file)
         
-    def show_image(self, path):
+    def show_image(self, img_path):
+        if not os.path.exists(img_path): return
+        
         try:
-            self.current_image_path = path
-            self.current_pil_image = Image.open(path)
+            self.current_image_path = img_path
+            self.current_pil_image = Image.open(img_path)
             self.current_rotation = 0
             
-            self._render_current_image()
+            # Pasar imagen y metadata URL al motor abstracto VectorCanvas
+            self.vector_canvas.load_image(self.current_pil_image, img_path)
+            
+            filename = os.path.basename(img_path)
+            self.title(f"{constants.WINDOW_TITLE} - {filename}")
             
             self.btn_rotate.configure(state="normal")
-            self.lbl_status.configure(text=f"Mostrando: {os.path.basename(path)}")
-            # Reset save button
-            self.btn_save.configure(state="disabled")
+            self.btn_copy_file.configure(state="normal")
+            self.btn_copy_clip.configure(state="normal")
+            self.btn_save.configure(state="normal")
+            self.lbl_status.configure(text=filename)
         except Exception as e:
-            self.lbl_status.configure(text=f"Error cargando imagen: {e}")
+            self.lbl_status.configure(text=f"Error al abrir la imagen.")
+            print(f"Error show_image {img_path}: {e}")
             
-    def on_resize(self, event):
-        # Usar las dimensiones reales del frame actualizadas por Windows, no los del evento hijo de tkinter
-        current_w = self.frame_image.winfo_width()
-        current_h = self.frame_image.winfo_height()
-        
-        # Prevenir re-renderizados si las dimensiones no han cambiado
-        if hasattr(self, '_last_w') and self._last_w == current_w and self._last_h == current_h:
-            return
-            
-        self._last_w = current_w
-        self._last_h = current_h
-        
-        # Debouncing ultra rápido. Suficiente para procesar los batch events de un Maximizar 
-        # sin que se borre la imagen
-        if self._resize_timeout:
-            self.after_cancel(self._resize_timeout)
-        self._resize_timeout = self.after(constants.DEBOUNCE_DELAY_MS, self._render_current_image)
-            
-    def _render_current_image(self):
-        if not self.current_pil_image: return
-        
-        self.update_idletasks() # Asegurar dimensiones actualizadas
-        
-        img_rotated = self.current_pil_image.rotate(-self.current_rotation, expand=True) # Anti-horario
-        
-        # Escalar para que encaje en el frame (con margen)
-        frame_w = self.frame_image.winfo_width()
-        frame_h = self.frame_image.winfo_height()
-        
-        if frame_w <= 1 or frame_h <= 1:
-            frame_w, frame_h = 700, 500
-            
-        img_w, img_h = img_rotated.size
-        ratio = min((frame_w - 20) / img_w, (frame_h - 20) / img_h)
-        
-        if ratio > 1: ratio = 1 # Prevenir escalado excesivo de imágenes pequeñas
-        
-        new_size = (int(img_w * ratio), int(img_h * ratio))
-        
-        ctk_img = ctk.CTkImage(light_image=img_rotated, dark_image=img_rotated, size=new_size)
-        self.lbl_image.configure(image=ctk_img, text="") 
-        self.lbl_image._image = ctk_img 
-        
     def resize_sidebar(self, event):
         app_right_edge = self.winfo_rootx() + self.winfo_width()
         new_width = app_right_edge - event.x_root - 10 # 10 = Padding
@@ -170,9 +157,11 @@ class EditorApp(ctk.CTk):
     def rotate_image(self):
         if self.current_pil_image:
             self.current_rotation = (self.current_rotation + 90) % 360 
-            self._render_current_image()
-            self.btn_save.configure(state="normal") # Habilitar botón de guardado
-
+            # Calcular en base a self.current_rotation en lugar de un ángulo fijo
+            img_rotated = self.current_pil_image.rotate(-self.current_rotation, expand=True)
+            self.vector_canvas.load_image(img_rotated, self.current_image_path)
+            self.lbl_status.configure(text=f"Rotado {self.current_rotation}º")
+            
     def save_rotation(self):
         if self.current_pil_image and self.current_image_path and self.current_rotation != 0:
             try:

@@ -179,7 +179,7 @@ class ConfigApp(ctk.CTk):
         ctk.CTkLabel(container_atajo, text="Combinación Global:").grid(row=0, column=0, padx=10, pady=5, sticky="w")
         self.entry_shortcut = ctk.CTkEntry(container_atajo, width=150)
         
-        shortcut_val = config.get("shortcut_key") or "ctrl+shift+k"
+        shortcut_val = config.get("shortcut_key") or "ctrl+shift+q"
         self.entry_shortcut.insert(0, str(shortcut_val).upper())
         self.entry_shortcut.grid(row=0, column=1, padx=10, pady=5, sticky="w")
         self.enable_shortcut_recording(self.entry_shortcut, 3)
@@ -222,8 +222,8 @@ class ConfigApp(ctk.CTk):
         
     def reset_atajo(self):
         self.entry_shortcut.delete(0, 'end')
-        self.entry_shortcut.insert(0, "CTRL+SHIFT+K")
-        self.entry_shortcut._recorded_keys = ["ctrl", "shift", "k"]
+        self.entry_shortcut.insert(0, "CTRL+SHIFT+Q")
+        self.entry_shortcut._recorded_keys = ["ctrl", "shift", "q"]
 
     def enable_shortcut_recording(self, entry, max_keys):
         entry._recorded_keys = []
