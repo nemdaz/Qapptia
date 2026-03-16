@@ -80,13 +80,25 @@ class EditorApp(ctk.CTk):
         self.btn_rect.pack(side="left", padx=5, pady=10)
         utils.Tooltip(self.btn_rect, "Dibujar Rectángulo")
         
-        # --- Área de imagen (ahora Canvas Interactivo) ---
+        # --- Área de imagen (ahoras con Scrollbars) ---
         self.frame_image = ctk.CTkFrame(self)
         self.frame_image.grid(row=1, column=0, sticky="nsew", padx=(10, 5), pady=10)
         
-        # Inyectando el motor de lienzo interactivo para manejar renders, recuadros y drag and drop de vectores
-        self.vector_canvas = VectorCanvas(self.frame_image)
-        self.vector_canvas.pack(fill="both", expand=True, padx=5, pady=5)
+        # Grid para el canvas y scrollbars dentro del frame
+        self.frame_image.grid_rowconfigure(0, weight=1)
+        self.frame_image.grid_columnconfigure(0, weight=1)
+        
+        self.vector_canvas = VectorCanvas(self.frame_image, on_zoom_callback=self.update_scrollbar_visibility)
+        self.vector_canvas.grid(row=0, column=0, sticky="nsew")
+        
+        # Scrollbars
+        self.v_scrollbar = ctk.CTkScrollbar(self.frame_image, orientation="vertical", command=self.vector_canvas.yview)
+        self.h_scrollbar = ctk.CTkScrollbar(self.frame_image, orientation="horizontal", command=self.vector_canvas.xview)
+        
+        self.vector_canvas.configure(yscrollcommand=self.v_scrollbar.set, xscrollcommand=self.h_scrollbar.set)
+        
+        # Iniciar vinculación de visibilidad de scrollbars
+        self.vector_canvas.bind("<Configure>", lambda e: self.update_scrollbar_visibility(), add="+")
         
         # --- Drag Handle ---
         self.drag_handle = ctk.CTkFrame(self, width=5, cursor="sb_h_double_arrow", fg_color="transparent")
@@ -156,6 +168,32 @@ class EditorApp(ctk.CTk):
         if new_width > 600: new_width = 600
         
         self.grid_columnconfigure(2, minsize=new_width)
+
+    def update_scrollbar_visibility(self):
+        """Muestra u oculta los scrollbars dependiendo de si la imagen cabe en el canvas."""
+        # Forzar actualización de geometría para tener datos frescos
+        self.update_idletasks()
+        
+        sr = self.vector_canvas.cget("scrollregion")
+        if not sr: return
+        
+        # sr es una cadena "0 0 width height" o similar
+        _, _, sr_w, sr_h = map(float, sr.split())
+        
+        canvas_w = self.vector_canvas.winfo_width()
+        canvas_h = self.vector_canvas.winfo_height()
+        
+        # Vertical
+        if sr_h > canvas_h + 1:
+            self.v_scrollbar.grid(row=0, column=1, sticky="ns")
+        else:
+            self.v_scrollbar.grid_forget()
+            
+        # Horizontal
+        if sr_w > canvas_w + 1:
+            self.h_scrollbar.grid(row=1, column=0, sticky="ew")
+        else:
+            self.h_scrollbar.grid_forget()
         
     def rotate_image(self):
         if self.current_pil_image:

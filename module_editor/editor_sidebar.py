@@ -52,13 +52,24 @@ class EditorSidebar(ctk.CTkFrame):
         self.tree_scrollable_frame.bind("<Configure>", self._on_frame_configure)
         self.tree_canvas.bind("<Configure>", self._on_canvas_configure)
         
-        # Conectar el scroll del ratón
-        self.tree_canvas.bind_all("<MouseWheel>", self._on_mousewheel)
-        
         self.populate_file_tree()
         self._canvas_configure_timeout = None
         
+        # Vincular scroll a los contenedores base de forma recursiva
+        self._bind_scroll_recursive(self)
+        
+    def _bind_scroll_recursive(self, widget):
+        """Vincula el scroll de forma recursiva a un widget y sus hijos."""
+        # Solo vincular si no es un widget que ya maneja su propio scroll o si es el canvas
+        widget.bind("<MouseWheel>", self._on_mousewheel, add="+")
+        for child in widget.winfo_children():
+            self._bind_scroll_recursive(child)
+        
     def _on_mousewheel(self, event):
+        # Si se está presionando Control, ignoramos para dejar que el Canvas haga zoom
+        if event.state & 0x0004: # 0x0004 es el bit de Control en Windows
+            return
+            
         # Desplazamiento reactivo asumiendo deltas típicos de Windows de +-120
         self.tree_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
         
@@ -104,6 +115,9 @@ class EditorSidebar(ctk.CTkFrame):
 
         self._build_tree_level(base_path, level=0)
         
+        # Después de cargar todo, vinculamos el scroll a los nuevos botones/labels
+        self._bind_scroll_recursive(self.tree_scrollable_frame)
+        
     def _build_tree_level(self, path, level):
         try:
             items = os.listdir(path)
@@ -145,6 +159,8 @@ class EditorSidebar(ctk.CTkFrame):
                 )
                 btn.pack(fill="x", padx=(level * 15 + 15, 5), pady=1)
                 self.file_buttons[full_path] = btn
+                # Vincular scroll explícitamente a cada botón
+                btn.bind("<MouseWheel>", self._on_mousewheel)
 
     def highlight_path(self, path):
         """Resalta visualmente el archivo seleccionado en el árbol de forma eficiente."""

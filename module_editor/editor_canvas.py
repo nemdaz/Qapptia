@@ -3,19 +3,22 @@ import json
 import os
 import math
 from PIL import Image, ImageTk, ImageDraw
-from module_editor import utils
+from module_editor import utils, constants
 
 class VectorCanvas(tk.Canvas):
-    def __init__(self, master, **kwargs):
+    def __init__(self, master, on_zoom_callback=None, **kwargs):
         super().__init__(master, bg="#1a1a1a", highlightthickness=0, **kwargs)
         self.master = master
+        self.on_zoom_callback = on_zoom_callback
         self.img_item = None
         self.current_pil_image = None
         self.tk_image = None
         self.image_path = None
         
         # Estado geométrico y zoom
-        self.ratio = 1.0
+        self.zoom_level = 1.0 # 1.0 = Encajar en pantalla (Fit)
+        self.base_ratio = 1.0 # Ratio calculado para "Fit"
+        self.ratio = 1.0      # ratio final (base_ratio * zoom_level)
         self.img_x = 0
         self.img_y = 0
         self.vectors = [] # Lista de diccionarios con metadatos de los vectores
@@ -32,13 +35,19 @@ class VectorCanvas(tk.Canvas):
         self.bind("<ButtonPress-1>", self.on_press)
         self.bind("<B1-Motion>", self.on_drag)
         self.bind("<ButtonRelease-1>", self.on_release)
+        
+        # Zoom con Ctrl + Rueda
+        self.bind("<Control-MouseWheel>", self.on_zoom)     # Windows
+        self.bind("<Control-Button-4>", self.on_zoom)      # Linux scroll up
+        self.bind("<Control-Button-5>", self.on_zoom)      # Linux scroll down
 
     def load_image(self, pil_image, path):
         self.current_pil_image = pil_image
         self.image_path = path
         self.vectors = []
+        self.zoom_level = 1.0 # Reset zoom al cargar nueva imagen
         self._load_vector_metadata()
-        self._render()
+        self._render(force_resize=True)
 
     def _render(self, force_resize=True):
         if not self.current_pil_image:
@@ -60,26 +69,80 @@ class VectorCanvas(tk.Canvas):
     def _update_background_image(self, canvas_w, canvas_h):
         img_w, img_h = self.current_pil_image.size
         
-        # Calcular ratio para encajar
+        # 1. Calcular ratio "Fit" (Base)
         ratio_w = canvas_w / img_w
         ratio_h = canvas_h / img_h
-        self.ratio = min(ratio_w, ratio_h)
-        if self.ratio > 1: self.ratio = 1
+        self.base_ratio = min(ratio_w, ratio_h)
+        if self.base_ratio > 1: self.base_ratio = 1
+        
+        # 2. Aplicar zoom dinámico
+        self.ratio = self.base_ratio * self.zoom_level
         
         new_w, new_h = int(img_w * self.ratio), int(img_h * self.ratio)
         
-        # Calcular centro
-        self.img_x = (canvas_w - new_w) // 2
-        self.img_y = (canvas_h - new_h) // 2
+        # 3. Calcular posición (Centrado si es más pequeño que el canvas)
+        self.img_x = max((canvas_w - new_w) // 2, 0)
+        self.img_y = max((canvas_h - new_h) // 2, 0)
         
         resized_img = self.current_pil_image.resize((new_w, new_h), Image.Resampling.LANCZOS)
         self.tk_image = ImageTk.PhotoImage(resized_img)
         
-        # Guardamos el objeto pero el dibujado se hace en _redraw_vectors o aquí limpiando solo lo necesario
         self.delete("background")
         self.img_item = self.create_image(self.img_x, self.img_y, image=self.tk_image, anchor="nw", tags="background")
         self.tag_lower("background")
+        
+        # 4. Actualizar Scroll Region
+        # Definimos el área desplazable como el tamaño de la imagen más un margen
+        # Si la imagen es más pequeña que el canvas, el region coincide con el canvas para no draguear
+        sr_w = max(new_w + self.img_x*2, canvas_w)
+        sr_h = max(new_h + self.img_y*2, canvas_h)
+        self.configure(scrollregion=(0, 0, sr_w, sr_h))
 
+    def on_zoom(self, event):
+        if not self.current_pil_image: return
+        
+        # 1. Coordenadas del mouse en el canvas antes del zoom
+        cx = self.canvasx(event.x)
+        cy = self.canvasy(event.y)
+        
+        # 2. Coordenadas relativas a la imagen (en pixeles reales)
+        x_real = (cx - self.img_x) / self.ratio
+        y_real = (cy - self.img_y) / self.ratio
+        
+        # 3. Determinar dirección y nuevo zoom
+        old_zoom = self.zoom_level
+        if event.num == 4 or event.delta > 0: # Scroll Up
+            new_zoom = self.zoom_level * constants.ZOOM_STEP
+        else: # Scroll Down
+            new_zoom = self.zoom_level / constants.ZOOM_STEP
+            
+        new_zoom = max(constants.ZOOM_MIN, min(new_zoom, constants.ZOOM_MAX))
+        
+        if new_zoom != old_zoom:
+            self.zoom_level = new_zoom
+            # Re-renderiza (esto actualiza self.ratio y self.img_x/y)
+            self._render(force_resize=True)
+            
+            # 4. Ajustar scroll para mantener el punto bajo el mouse
+            # Nueva posición del punto en el canvas
+            new_cx = self.img_x + (x_real * self.ratio)
+            new_cy = self.img_y + (y_real * self.ratio)
+            
+            # Desplazamiento necesario
+            dx = new_cx - cx
+            dy = new_cy - cy
+            
+            # Mover el canvas
+            sr = self.cget("scrollregion").split()
+            sr_w, sr_h = float(sr[2]), float(sr[3])
+            
+            # xview_scroll pide unidades o páginas, xview_moveto pide fracción [0, 1]
+            if sr_w > 0: self.xview_moveto((self.canvasx(0) + dx) / sr_w)
+            if sr_h > 0: self.yview_moveto((self.canvasy(0) + dy) / sr_h)
+
+            if self.on_zoom_callback:
+                self.on_zoom_callback()
+            
     def _render_full(self, event=None):
         self._render(force_resize=True)
 
@@ -95,9 +158,12 @@ class VectorCanvas(tk.Canvas):
             self.configure(cursor="")
 
     def _redraw_vectors(self):
-        # Limpiar solo los elementos vectoriales y grips para no tocar la imagen de fondo
+        # Limpiar solo los elementos vectoriales y grips
         self.delete("vector")
         self.delete("grip")
+        
+        # Calcular grosor dinámico según el zoom para que no se vea "delgado" al ampliar
+        v_width = max(1, int(constants.VECTOR_WIDTH * self.zoom_level))
         
         # Dibuja los vectores guardados escalándolos a la resolución de pantalla actual
         for v in self.vectors:
@@ -110,27 +176,25 @@ class VectorCanvas(tk.Canvas):
             
             if v["type"] == "rect":
                 # Usamos create_line para un polígono cerrado porque soporta joinstyle=ROUND
-                # Esto suaviza notablemente las esquinas comparado con create_rectangle
                 points = [px1, py1, px2, py1, px2, py2, px1, py2, px1, py1]
-                self.create_line(points, fill=v["color"], width=3, 
+                self.create_line(points, fill=v["color"], width=v_width, 
                                  capstyle=tk.ROUND, joinstyle=tk.ROUND, tags=("vector", v["id"]))
             elif v["type"] == "arrow":
-                # Dibujar cuerpo de flecha con bordes redondeados
-                self.create_line(px1, py1, px2, py2, fill=v["color"], width=3, 
+                # Dibujar cuerpo de flecha
+                self.create_line(px1, py1, px2, py2, fill=v["color"], width=v_width, 
                                  capstyle=tk.ROUND, joinstyle=tk.ROUND, tags=("vector", v["id"]))
                 
                 # Calcular e inyectar aletas abiertas
                 angle = math.atan2(py2 - py1, px2 - px1)
-                # Escalar el largo de las alas según el ratio para que se redimensionen con la imagen
-                wing_len = 25 * self.ratio
+                wing_len = constants.ARROW_WING_LEN * self.zoom_level
                 w1_x = px2 - wing_len * math.cos(angle - math.pi/6)
                 w1_y = py2 - wing_len * math.sin(angle - math.pi/6)
                 w2_x = px2 - wing_len * math.cos(angle + math.pi/6)
                 w2_y = py2 - wing_len * math.sin(angle + math.pi/6)
                 
-                self.create_line(px2, py2, w1_x, w1_y, fill=v["color"], width=3, 
+                self.create_line(px2, py2, w1_x, w1_y, fill=v["color"], width=v_width, 
                                  capstyle=tk.ROUND, joinstyle=tk.ROUND, tags=("vector", v["id"]))
-                self.create_line(px2, py2, w2_x, w2_y, fill=v["color"], width=3, 
+                self.create_line(px2, py2, w2_x, w2_y, fill=v["color"], width=v_width, 
                                  capstyle=tk.ROUND, joinstyle=tk.ROUND, tags=("vector", v["id"]))
                 
             # Dibujar Grips si está seleccionado
@@ -149,11 +213,15 @@ class VectorCanvas(tk.Canvas):
 
     # ================= FUNCIONES DE INTERACCIÓN =================
     def on_press(self, event):
+        # Convertir coordenadas de pantalla a coordenadas de canvas (considerando scroll)
+        cx = self.canvasx(event.x)
+        cy = self.canvasy(event.y)
+        
         if self.draw_mode:
             if not self.current_pil_image: return
             
-            x_real = (event.x - self.img_x) / self.ratio
-            y_real = (event.y - self.img_y) / self.ratio
+            x_real = (cx - self.img_x) / self.ratio
+            y_real = (cy - self.img_y) / self.ratio
             
             new_id = f"{self.draw_mode}_{len(self.vectors)}"
             new_vector = {
@@ -176,12 +244,12 @@ class VectorCanvas(tk.Canvas):
         # Comprobar si tocó un grip
         grips = self.find_withtag("grip")
         for g in grips:
-            if self._is_point_in_bbox(event.x, event.y, self.bbox(g)):
+            if self._is_point_in_bbox(cx, cy, self.bbox(g)):
                 tags = self.gettags(g)
                 # grip_tl_rect_0
                 self.active_grip = tags[1].split("_")[1] # tl, tr, bl, br
-                self._drag_start_x = event.x
-                self._drag_start_y = event.y
+                self._drag_start_x = cx
+                self._drag_start_y = cy
                 return
                 
         # Comprobar si tocó un vector (borde del rectángulo)
@@ -189,20 +257,20 @@ class VectorCanvas(tk.Canvas):
         for v in vectors:
             bbox = self.bbox(v)
             # Aproximación gruesa para agarrar el borde
-            if bbox and (bbox[0]-5 <= event.x <= bbox[2]+5) and (bbox[1]-5 <= event.y <= bbox[3]+5):
+            if bbox and (bbox[0]-5 <= cx <= bbox[2]+5) and (bbox[1]-5 <= cy <= bbox[3]+5):
                 """ 
                 Para no complicar la mateática de si pinchó exactamente
                 el borde (interior vacío), si está dentro del Bounding Box
                 del rectángulo lo seleccionamos.
                 """
-                if event.x > bbox[0]+10 and event.x < bbox[2]-10 and event.y > bbox[1]+10 and event.y < bbox[3]-10:
+                if cx > bbox[0]+10 and cx < bbox[2]-10 and cy > bbox[1]+10 and cy < bbox[3]-10:
                     continue # Tocó el hoyo interior transparente, ignorar
                 
                 tags = self.gettags(v)
                 self.selected_vector_id = tags[1]
                 self.active_grip = "move"
-                self._drag_start_x = event.x
-                self._drag_start_y = event.y
+                self._drag_start_x = cx
+                self._drag_start_y = cy
                 self._render() # Dibujar grips
                 return
                 
@@ -214,15 +282,18 @@ class VectorCanvas(tk.Canvas):
     def on_drag(self, event):
         if not self.selected_vector_id or not self.active_grip: return
         
-        dx_screen = event.x - self._drag_start_x
-        dy_screen = event.y - self._drag_start_y
+        cx = self.canvasx(event.x)
+        cy = self.canvasy(event.y)
+        
+        dx_screen = cx - self._drag_start_x
+        dy_screen = cy - self._drag_start_y
         
         # Convertir desplazamiento a pixeles reales de la imagen
         dx_real = dx_screen / self.ratio
         dy_real = dy_screen / self.ratio
         
-        self._drag_start_x = event.x
-        self._drag_start_y = event.y
+        self._drag_start_x = cx
+        self._drag_start_y = cy
         
         # Buscar el diccionario de este vector
         v_idx = next((i for i, v in enumerate(self.vectors) if v["id"] == self.selected_vector_id), None)
@@ -293,9 +364,12 @@ class VectorCanvas(tk.Canvas):
         for v in self.vectors:
             raw_x1, raw_y1, raw_x2, raw_y2 = v["coords"]
             color = v["color"]
-            width = 5 # Grosor proporcional para alta resolución
             
-            # Normalizar coordenadas para PIL (evitar ValueError si se dibujó al revés)
+            # El grosor en la exportación debe ser proporcional para que se vea igual que en la vista "Fit"
+            # Si el base_ratio es 0.1 (imagen 10x más grande que el canvas), el grosor debe ser 3 / 0.1 = 30
+            width = max(5, int(constants.VECTOR_WIDTH / self.base_ratio))
+            
+            # Normalizar coordenadas para PIL
             x1, x2 = min(raw_x1, raw_x2), max(raw_x1, raw_x2)
             y1, y2 = min(raw_y1, raw_y2), max(raw_y1, raw_y2)
             
@@ -306,9 +380,9 @@ class VectorCanvas(tk.Canvas):
                 x1, y1, x2, y2 = raw_x1, raw_y1, raw_x2, raw_y2
                 draw.line([x1, y1, x2, y2], fill=color, width=width)
                 
-                # Alas de la flecha (Trigonometría similar al render pero en escala real)
+                # Alas de la flecha (Proporcional a la resolución original)
                 angle = math.atan2(y2 - y1, x2 - x1)
-                wing_len = 40 # Largo de ala en alta resolución
+                wing_len = constants.ARROW_WING_LEN / self.base_ratio
                 w1_x = x2 - wing_len * math.cos(angle - math.pi/6)
                 w1_y = y2 - wing_len * math.sin(angle - math.pi/6)
                 w2_x = x2 - wing_len * math.cos(angle + math.pi/6)
