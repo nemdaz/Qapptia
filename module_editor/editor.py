@@ -30,11 +30,38 @@ class EditorApp(ctk.CTk):
         self.current_pil_image = None
         self.current_rotation = 0
         self._resize_timeout = None
+        self.active_tool_btn = None # Referencia al botón de herramienta resaltado
         
         self.setup_ui()
         
         # Cargar imagen inicial después de renderizar el layout
         self.after(constants.INITIAL_LOAD_DELAY_MS, self.load_latest_image)
+        
+        # Detector de clics global para deseleccionar herramientas
+        self.bind("<Button-1>", self.on_window_click)
+
+    def on_window_click(self, event):
+        """Deselecciona la herramienta si se hace clic fuera de los botones de dibujo o el lienzo."""
+        if not self.active_tool_btn:
+            return
+            
+        try:
+            # Obtener el widget exacto bajo el mouse en coordenadas de pantalla
+            widget = self.winfo_containing(event.x_root, event.y_root)
+            if not widget: return
+            
+            # Convertir a string para búsqueda jerárquica
+            w_str = str(widget)
+            
+            # Si el clic es en el propio botón activo o en el canvas, ignoramos
+            # ctktkinter los botones son compuestos, así que miramos si el widget es hijo del botón
+            if w_str.startswith(str(self.active_tool_btn)) or w_str.startswith(str(self.vector_canvas)):
+                return
+        except:
+            pass
+            
+        # Si clicamos en cualquier otra parte (otros botones, sidebar, fondo), deseleccionamos
+        self.set_tool(None)
 
     def setup_ui(self):
         # Configurar grid principal (2 filas, 3 columnas)
@@ -58,7 +85,7 @@ class EditorApp(ctk.CTk):
         utils.Tooltip(self.btn_copy_file, "Copiar Archivo")
         
         icon_copy_clip = assets.get_icon("copy_clip", size=constants.ICON_SIZE)
-        self.btn_copy_clip = ctk.CTkButton(self.frame_toolbar, text="", image=icon_copy_clip, width=40, state="disabled", command=self.copy_to_clipboard)
+        self.btn_copy_clip = ctk.CTkButton(self.frame_toolbar, text="", image=icon_copy_clip, width=40, state="disabled", command=self.copy_to_clipboard_with_deselect)
         self.btn_copy_clip.pack(side="left", padx=5, pady=10)
         utils.Tooltip(self.btn_copy_clip, "Copiar al Portapapeles")
         
@@ -71,12 +98,12 @@ class EditorApp(ctk.CTk):
         ctk.CTkFrame(self.frame_toolbar, width=2, height=30, fg_color="gray30").pack(side="left", padx=10, pady=10)
         
         icon_arrow = assets.get_icon("arrow", size=constants.ICON_SIZE)
-        self.btn_arrow = ctk.CTkButton(self.frame_toolbar, text="", image=icon_arrow, width=40, command=lambda: self.vector_canvas.set_draw_mode("arrow"))
+        self.btn_arrow = ctk.CTkButton(self.frame_toolbar, text="", image=icon_arrow, width=40, command=lambda: self.set_tool("arrow"))
         self.btn_arrow.pack(side="left", padx=5, pady=10)
         utils.Tooltip(self.btn_arrow, "Dibujar Flecha")
         
         icon_rect = assets.get_icon("rect", size=constants.ICON_SIZE)
-        self.btn_rect = ctk.CTkButton(self.frame_toolbar, text="", image=icon_rect, width=40, command=lambda: self.vector_canvas.set_draw_mode("rect"))
+        self.btn_rect = ctk.CTkButton(self.frame_toolbar, text="", image=icon_rect, width=40, command=lambda: self.set_tool("rect"))
         self.btn_rect.pack(side="left", padx=5, pady=10)
         utils.Tooltip(self.btn_rect, "Dibujar Rectángulo")
         
@@ -133,6 +160,7 @@ class EditorApp(ctk.CTk):
         
     def show_image(self, img_path):
         if not os.path.exists(img_path): return
+        self.set_tool(None) # Desactivar dibujo al cambiar de imagen
         
         # Optimización: No recargar si es la misma imagen
         if self.current_image_path == img_path:
@@ -169,6 +197,27 @@ class EditorApp(ctk.CTk):
         
         self.grid_columnconfigure(2, minsize=new_width)
 
+    def set_tool(self, tool_name):
+        """Activa una herramienta de dibujo con feedback visual."""
+        # Si ya estaba activa, la desactivamos (toggle)
+        if self.active_tool_btn:
+            self.active_tool_btn.configure(fg_color=ctk.ThemeManager.theme["CTkButton"]["fg_color"])
+            
+        if tool_name == "arrow":
+            btn = self.btn_arrow
+        elif tool_name == "rect":
+            btn = self.btn_rect
+        else:
+            btn = None
+            
+        if btn and self.active_tool_btn != btn:
+            self.active_tool_btn = btn
+            btn.configure(fg_color="#1f538d") # Color de énfasis (azul oscuro)
+            self.vector_canvas.set_draw_mode(tool_name)
+        else:
+            self.active_tool_btn = None
+            self.vector_canvas.set_draw_mode(None)
+
     def update_scrollbar_visibility(self):
         """Muestra u oculta los scrollbars dependiendo de si la imagen cabe en el canvas."""
         # Forzar actualización de geometría para tener datos frescos
@@ -197,6 +246,7 @@ class EditorApp(ctk.CTk):
         
     def rotate_image(self):
         if self.current_pil_image:
+            self.set_tool(None) # Desactivar dibujo
             self.current_rotation = (self.current_rotation + 90) % 360 
             # Calcular en base a self.current_rotation en lugar de un ángulo fijo
             img_rotated = self.current_pil_image.rotate(-self.current_rotation, expand=True)
@@ -209,8 +259,13 @@ class EditorApp(ctk.CTk):
         else:
             utils.show_toast(self, "Error al copiar imagen")
             
+    def copy_to_clipboard_with_deselect(self):
+        self.set_tool(None)
+        self.copy_to_clipboard()
+        
     def save_rotation(self):
         if self.current_pil_image and self.current_image_path and self.current_rotation != 0:
+            self.set_tool(None) # Desactivar dibujo
             try:
                 # Guardar en disco la imagen rotada
                 img_rotated = self.current_pil_image.rotate(-self.current_rotation, expand=True)

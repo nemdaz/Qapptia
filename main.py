@@ -54,14 +54,14 @@ def quit_app(icon, item):
 
 def setup(icon):
     icon.visible = True
-    # Iniciar atajos
-    setup_hotkeys(on_default_shortcut)
+    # El registro de hotkeys se movió al main para mayor estabilidad
     # Siempre escuchamos el mouse, FlowManager decide si actuar
     mouse.hook(on_mouse_event)
 
 def main():
     global should_exit
     config.load_config()
+    setup_hotkeys(on_default_shortcut)
     
     menu = pystray.Menu(
         pystray.MenuItem('Capturar ahora', capture_manual_menu),

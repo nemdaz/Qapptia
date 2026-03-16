@@ -35,6 +35,7 @@ class VectorCanvas(tk.Canvas):
         self.bind("<ButtonPress-1>", self.on_press)
         self.bind("<B1-Motion>", self.on_drag)
         self.bind("<ButtonRelease-1>", self.on_release)
+        self.bind("<Delete>", self.delete_selected_vector)
         
         # Zoom con Ctrl + Rueda
         self.bind("<Control-MouseWheel>", self.on_zoom)     # Windows
@@ -213,10 +214,23 @@ class VectorCanvas(tk.Canvas):
 
     # ================= FUNCIONES DE INTERACCIÓN =================
     def on_press(self, event):
+        self.focus_set() # Asegurar que el canvas reciba eventos de teclado
+        self._is_new_vector = False # Marcador para saber si acabamos de crear uno
         # Convertir coordenadas de pantalla a coordenadas de canvas (considerando scroll)
         cx = self.canvasx(event.x)
         cy = self.canvasy(event.y)
         
+        # 1. Comprobar si tocó un grip (prioridad para editar lo existente)
+        grips = self.find_withtag("grip")
+        for g in grips:
+            if self._is_point_in_bbox(cx, cy, self.bbox(g)):
+                tags = self.gettags(g)
+                self.active_grip = tags[1].split("_")[1] # tl, tr, bl, br
+                self._drag_start_x = cx
+                self._drag_start_y = cy
+                return
+                
+        # 2. Si hay modo dibujo activo y no es un grip, crear NUEVO vector
         if self.draw_mode:
             if not self.current_pil_image: return
             
@@ -235,24 +249,12 @@ class VectorCanvas(tk.Canvas):
             self.active_grip = "br" if self.draw_mode == "rect" else "end"
             self._drag_start_x = event.x
             self._drag_start_y = event.y
+            self._is_new_vector = True # Hemos creado un vector
             
-            # Salimos del modo "creación" para que el movimiento sea de dibujo normal
-            self.set_draw_mode(None)
             self._render(force_resize=False)
             return
             
-        # Comprobar si tocó un grip
-        grips = self.find_withtag("grip")
-        for g in grips:
-            if self._is_point_in_bbox(cx, cy, self.bbox(g)):
-                tags = self.gettags(g)
-                # grip_tl_rect_0
-                self.active_grip = tags[1].split("_")[1] # tl, tr, bl, br
-                self._drag_start_x = cx
-                self._drag_start_y = cy
-                return
-                
-        # Comprobar si tocó un vector (borde del rectángulo)
+        # 3. Comprobar si tocó un vector existente para seleccionarlo
         vectors = self.find_withtag("vector")
         for v in vectors:
             bbox = self.bbox(v)
@@ -317,9 +319,39 @@ class VectorCanvas(tk.Canvas):
         self._render(force_resize=False)
 
     def on_release(self, event):
-        if self.active_grip:
-            self.active_grip = None
-            self._save_vector_metadata()
+        # Validación de "temblor" o clic accidental
+        if self._is_new_vector and self.selected_vector_id:
+            v_idx = next((i for i, v in enumerate(self.vectors) if v["id"] == self.selected_vector_id), None)
+            if v_idx is not None:
+                coords = self.vectors[v_idx]["coords"]
+                dist = math.sqrt((coords[2]-coords[0])**2 + (coords[3]-coords[1])**2)
+                if dist < 15: # Menos de 15 píxeles reales es considerado un clic accidental
+                    self.vectors.pop(v_idx)
+                    self.selected_vector_id = None
+        
+        self.active_grip = None
+        self._is_new_vector = False
+        
+        # Si seguimos en modo dibujo, mantener la cruz
+        if self.draw_mode:
+            self.configure(cursor="crosshair")
+        else:
+            self.configure(cursor="")
+        self._render()
+        self._save_vector_metadata()
+
+    def delete_selected_vector(self, event=None):
+        """Elimina el vector actualmente seleccionado."""
+        if not self.selected_vector_id:
+            return
+            
+        # Filtrar la lista de vectores
+        self.vectors = [v for v in self.vectors if v["id"] != self.selected_vector_id]
+        self.selected_vector_id = None
+        self.active_grip = None
+        
+        self._render()
+        self._save_vector_metadata()
 
     def _is_point_in_bbox(self, x, y, bbox):
         if not bbox: return False

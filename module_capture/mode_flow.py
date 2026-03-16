@@ -94,9 +94,10 @@ class FlowManager:
             mx, my = mouse.get_position()
             
             if event.event_type == 'down':
-                # ¿Zona de scroll?
-                is_in_zone = mx > (self._screen_width * c.SCROLL_ZONE_WIDTH_RATIO) or \
-                             mx > (self._screen_width - c.SCROLL_ZONE_WIDTH_PIXELS)
+                # ¿Zona de scroll y está habilitada la captura de scroll?
+                enable_scroll = config.get("enable_scroll_capture")
+                is_in_zone = enable_scroll and (mx > (self._screen_width * c.SCROLL_ZONE_WIDTH_RATIO) or \
+                             mx > (self._screen_width - c.SCROLL_ZONE_WIDTH_PIXELS))
                 
                 if is_in_zone:
                     print(f"Inicio de Scroll Manual en X={mx}")
@@ -121,6 +122,8 @@ class FlowManager:
                     print("Fin de Scroll omitido por redundancia (sin movimiento significativo).")
 
     def _handle_wheel(self, event):
+        if not config.get("enable_scroll_capture"): return
+        
         current_time = time.time()
         if current_time - self._last_scroll_time > c.WHEEL_IDLE_TIME:
             self._capture("Inicio Rueda")

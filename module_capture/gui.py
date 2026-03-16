@@ -208,6 +208,14 @@ class ConfigApp(ctk.CTk):
         
         self.btn_clear_pause = ctk.CTkButton(container_flujo, text="Limpiar", width=60, command=self.clear_pause)
         self.btn_clear_pause.grid(row=0, column=2, padx=10, pady=5)
+        
+        # Opción: Capturar Scroll
+        self.chk_enable_scroll = ctk.CTkCheckBox(container_flujo, text="Habilitar Captura de Scroll Inteligente")
+        self.chk_enable_scroll.grid(row=1, column=0, columnspan=2, padx=10, pady=(10, 5), sticky="w")
+        if bool(config.get("enable_scroll_capture")):
+            self.chk_enable_scroll.select()
+        else:
+            self.chk_enable_scroll.deselect()
 
     def browse_path(self):
         path = filedialog.askdirectory()
@@ -277,6 +285,7 @@ class ConfigApp(ctk.CTk):
             
         config.set("shortcut_key", self.entry_shortcut.get().lower())
         config.set("flow_pause_key", self.entry_pause.get().lower())
+        config.set("enable_scroll_capture", bool(self.chk_enable_scroll.get()))
         
         if self.on_close_callback:
             self.on_close_callback()
