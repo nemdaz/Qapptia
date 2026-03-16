@@ -58,7 +58,7 @@ class EditorApp(ctk.CTk):
         Tooltip(self.btn_copy_file, "Copiar Archivo")
         
         icon_copy_clip = assets.get_icon("copy_clip", size=constants.ICON_SIZE)
-        self.btn_copy_clip = ctk.CTkButton(self.frame_toolbar, text="", image=icon_copy_clip, width=40, state="disabled")
+        self.btn_copy_clip = ctk.CTkButton(self.frame_toolbar, text="", image=icon_copy_clip, width=40, state="disabled", command=self.copy_to_clipboard)
         self.btn_copy_clip.pack(side="left", padx=5, pady=10)
         Tooltip(self.btn_copy_clip, "Copiar al Portapapeles")
         
@@ -161,6 +161,14 @@ class EditorApp(ctk.CTk):
             img_rotated = self.current_pil_image.rotate(-self.current_rotation, expand=True)
             self.vector_canvas.load_image(img_rotated, self.current_image_path)
             self.lbl_status.configure(text=f"Rotado {self.current_rotation}º")
+
+    def copy_to_clipboard(self):
+        if self.vector_canvas.copy_to_clipboard():
+            self.lbl_status.configure(text="¡Imagen copiada al portapapeles!")
+            # Restaurar status después de 3 segundos
+            self.after(3000, lambda: self.lbl_status.configure(text=os.path.basename(self.current_image_path)))
+        else:
+            self.lbl_status.configure(text="Error al copiar imagen")
             
     def save_rotation(self):
         if self.current_pil_image and self.current_image_path and self.current_rotation != 0:

@@ -1,4 +1,6 @@
 import tkinter as tk
+import os
+import subprocess
 from module_editor import constants
 
 class Tooltip:
@@ -30,3 +32,33 @@ class Tooltip:
         if self.tooltip_window:
             self.tooltip_window.destroy()
             self.tooltip_window = None
+
+def copy_image_to_clipboard(pil_image):
+    """Funde la imagen y la envía al portapapeles de Windows vía PowerShell."""
+    if not pil_image:
+        return False
+        
+    tmp_path = os.path.join(os.environ.get("TEMP", "C:/Windows/Temp"), "qas_clipboard.bmp")
+    
+    try:
+        # Convertir imagen a BMP (Windows nativo para portapapeles)
+        pil_image.convert("RGB").save(tmp_path, "BMP")
+        
+        # Comando de PowerShell: Carga la imagen desde el archivo temporal y la pone en el clipboard
+        ps_script = "[void][Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms');"
+        ps_script += "[void][Reflection.Assembly]::LoadWithPartialName('System.Drawing');"
+        ps_script += f"$img = [System.Drawing.Image]::FromFile('{tmp_path.replace('\\', '/')}'); "
+        ps_script += "[System.Windows.Forms.Clipboard]::SetImage($img); "
+        ps_script += "$img.Dispose();"
+        
+        subprocess.run(["powershell", "-NoProfile", "-Command", ps_script], check=True)
+        
+        # Limpieza
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+        return True
+    except Exception as e:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+        print(f"Error al copiar al clipboard: {e}")
+        return False

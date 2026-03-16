@@ -2,7 +2,8 @@ import tkinter as tk
 import json
 import os
 import math
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageDraw
+from module_editor import utils
 
 class VectorCanvas(tk.Canvas):
     def __init__(self, master, **kwargs):
@@ -258,3 +259,46 @@ class VectorCanvas(tk.Canvas):
         except Exception as e:
             print(f"Error cargando json: {e}")
             self.vectors = []
+
+    # ================= FUNCIONES DE EXPORTACIÓN =================
+    def get_composite_image(self):
+        """Genera una imagen PIL fusionando la original con los vectores en alta resolución."""
+        if not self.current_pil_image: return None
+        
+        # Trabajamos sobre una copia para no alterar la original en memoria
+        composite = self.current_pil_image.copy()
+        draw = ImageDraw.Draw(composite)
+        
+        for v in self.vectors:
+            raw_x1, raw_y1, raw_x2, raw_y2 = v["coords"]
+            color = v["color"]
+            width = 5 # Grosor proporcional para alta resolución
+            
+            # Normalizar coordenadas para PIL (evitar ValueError si se dibujó al revés)
+            x1, x2 = min(raw_x1, raw_x2), max(raw_x1, raw_x2)
+            y1, y2 = min(raw_y1, raw_y2), max(raw_y1, raw_y2)
+            
+            if v["type"] == "rect":
+                draw.rectangle([x1, y1, x2, y2], outline=color, width=width)
+            elif v["type"] == "arrow":
+                # En flechas usamos las coordenadas originales para mantener la dirección de la punta
+                x1, y1, x2, y2 = raw_x1, raw_y1, raw_x2, raw_y2
+                draw.line([x1, y1, x2, y2], fill=color, width=width)
+                
+                # Alas de la flecha (Trigonometría similar al render pero en escala real)
+                angle = math.atan2(y2 - y1, x2 - x1)
+                wing_len = 40 # Largo de ala en alta resolución
+                w1_x = x2 - wing_len * math.cos(angle - math.pi/6)
+                w1_y = y2 - wing_len * math.sin(angle - math.pi/6)
+                w2_x = x2 - wing_len * math.cos(angle + math.pi/6)
+                w2_y = y2 - wing_len * math.sin(angle + math.pi/6)
+                
+                draw.line([x2, y2, w1_x, w1_y], fill=color, width=width)
+                draw.line([x2, y2, w2_x, w2_y], fill=color, width=width)
+                
+        return composite
+
+    def copy_to_clipboard(self):
+        """Funde la imagen y la envía al portapapeles usando la utilidad."""
+        img = self.get_composite_image()
+        return utils.copy_image_to_clipboard(img)
