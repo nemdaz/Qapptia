@@ -1,43 +1,17 @@
 import customtkinter as ctk
-import tkinter as tk
 import sys
 import os
+import tkinter as tk
 from PIL import Image
-import glob
 
-# Configurar ruta base del proyecto
+# Configurar ruta base del proyecto (para alcanzar module_capture, core, etc)
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from core import config
 from core import assets
-
-class Tooltip:
-    def __init__(self, widget, text):
-        self.widget = widget
-        self.text = text
-        self.tooltip_window = None
-        self.widget.bind("<Enter>", self.show_tooltip)
-        self.widget.bind("<Leave>", self.hide_tooltip)
-
-    def show_tooltip(self, event):
-        if self.tooltip_window is not None:
-            return
-        x = self.widget.winfo_rootx() + (self.widget.winfo_width() // 2) - 15
-        y = self.widget.winfo_rooty() + self.widget.winfo_height() + 5
-        
-        self.tooltip_window = tk.Toplevel(self.widget)
-        self.tooltip_window.wm_overrideredirect(True)
-        self.tooltip_window.wm_geometry(f"+{x}+{y}")
-        self.tooltip_window.attributes("-topmost", True)
-        
-        label = tk.Label(self.tooltip_window, text=self.text, justify='left',
-                         background="#2b2b2b", foreground="white", relief='solid', borderwidth=1,
-                         font=("Arial", 10))
-        label.pack(ipadx=6, ipady=3)
-
-    def hide_tooltip(self, event):
-        if self.tooltip_window:
-            self.tooltip_window.destroy()
-            self.tooltip_window = None
+from module_editor import constants
+from module_editor.utils import Tooltip
+from module_editor.editor_sidebar import EditorSidebar
 
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
@@ -46,9 +20,9 @@ class EditorApp(ctk.CTk):
     def __init__(self):
         super().__init__()
         
-        self.title("Editor de Capturas")
-        self.geometry("1000x600")
-        self.minsize(800, 500)
+        self.title(constants.WINDOW_TITLE)
+        self.geometry(constants.WINDOW_SIZE)
+        self.minsize(constants.MIN_WIDTH, constants.MIN_HEIGHT)
         
         # Variables de estado
         self.current_image_path = None
@@ -59,24 +33,25 @@ class EditorApp(ctk.CTk):
         self.setup_ui()
         
         # Cargar imagen inicial después de renderizar el layout
-        self.after(200, self.load_latest_image)
+        self.after(constants.INITIAL_LOAD_DELAY_MS, self.load_latest_image)
 
     def setup_ui(self):
-        # Configurar grid principal (2 filas, 2 columnas)
+        # Configurar grid principal (2 filas, 3 columnas)
         self.grid_rowconfigure(1, weight=1)
-        self.grid_columnconfigure(0, weight=3) # Área de imagen toma más espacio
-        self.grid_columnconfigure(1, weight=1) # Panel lateral
+        self.grid_columnconfigure(0, weight=1) # Área de imagen cede espacio
+        self.grid_columnconfigure(1, weight=0, minsize=5) # Separador Drag
+        self.grid_columnconfigure(2, weight=0, minsize=constants.SIDEBAR_WIDTH) # Panel lateral de ancho fijo
         
         # --- Toolbar Superior ---
         self.frame_toolbar = ctk.CTkFrame(self, height=50)
-        self.frame_toolbar.grid(row=0, column=0, columnspan=2, sticky="ew", padx=10, pady=(10, 0))
+        self.frame_toolbar.grid(row=0, column=0, columnspan=3, sticky="ew", padx=10, pady=(10, 0))
         
-        icon_rotate = assets.get_icon("rotate", size=(20, 20))
+        icon_rotate = assets.get_icon("rotate", size=constants.ICON_SIZE)
         self.btn_rotate = ctk.CTkButton(self.frame_toolbar, text="", image=icon_rotate, width=40, command=self.rotate_image, state="disabled")
         self.btn_rotate.pack(side="left", padx=10, pady=10)
         Tooltip(self.btn_rotate, "Rotar")
         
-        icon_save = assets.get_icon("save", size=(20, 20))
+        icon_save = assets.get_icon("save", size=constants.ICON_SIZE)
         self.btn_save = ctk.CTkButton(self.frame_toolbar, text="", image=icon_save, width=40, command=self.save_rotation, state="disabled", fg_color="green", hover_color="darkgreen")
         self.btn_save.pack(side="left", padx=5, pady=10)
         Tooltip(self.btn_save, "Guardar")
@@ -94,25 +69,16 @@ class EditorApp(ctk.CTk):
         # Evento de Resize para estirar la imagen dinámicamente
         self.frame_image.bind("<Configure>", self.on_resize)
         
+        # --- Drag Handle ---
+        self.drag_handle = ctk.CTkFrame(self, width=5, cursor="sb_h_double_arrow", fg_color="transparent")
+        self.drag_handle.grid(row=1, column=1, sticky="ns", pady=10)
+        self.drag_handle.bind("<B1-Motion>", self.resize_sidebar)
+        self.drag_handle.bind("<Enter>", lambda e: self.drag_handle.configure(fg_color="gray50"))
+        self.drag_handle.bind("<Leave>", lambda e: self.drag_handle.configure(fg_color="transparent"))
+        
         # --- Panel Lateral (Árbol de Archivos) ---
-        self.frame_tree = ctk.CTkFrame(self)
-        self.frame_tree.grid(row=1, column=1, sticky="nsew", padx=(5, 10), pady=10)
-        
-        self.lbl_tree_title = ctk.CTkLabel(self.frame_tree, text="Explorador", font=("Arial", 14, "bold"))
-        self.lbl_tree_title.pack(pady=10, padx=10, anchor="w")
-        
-        # Placeholder para el explorador (a construirse de forma dinámica después)
-        self.tree_scrollable_frame = ctk.CTkScrollableFrame(self.frame_tree)
-        self.tree_scrollable_frame.pack(expand=True, fill="both", padx=10, pady=(0, 10))
-        
-        self.populate_tree_placeholder()
-
-    def populate_tree_placeholder(self):
-        base_path = os.path.expandvars(config.get("save_path"))
-        ctk.CTkLabel(self.tree_scrollable_frame, text=f"Ruta Base:\n{base_path}", text_color="gray", justify="left").pack(anchor="w", pady=5)
-        
-        btn = ctk.CTkButton(self.tree_scrollable_frame, text="Ver última captura", command=self.load_latest_image)
-        btn.pack(pady=10)
+        self.sidebar = EditorSidebar(self, on_image_selected_callback=self.show_image)
+        self.sidebar.grid(row=1, column=2, sticky="nsew", padx=(0, 10), pady=10)
         
     def load_latest_image(self):
         base_path = os.path.expandvars(config.get("save_path"))
@@ -161,11 +127,11 @@ class EditorApp(ctk.CTk):
         self._last_w = current_w
         self._last_h = current_h
         
-        # Debouncing ultra rápido. Suffciente para procesar los batch events de un Maximizar 
+        # Debouncing ultra rápido. Suficiente para procesar los batch events de un Maximizar 
         # sin que se borre la imagen
         if self._resize_timeout:
             self.after_cancel(self._resize_timeout)
-        self._resize_timeout = self.after(20, self._render_current_image)
+        self._resize_timeout = self.after(constants.DEBOUNCE_DELAY_MS, self._render_current_image)
             
     def _render_current_image(self):
         if not self.current_pil_image: return
@@ -191,6 +157,15 @@ class EditorApp(ctk.CTk):
         ctk_img = ctk.CTkImage(light_image=img_rotated, dark_image=img_rotated, size=new_size)
         self.lbl_image.configure(image=ctk_img, text="") 
         self.lbl_image._image = ctk_img 
+        
+    def resize_sidebar(self, event):
+        app_right_edge = self.winfo_rootx() + self.winfo_width()
+        new_width = app_right_edge - event.x_root - 10 # 10 = Padding
+        
+        if new_width < 150: new_width = 150
+        if new_width > 600: new_width = 600
+        
+        self.grid_columnconfigure(2, minsize=new_width)
         
     def rotate_image(self):
         if self.current_pil_image:
