@@ -5,7 +5,7 @@ import mouse
 import keyboard
 import threading
 from core import config
-from module_capture.screen_capture import capture_screen
+from module_capture.capture_screen import capture_screen
 from module_capture import constants as c
 
 class FlowManager:

@@ -1,5 +1,5 @@
 import time
-from module_capture.screen_capture import capture_screen
+from module_capture.capture_screen import capture_screen
 from core import config
 
 def trigger_manual_capture():

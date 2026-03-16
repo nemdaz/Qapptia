@@ -1,6 +1,23 @@
 import os
 import winsound
 from PIL import ImageDraw, Image
+from core import config
+
+def get_save_directory(base_path, now):
+    """Calcula la ruta de guardado final basada en la configuración de subcarpetas."""
+    base_path = os.path.expandvars(base_path)
+    subfolders = []
+    if config.get("subfolder_month"):
+        subfolders.append(now.strftime("%Y-%m"))
+    if config.get("subfolder_day"):
+        subfolders.append(now.strftime("%Y-%m-%d"))
+    if config.get("subfolder_hour"):
+        subfolders.append(now.strftime("%Y-%m-%d %H"))
+        
+    full_path = os.path.join(base_path, *subfolders) if subfolders else base_path
+    if not os.path.exists(full_path):
+        os.makedirs(full_path, exist_ok=True)
+    return full_path
 
 def play_beep_async():
     """Reproduce el beep de éxito de captura."""
