@@ -10,6 +10,9 @@ class EditorSidebar(ctk.CTkFrame):
     def __init__(self, master, on_image_selected_callback, **kwargs):
         super().__init__(master, **kwargs)
         self.on_image_selected = on_image_selected_callback
+        self.file_buttons = {}  # Mapeo de full_path -> CTkButton
+        self.selected_path = None
+        self.active_button = None # Referencia al botón seleccionado actualmente
         
         self.grid_rowconfigure(1, weight=1)
         self.grid_columnconfigure(0, weight=1)
@@ -89,6 +92,8 @@ class EditorSidebar(ctk.CTkFrame):
                 self.hsb.grid_forget()
 
     def populate_file_tree(self):
+        self.file_buttons = {}
+        self.active_button = None
         for widget in self.tree_scrollable_frame.winfo_children():
             widget.destroy()
             
@@ -139,6 +144,32 @@ class EditorSidebar(ctk.CTkFrame):
                     command=lambda p=full_path: self.on_image_selected(p)
                 )
                 btn.pack(fill="x", padx=(level * 15 + 15, 5), pady=1)
+                self.file_buttons[full_path] = btn
+
+    def highlight_path(self, path):
+        """Resalta visualmente el archivo seleccionado en el árbol de forma eficiente."""
+        # 1. Resetear el botón anteriormente seleccionado si existe
+        if self.active_button:
+            self.active_button.configure(
+                fg_color="transparent", 
+                hover_color=constants.TOOLTIP_BG_COLOR,
+                font=("Arial", 12, "normal")
+            )
+        
+        # 2. Buscar y resaltar el nuevo botón
+        btn = self.file_buttons.get(path)
+        if btn:
+            self.selected_path = path
+            self.active_button = btn
+            # Forzamos que el color de hover sea el mismo que el de fondo para que no "parpadee" al pasar el mouse
+            btn.configure(
+                fg_color="#3a3a3a", 
+                hover_color="#3a3a3a", 
+                font=("Arial", 12, "bold")
+            )
+        else:
+            self.selected_path = None
+            self.active_button = None
 
     def _has_images(self, path):
         for root, dirs, files in os.walk(path):

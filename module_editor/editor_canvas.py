@@ -40,18 +40,24 @@ class VectorCanvas(tk.Canvas):
         self._load_vector_metadata()
         self._render()
 
-    def _render(self, event=None):
+    def _render(self, force_resize=True):
         if not self.current_pil_image:
             return
             
-        self.delete("all")
-        
         canvas_w = self.winfo_width()
         canvas_h = self.winfo_height()
         
         if canvas_w < 10 or canvas_h < 10:
             return
 
+        # Solo redimensionamos la imagen PIL si el tamaño del canvas cambió o es forzado (carga inicial)
+        if force_resize or not hasattr(self, '_last_canvas_size') or self._last_canvas_size != (canvas_w, canvas_h):
+            self._update_background_image(canvas_w, canvas_h)
+            self._last_canvas_size = (canvas_w, canvas_h)
+        
+        self._redraw_vectors()
+
+    def _update_background_image(self, canvas_w, canvas_h):
         img_w, img_h = self.current_pil_image.size
         
         # Calcular ratio para encajar
@@ -69,13 +75,17 @@ class VectorCanvas(tk.Canvas):
         resized_img = self.current_pil_image.resize((new_w, new_h), Image.Resampling.LANCZOS)
         self.tk_image = ImageTk.PhotoImage(resized_img)
         
+        # Guardamos el objeto pero el dibujado se hace en _redraw_vectors o aquí limpiando solo lo necesario
+        self.delete("background")
         self.img_item = self.create_image(self.img_x, self.img_y, image=self.tk_image, anchor="nw", tags="background")
-        
-        self._redraw_vectors()
+        self.tag_lower("background")
+
+    def _render_full(self, event=None):
+        self._render(force_resize=True)
 
     def on_resize(self, event):
-        # Usaremos debounce simple delegando la responsabilidad visual al render()
-        self.after(50, self._render)
+        # Sincronía instantánea: renderizamos inmediatamente al detectar el cambio de tamaño
+        self._render(force_resize=True)
 
     def set_draw_mode(self, mode):
         self.draw_mode = mode # 'rect', 'arrow', o None
@@ -85,6 +95,10 @@ class VectorCanvas(tk.Canvas):
             self.configure(cursor="")
 
     def _redraw_vectors(self):
+        # Limpiar solo los elementos vectoriales y grips para no tocar la imagen de fondo
+        self.delete("vector")
+        self.delete("grip")
+        
         # Dibuja los vectores guardados escalándolos a la resolución de pantalla actual
         for v in self.vectors:
             x1, y1, x2, y2 = v["coords"]
@@ -95,22 +109,29 @@ class VectorCanvas(tk.Canvas):
             py2 = self.img_y + (y2 * self.ratio)
             
             if v["type"] == "rect":
-                # Dibujamos como un polígono con outline para evitar problemas de rellenado
-                self.create_rectangle(px1, py1, px2, py2, outline=v["color"], width=3, tags=("vector", v["id"]))
+                # Usamos create_line para un polígono cerrado porque soporta joinstyle=ROUND
+                # Esto suaviza notablemente las esquinas comparado con create_rectangle
+                points = [px1, py1, px2, py1, px2, py2, px1, py2, px1, py1]
+                self.create_line(points, fill=v["color"], width=3, 
+                                 capstyle=tk.ROUND, joinstyle=tk.ROUND, tags=("vector", v["id"]))
             elif v["type"] == "arrow":
-                # Dibujar cuerpo de flecha
-                self.create_line(px1, py1, px2, py2, fill=v["color"], width=3, capstyle=tk.ROUND, tags=("vector", v["id"]))
+                # Dibujar cuerpo de flecha con bordes redondeados
+                self.create_line(px1, py1, px2, py2, fill=v["color"], width=3, 
+                                 capstyle=tk.ROUND, joinstyle=tk.ROUND, tags=("vector", v["id"]))
                 
                 # Calcular e inyectar aletas abiertas
                 angle = math.atan2(py2 - py1, px2 - px1)
-                wing_len = 25
+                # Escalar el largo de las alas según el ratio para que se redimensionen con la imagen
+                wing_len = 25 * self.ratio
                 w1_x = px2 - wing_len * math.cos(angle - math.pi/6)
                 w1_y = py2 - wing_len * math.sin(angle - math.pi/6)
                 w2_x = px2 - wing_len * math.cos(angle + math.pi/6)
                 w2_y = py2 - wing_len * math.sin(angle + math.pi/6)
                 
-                self.create_line(px2, py2, w1_x, w1_y, fill=v["color"], width=3, capstyle=tk.ROUND, tags=("vector", v["id"]))
-                self.create_line(px2, py2, w2_x, w2_y, fill=v["color"], width=3, capstyle=tk.ROUND, tags=("vector", v["id"]))
+                self.create_line(px2, py2, w1_x, w1_y, fill=v["color"], width=3, 
+                                 capstyle=tk.ROUND, joinstyle=tk.ROUND, tags=("vector", v["id"]))
+                self.create_line(px2, py2, w2_x, w2_y, fill=v["color"], width=3, 
+                                 capstyle=tk.ROUND, joinstyle=tk.ROUND, tags=("vector", v["id"]))
                 
             # Dibujar Grips si está seleccionado
             if self.selected_vector_id == v["id"]:
@@ -149,7 +170,7 @@ class VectorCanvas(tk.Canvas):
             
             # Salimos del modo "creación" para que el movimiento sea de dibujo normal
             self.set_draw_mode(None)
-            self._render()
+            self._render(force_resize=False)
             return
             
         # Comprobar si tocó un grip
@@ -188,7 +209,7 @@ class VectorCanvas(tk.Canvas):
         # Clic al vacío
         self.selected_vector_id = None
         self.active_grip = None
-        self._render()
+        self._render(force_resize=False)
 
     def on_drag(self, event):
         if not self.selected_vector_id or not self.active_grip: return
@@ -222,7 +243,7 @@ class VectorCanvas(tk.Canvas):
             coords[0] += dx_real; coords[3] += dy_real
             
         self.vectors[v_idx]["coords"] = coords
-        self._render()
+        self._render(force_resize=False)
 
     def on_release(self, event):
         if self.active_grip:

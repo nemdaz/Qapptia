@@ -1,6 +1,7 @@
 import tkinter as tk
 import os
 import subprocess
+import customtkinter as ctk
 from module_editor import constants
 
 class Tooltip:
@@ -62,3 +63,51 @@ def copy_image_to_clipboard(pil_image):
             os.remove(tmp_path)
         print(f"Error al copiar al clipboard: {e}")
         return False
+
+def show_toast(parent, message, duration=2000):
+    """Muestra una notificación flotante centrada que desaparece sola."""
+    toast = tk.Toplevel(parent)
+    toast.overrideredirect(True)
+    toast.attributes("-topmost", True)
+    
+    # Hacerlo transparente (Windows soporta alpha en Toplevel)
+    try:
+        toast.attributes("-alpha", 0.0)
+    except:
+        pass
+
+    frame = ctk.CTkFrame(toast, fg_color="#333333", corner_radius=10, border_width=1, border_color="gray30")
+    frame.pack(padx=2, pady=2)
+    
+    label = ctk.CTkLabel(frame, text=message, font=("Arial", 13, "bold"), text_color="white", padx=20, pady=10)
+    label.pack()
+
+    # Centrado respecto al padre
+    parent.update_idletasks()
+    px = parent.winfo_rootx() + (parent.winfo_width() // 2)
+    py = parent.winfo_rooty() + (parent.winfo_height() // 2)
+    
+    toast.update_idletasks()
+    tx = px - (toast.winfo_width() // 2)
+    ty = py - (toast.winfo_height() // 2)
+    
+    toast.geometry(f"+{tx}+{ty}")
+
+    # Animación simple de fade-in y fade-out
+    def fade_in(alpha=0.0):
+        if alpha < 0.95:
+            alpha += 0.1
+            toast.attributes("-alpha", alpha)
+            toast.after(20, lambda: fade_in(alpha))
+        else:
+            toast.after(duration, lambda: fade_out(0.95))
+
+    def fade_out(alpha):
+        if alpha > 0.0:
+            alpha -= 0.1
+            toast.attributes("-alpha", alpha)
+            toast.after(20, lambda: fade_out(alpha))
+        else:
+            toast.destroy()
+
+    fade_in()

@@ -10,9 +10,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core import config
 from core import assets
 from module_editor import constants
-from module_editor.utils import Tooltip
 from module_editor.editor_sidebar import EditorSidebar
 from module_editor.editor_canvas import VectorCanvas
+from module_editor import utils
 
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
@@ -50,22 +50,22 @@ class EditorApp(ctk.CTk):
         icon_rotate = assets.get_icon("rotate", size=constants.ICON_SIZE)
         self.btn_rotate = ctk.CTkButton(self.frame_toolbar, text="", image=icon_rotate, width=40, command=self.rotate_image, state="disabled")
         self.btn_rotate.pack(side="left", padx=10, pady=10)
-        Tooltip(self.btn_rotate, "Rotar")
+        utils.Tooltip(self.btn_rotate, "Rotar")
         
         icon_copy_file = assets.get_icon("copy_file", size=constants.ICON_SIZE)
         self.btn_copy_file = ctk.CTkButton(self.frame_toolbar, text="", image=icon_copy_file, width=40, state="disabled")
         self.btn_copy_file.pack(side="left", padx=5, pady=10)
-        Tooltip(self.btn_copy_file, "Copiar Archivo")
+        utils.Tooltip(self.btn_copy_file, "Copiar Archivo")
         
         icon_copy_clip = assets.get_icon("copy_clip", size=constants.ICON_SIZE)
         self.btn_copy_clip = ctk.CTkButton(self.frame_toolbar, text="", image=icon_copy_clip, width=40, state="disabled", command=self.copy_to_clipboard)
         self.btn_copy_clip.pack(side="left", padx=5, pady=10)
-        Tooltip(self.btn_copy_clip, "Copiar al Portapapeles")
+        utils.Tooltip(self.btn_copy_clip, "Copiar al Portapapeles")
         
         icon_save = assets.get_icon("save", size=constants.ICON_SIZE)
         self.btn_save = ctk.CTkButton(self.frame_toolbar, text="", image=icon_save, width=40, command=self.save_rotation, state="disabled", fg_color="green", hover_color="darkgreen")
         self.btn_save.pack(side="left", padx=5, pady=10)
-        Tooltip(self.btn_save, "Guardar")
+        utils.Tooltip(self.btn_save, "Guardar")
         
         # Divisor
         ctk.CTkFrame(self.frame_toolbar, width=2, height=30, fg_color="gray30").pack(side="left", padx=10, pady=10)
@@ -73,15 +73,12 @@ class EditorApp(ctk.CTk):
         icon_arrow = assets.get_icon("arrow", size=constants.ICON_SIZE)
         self.btn_arrow = ctk.CTkButton(self.frame_toolbar, text="", image=icon_arrow, width=40, command=lambda: self.vector_canvas.set_draw_mode("arrow"))
         self.btn_arrow.pack(side="left", padx=5, pady=10)
-        Tooltip(self.btn_arrow, "Dibujar Flecha")
+        utils.Tooltip(self.btn_arrow, "Dibujar Flecha")
         
         icon_rect = assets.get_icon("rect", size=constants.ICON_SIZE)
         self.btn_rect = ctk.CTkButton(self.frame_toolbar, text="", image=icon_rect, width=40, command=lambda: self.vector_canvas.set_draw_mode("rect"))
         self.btn_rect.pack(side="left", padx=5, pady=10)
-        Tooltip(self.btn_rect, "Dibujar Rectángulo")
-        
-        self.lbl_status = ctk.CTkLabel(self.frame_toolbar, text="Listo")
-        self.lbl_status.pack(side="right", padx=10, pady=10)
+        utils.Tooltip(self.btn_rect, "Dibujar Rectángulo")
         
         # --- Área de imagen (ahora Canvas Interactivo) ---
         self.frame_image = ctk.CTkFrame(self)
@@ -125,6 +122,10 @@ class EditorApp(ctk.CTk):
     def show_image(self, img_path):
         if not os.path.exists(img_path): return
         
+        # Optimización: No recargar si es la misma imagen
+        if self.current_image_path == img_path:
+            return
+            
         try:
             self.current_image_path = img_path
             self.current_pil_image = Image.open(img_path)
@@ -140,9 +141,11 @@ class EditorApp(ctk.CTk):
             self.btn_copy_file.configure(state="normal")
             self.btn_copy_clip.configure(state="normal")
             self.btn_save.configure(state="normal")
-            self.lbl_status.configure(text=filename)
+            
+            # Resaltar en Sidebar y limpiar status de la toolbar
+            self.sidebar.highlight_path(img_path)
         except Exception as e:
-            self.lbl_status.configure(text=f"Error al abrir la imagen.")
+            utils.show_toast(self, "Error al abrir la imagen")
             print(f"Error show_image {img_path}: {e}")
             
     def resize_sidebar(self, event):
@@ -160,15 +163,13 @@ class EditorApp(ctk.CTk):
             # Calcular en base a self.current_rotation en lugar de un ángulo fijo
             img_rotated = self.current_pil_image.rotate(-self.current_rotation, expand=True)
             self.vector_canvas.load_image(img_rotated, self.current_image_path)
-            self.lbl_status.configure(text=f"Rotado {self.current_rotation}º")
+            utils.show_toast(self, f"Rotado {self.current_rotation}º")
 
     def copy_to_clipboard(self):
         if self.vector_canvas.copy_to_clipboard():
-            self.lbl_status.configure(text="¡Imagen copiada al portapapeles!")
-            # Restaurar status después de 3 segundos
-            self.after(3000, lambda: self.lbl_status.configure(text=os.path.basename(self.current_image_path)))
+            utils.show_toast(self, "¡Imagen copiada al portapapeles!")
         else:
-            self.lbl_status.configure(text="Error al copiar imagen")
+            utils.show_toast(self, "Error al copiar imagen")
             
     def save_rotation(self):
         if self.current_pil_image and self.current_image_path and self.current_rotation != 0:
@@ -181,9 +182,10 @@ class EditorApp(ctk.CTk):
                 self.current_pil_image = Image.open(self.current_image_path)
                 self.current_rotation = 0
                 self.btn_save.configure(state="disabled")
-                self.lbl_status.configure(text=f"¡Rotación guardada en el archivo original!")
+                utils.show_toast(self, "¡Imagen guardada!")
             except Exception as e:
-                self.lbl_status.configure(text=f"Error al guardar: {e}")
+                utils.show_toast(self, f"Error al guardar")
+                print(f"Error al guardar: {e}")
 
 def run_editor():
     app = EditorApp()
