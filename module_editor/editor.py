@@ -1,23 +1,19 @@
 import customtkinter as ctk
 import sys
 import os
-import tkinter as tk
 from PIL import Image
 
-# Configurar ruta base del proyecto (para alcanzar module_capture, core, etc)
+# Configurar ruta base del proyecto
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from core import config
-from core import assets
-from module_editor import constants
+from core import config, assets
+from module_editor import constants, state_manager, utils
 from module_editor.editor_sidebar import EditorSidebar
 from module_editor.editor_canvas import VectorCanvas
-from module_editor import utils
-
-ctk.set_appearance_mode("Dark")
-ctk.set_default_color_theme("blue")
 
 class EditorApp(ctk.CTk):
+    """Aplicación principal del Editor de Capturas."""
+    
     def __init__(self):
         super().__init__()
         
@@ -29,260 +25,184 @@ class EditorApp(ctk.CTk):
         self.current_image_path = None
         self.current_pil_image = None
         self.current_rotation = 0
-        self._resize_timeout = None
-        self.active_tool_btn = None # Referencia al botón de herramienta resaltado
+        self.active_tool_btn = None 
         
         self.setup_ui()
         
-        # Cargar imagen inicial después de renderizar el layout
+        # Carga inicial diferida para asegurar renderizado de UI
         self.after(constants.INITIAL_LOAD_DELAY_MS, self.load_latest_image)
-        
-        # Detector de clics global para deseleccionar herramientas
         self.bind("<Button-1>", self.on_window_click)
 
     def on_window_click(self, event):
-        """Deselecciona la herramienta si se hace clic fuera de los botones de dibujo o el lienzo."""
-        if not self.active_tool_btn:
-            return
-            
+        """Deselecciona herramientas si se clica fuera de la zona de dibujo."""
+        if not self.active_tool_btn: return
         try:
-            # Obtener el widget exacto bajo el mouse en coordenadas de pantalla
             widget = self.winfo_containing(event.x_root, event.y_root)
             if not widget: return
-            
-            # Convertir a string para búsqueda jerárquica
             w_str = str(widget)
-            
-            # Si el clic es en el propio botón activo o en el canvas, ignoramos
-            # ctktkinter los botones son compuestos, así que miramos si el widget es hijo del botón
             if w_str.startswith(str(self.active_tool_btn)) or w_str.startswith(str(self.vector_canvas)):
                 return
-        except:
-            pass
-            
-        # Si clicamos en cualquier otra parte (otros botones, sidebar, fondo), deseleccionamos
+        except: pass
         self.set_tool(None)
 
     def setup_ui(self):
-        # Configurar grid principal (2 filas, 3 columnas)
         self.grid_rowconfigure(1, weight=1)
-        self.grid_columnconfigure(0, weight=1) # Área de imagen cede espacio
-        self.grid_columnconfigure(1, weight=0, minsize=5) # Separador Drag
-        self.grid_columnconfigure(2, weight=0, minsize=constants.SIDEBAR_WIDTH) # Panel lateral de ancho fijo
+        self.grid_columnconfigure(0, weight=1) 
+        self.grid_columnconfigure(1, weight=0, minsize=5) 
+        self.grid_columnconfigure(2, weight=0, minsize=constants.SIDEBAR_WIDTH)
         
-        # --- Toolbar Superior ---
-        self.frame_toolbar = ctk.CTkFrame(self, height=50)
-        self.frame_toolbar.grid(row=0, column=0, columnspan=3, sticky="ew", padx=10, pady=(10, 0))
+        # --- Toolbar ---
+        self.toolbar = ctk.CTkFrame(self, height=50)
+        self.toolbar.grid(row=0, column=0, columnspan=3, sticky="ew", padx=10, pady=(10, 0))
         
-        icon_rotate = assets.get_icon("rotate", size=constants.ICON_SIZE)
-        self.btn_rotate = ctk.CTkButton(self.frame_toolbar, text="", image=icon_rotate, width=40, command=self.rotate_image, state="disabled")
-        self.btn_rotate.pack(side="left", padx=10, pady=10)
-        utils.Tooltip(self.btn_rotate, "Rotar")
+        # Botones de Acción
+        self.btn_rotate = self._create_toolbar_btn("rotate", self.rotate_image, "Rotar")
+        self.btn_copy_file = self._create_toolbar_btn("copy_file", None, "Copiar Archivo")
+        self.btn_copy_clip = self._create_toolbar_btn("copy_clip", self.copy_to_clipboard_with_deselect, "Copiar al Portapapeles")
         
-        icon_copy_file = assets.get_icon("copy_file", size=constants.ICON_SIZE)
-        self.btn_copy_file = ctk.CTkButton(self.frame_toolbar, text="", image=icon_copy_file, width=40, state="disabled")
-        self.btn_copy_file.pack(side="left", padx=5, pady=10)
-        utils.Tooltip(self.btn_copy_file, "Copiar Archivo")
+        self.btn_save = self._create_toolbar_btn("save", self.save_rotation, "Guardar", fg="green", hover="darkgreen")
+        self.btn_save.configure(state="disabled")
         
-        icon_copy_clip = assets.get_icon("copy_clip", size=constants.ICON_SIZE)
-        self.btn_copy_clip = ctk.CTkButton(self.frame_toolbar, text="", image=icon_copy_clip, width=40, state="disabled", command=self.copy_to_clipboard_with_deselect)
-        self.btn_copy_clip.pack(side="left", padx=5, pady=10)
-        utils.Tooltip(self.btn_copy_clip, "Copiar al Portapapeles")
+        # Separador
+        ctk.CTkFrame(self.toolbar, width=2, height=30, fg_color="gray30").pack(side="left", padx=10, pady=10)
         
-        icon_save = assets.get_icon("save", size=constants.ICON_SIZE)
-        self.btn_save = ctk.CTkButton(self.frame_toolbar, text="", image=icon_save, width=40, command=self.save_rotation, state="disabled", fg_color="green", hover_color="darkgreen")
-        self.btn_save.pack(side="left", padx=5, pady=10)
-        utils.Tooltip(self.btn_save, "Guardar")
+        # Botones de Herramientas
+        self.btn_arrow = self._create_toolbar_btn("arrow", lambda: self.set_tool("arrow"), "Dibujar Flecha")
+        self.btn_rect = self._create_toolbar_btn("rect", lambda: self.set_tool("rect"), "Dibujar Rectángulo")
         
-        # Divisor
-        ctk.CTkFrame(self.frame_toolbar, width=2, height=30, fg_color="gray30").pack(side="left", padx=10, pady=10)
-        
-        icon_arrow = assets.get_icon("arrow", size=constants.ICON_SIZE)
-        self.btn_arrow = ctk.CTkButton(self.frame_toolbar, text="", image=icon_arrow, width=40, command=lambda: self.set_tool("arrow"))
-        self.btn_arrow.pack(side="left", padx=5, pady=10)
-        utils.Tooltip(self.btn_arrow, "Dibujar Flecha")
-        
-        icon_rect = assets.get_icon("rect", size=constants.ICON_SIZE)
-        self.btn_rect = ctk.CTkButton(self.frame_toolbar, text="", image=icon_rect, width=40, command=lambda: self.set_tool("rect"))
-        self.btn_rect.pack(side="left", padx=5, pady=10)
-        utils.Tooltip(self.btn_rect, "Dibujar Rectángulo")
-        
-        # --- Área de imagen (ahoras con Scrollbars) ---
+        # --- Canvas y Scrollbars ---
         self.frame_image = ctk.CTkFrame(self)
         self.frame_image.grid(row=1, column=0, sticky="nsew", padx=(10, 5), pady=10)
-        
-        # Grid para el canvas y scrollbars dentro del frame
         self.frame_image.grid_rowconfigure(0, weight=1)
         self.frame_image.grid_columnconfigure(0, weight=1)
         
         self.vector_canvas = VectorCanvas(self.frame_image, on_zoom_callback=self.update_scrollbar_visibility)
         self.vector_canvas.grid(row=0, column=0, sticky="nsew")
         
-        # Scrollbars
         self.v_scrollbar = ctk.CTkScrollbar(self.frame_image, orientation="vertical", command=self.vector_canvas.yview)
         self.h_scrollbar = ctk.CTkScrollbar(self.frame_image, orientation="horizontal", command=self.vector_canvas.xview)
-        
         self.vector_canvas.configure(yscrollcommand=self.v_scrollbar.set, xscrollcommand=self.h_scrollbar.set)
         
-        # Iniciar vinculación de visibilidad de scrollbars
-        self.vector_canvas.bind("<Configure>", lambda e: self.update_scrollbar_visibility(), add="+")
-        
-        # --- Drag Handle ---
+        # --- Drag Handle (Sidebar Resize) ---
         self.drag_handle = ctk.CTkFrame(self, width=5, cursor="sb_h_double_arrow", fg_color="transparent")
         self.drag_handle.grid(row=1, column=1, sticky="ns", pady=10)
         self.drag_handle.bind("<B1-Motion>", self.resize_sidebar)
         self.drag_handle.bind("<Enter>", lambda e: self.drag_handle.configure(fg_color="gray50"))
         self.drag_handle.bind("<Leave>", lambda e: self.drag_handle.configure(fg_color="transparent"))
         
-        # --- Panel Lateral (Árbol de Archivos) ---
+        # --- Sidebar ---
         self.sidebar = EditorSidebar(self, on_image_selected_callback=self.show_image)
         self.sidebar.grid(row=1, column=2, sticky="nsew", padx=(0, 10), pady=10)
-        
+
+    def _create_toolbar_btn(self, icon_name, command, tooltip, fg=None, hover=None):
+        btn = ctk.CTkButton(
+            self.toolbar, text="", image=assets.get_icon(icon_name), 
+            width=40, command=command, fg_color=fg, hover_color=hover
+        )
+        btn.pack(side="left", padx=5, pady=10)
+        utils.Tooltip(btn, tooltip)
+        return btn
+
     def load_latest_image(self):
+        """Carga la imagen desde el histórico o busca la más reciente en disco."""
+        state = state_manager.load_state()
+        last_file = state.get("last_selected_file")
+        
+        if last_file and os.path.exists(last_file):
+            self.show_image(last_file)
+            return
+
         base_path = os.path.expandvars(config.get("save_path"))
-        if not os.path.exists(base_path):
-            self.lbl_status.configure(text="La ruta de guardado configurada no existe.")
-            return
+        if not os.path.exists(base_path): return
             
-        # Buscar el archivo .png/.jpg más reciente
-        list_of_files = []
-        for root, dirs, files in os.walk(base_path):
-            for file in files:
-                if file.lower().endswith(".png") or file.lower().endswith(".jpg"):
-                    list_of_files.append(os.path.join(root, file))
+        files = []
+        for root, _, fnames in os.walk(base_path):
+            for f in fnames:
+                if f.lower().endswith((".png", ".jpg", ".jpeg")):
+                    files.append(os.path.join(root, f))
                     
-        if not list_of_files:
-            self.lbl_status.configure(text="No hay capturas en el directorio configurado.")
-            return
-            
-        latest_file = max(list_of_files, key=os.path.getmtime)
-        self.show_image(latest_file)
-        
-    def show_image(self, img_path):
-        if not os.path.exists(img_path): return
-        self.set_tool(None) # Desactivar dibujo al cambiar de imagen
-        
-        # Optimización: No recargar si es la misma imagen
-        if self.current_image_path == img_path:
-            return
-            
+        if files:
+            self.show_image(max(files, key=os.path.getmtime))
+
+    def show_image(self, path):
+        if not os.path.exists(path) or self.current_image_path == path: return
+        self.set_tool(None)
         try:
-            self.current_image_path = img_path
-            self.current_pil_image = Image.open(img_path)
+            self.current_image_path = path
+            self.current_pil_image = Image.open(path)
             self.current_rotation = 0
             
-            # Pasar imagen y metadata URL al motor abstracto VectorCanvas
-            self.vector_canvas.load_image(self.current_pil_image, img_path)
+            self.vector_canvas.load_image(self.current_pil_image, path)
+            self.title(f"{constants.WINDOW_TITLE} - {os.path.basename(path)}")
             
-            filename = os.path.basename(img_path)
-            self.title(f"{constants.WINDOW_TITLE} - {filename}")
+            for btn in [self.btn_rotate, self.btn_copy_file, self.btn_copy_clip, self.btn_save]:
+                btn.configure(state="normal")
             
-            self.btn_rotate.configure(state="normal")
-            self.btn_copy_file.configure(state="normal")
-            self.btn_copy_clip.configure(state="normal")
-            self.btn_save.configure(state="normal")
-            
-            # Resaltar en Sidebar y limpiar status de la toolbar
-            self.sidebar.highlight_path(img_path)
+            self.sidebar.highlight_path(path)
         except Exception as e:
             utils.show_toast(self, "Error al abrir la imagen")
-            print(f"Error show_image {img_path}: {e}")
-            
+            print(f"Error show_image: {e}")
+
     def resize_sidebar(self, event):
-        app_right_edge = self.winfo_rootx() + self.winfo_width()
-        new_width = app_right_edge - event.x_root - 10 # 10 = Padding
-        
-        if new_width < 150: new_width = 150
-        if new_width > 600: new_width = 600
-        
+        new_width = (self.winfo_rootx() + self.winfo_width()) - event.x_root - 10
+        new_width = max(150, min(600, new_width))
         self.grid_columnconfigure(2, minsize=new_width)
 
-    def set_tool(self, tool_name):
-        """Activa una herramienta de dibujo con feedback visual."""
-        # Si ya estaba activa, la desactivamos (toggle)
+    def set_tool(self, tool):
+        """Activa/Desactiva herramientas de dibujo con feedback visual."""
         if self.active_tool_btn:
             self.active_tool_btn.configure(fg_color=ctk.ThemeManager.theme["CTkButton"]["fg_color"])
             
-        if tool_name == "arrow":
-            btn = self.btn_arrow
-        elif tool_name == "rect":
-            btn = self.btn_rect
-        else:
-            btn = None
+        btn = self.btn_arrow if tool == "arrow" else (self.btn_rect if tool == "rect" else None)
             
         if btn and self.active_tool_btn != btn:
             self.active_tool_btn = btn
-            btn.configure(fg_color="#1f538d") # Color de énfasis (azul oscuro)
-            self.vector_canvas.set_draw_mode(tool_name)
+            btn.configure(fg_color=constants.ACTIVE_TOOL_COLOR)
+            self.vector_canvas.set_draw_mode(tool)
         else:
             self.active_tool_btn = None
             self.vector_canvas.set_draw_mode(None)
 
     def update_scrollbar_visibility(self):
-        """Muestra u oculta los scrollbars dependiendo de si la imagen cabe en el canvas."""
-        # Forzar actualización de geometría para tener datos frescos
         self.update_idletasks()
-        
         sr = self.vector_canvas.cget("scrollregion")
         if not sr: return
-        
-        # sr es una cadena "0 0 width height" o similar
         _, _, sr_w, sr_h = map(float, sr.split())
         
-        canvas_w = self.vector_canvas.winfo_width()
-        canvas_h = self.vector_canvas.winfo_height()
-        
-        # Vertical
-        if sr_h > canvas_h + 1:
-            self.v_scrollbar.grid(row=0, column=1, sticky="ns")
-        else:
-            self.v_scrollbar.grid_forget()
+        if sr_h > self.vector_canvas.winfo_height() + 1: self.v_scrollbar.grid(row=0, column=1, sticky="ns")
+        else: self.v_scrollbar.grid_forget()
             
-        # Horizontal
-        if sr_w > canvas_w + 1:
-            self.h_scrollbar.grid(row=1, column=0, sticky="ew")
-        else:
-            self.h_scrollbar.grid_forget()
-        
+        if sr_w > self.vector_canvas.winfo_width() + 1: self.h_scrollbar.grid(row=1, column=0, sticky="ew")
+        else: self.h_scrollbar.grid_forget()
+
     def rotate_image(self):
         if self.current_pil_image:
-            self.set_tool(None) # Desactivar dibujo
+            self.set_tool(None)
             self.current_rotation = (self.current_rotation + 90) % 360 
-            # Calcular en base a self.current_rotation en lugar de un ángulo fijo
-            img_rotated = self.current_pil_image.rotate(-self.current_rotation, expand=True)
-            self.vector_canvas.load_image(img_rotated, self.current_image_path)
+            img = self.current_pil_image.rotate(-self.current_rotation, expand=True)
+            self.vector_canvas.load_image(img, self.current_image_path)
             utils.show_toast(self, f"Rotado {self.current_rotation}º")
 
-    def copy_to_clipboard(self):
-        if self.vector_canvas.copy_to_clipboard():
-            utils.show_toast(self, "¡Imagen copiada al portapapeles!")
-        else:
-            utils.show_toast(self, "Error al copiar imagen")
-            
     def copy_to_clipboard_with_deselect(self):
         self.set_tool(None)
-        self.copy_to_clipboard()
+        if self.vector_canvas.copy_to_clipboard():
+            utils.show_toast(self, "¡Imagen copiada!")
+        else:
+            utils.show_toast(self, "Error al copiar")
         
     def save_rotation(self):
         if self.current_pil_image and self.current_image_path and self.current_rotation != 0:
-            self.set_tool(None) # Desactivar dibujo
+            self.set_tool(None)
             try:
-                # Guardar en disco la imagen rotada
-                img_rotated = self.current_pil_image.rotate(-self.current_rotation, expand=True)
-                img_rotated.save(self.current_image_path)
-                
-                # Actualizar estado con la nueva imagen
+                img = self.current_pil_image.rotate(-self.current_rotation, expand=True)
+                img.save(self.current_image_path)
                 self.current_pil_image = Image.open(self.current_image_path)
                 self.current_rotation = 0
                 self.btn_save.configure(state="disabled")
                 utils.show_toast(self, "¡Imagen guardada!")
             except Exception as e:
-                utils.show_toast(self, f"Error al guardar")
-                print(f"Error al guardar: {e}")
-
-def run_editor():
-    app = EditorApp()
-    app.mainloop()
+                utils.show_toast(self, "Error al guardar")
 
 if __name__ == "__main__":
-    run_editor()
+    app = EditorApp()
+    app.mainloop()

@@ -12,19 +12,35 @@ ICON_SIZE = (20, 20)
 # Zoom
 ZOOM_MIN = 0.1
 ZOOM_MAX = 5.0
-ZOOM_STEP = 1.1 # Factor multiplicador por cada paso de rueda
+ZOOM_STEP = 1.1
 
-# Apariencia y Colores
+# Colores de UI
+BG_COLOR_DARK = "#2b2b2b"
+CANVAS_BG_COLOR = "#1a1a1a"
+HIGHLIGHT_COLOR = "#3a3a3a"
+ACTIVE_TOOL_COLOR = "#1f538d"
+TEXT_COLOR_DEFAULT = ("gray10", "gray90")
 TOOLTIP_BG_COLOR = "#2b2b2b"
 TOOLTIP_FG_COLOR = "#ffffff"
-HIGHLIGHT_COLOR = "#3a3a3a" # Color para ítems seleccionados
 
-# Tiempos y Delays
+# Fuentes
+FONT_FAMILY = "Arial"
+FONT_BOLD = (FONT_FAMILY, 12, "bold")
+FONT_NORMAL = (FONT_FAMILY, 12, "normal")
+FONT_HEADER = (FONT_FAMILY, 14, "bold")
+
+# Dimensiones Sidebar
+SCROLL_RESERVE_WIDTH = 16
+INDENT_SIZE = 15
+BTN_HEIGHT_SMALL = 24
+BTN_REFRESH_SIZE = 30
+ICON_SIZE_SMALL = (16, 16)
+
+# Tiempos
 INITIAL_LOAD_DELAY_MS = 300
-TOOLTIP_DELAY_MS = 500
-DEBOUNCE_DELAY_MS = 50 # Para anti-flicker en redimensionamiento
+DEBOUNCE_DELAY_MS = 50
 
-# Configuraciones de Rendering
+# Vector Rendering
 DEFAULT_VECTOR_COLOR = "#00FF00"
 VECTOR_WIDTH = 3
 GRIP_SIZE = 5

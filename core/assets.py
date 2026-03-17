@@ -140,6 +140,25 @@ def create_folder_icon(color="white"):
     
     return img
 
+def create_folder_collapsed_icon(color="white"):
+    img = Image.new("RGBA", (24, 24), (255, 255, 255, 0))
+    d = ImageDraw.Draw(img)
+    w = 2
+    
+    # SVG Path: M3 7 C3 5.89... H5 5 H7.7... C8.4... 9.25 6.25 ...
+    # Re-dibujado para Pillow considerando w=2
+    # Cuerpo y Pestaña integrados:
+    path = [
+        (3, 17.5), (3, 7), (3, 5), (5, 5), (7.7, 5), (9.25, 6.25), 
+        (10.7, 7.5), (19, 7.5), (21, 7.5), (21, 9.5), (21, 17.5), (21, 19.5), (5, 19.5), (3, 19.5)
+    ]
+    # Dibujamos el contorno usando rounded_rectangle para las partes base y líneas para la pestaña
+    d.rounded_rectangle([3, 7.5, 21, 19.5], radius=2, outline=color, width=w)
+    # Pestaña superior
+    d.line([(3, 7.5), (3, 5), (7.7, 5), (9.25, 6.25), (10.7, 7.5)], fill=color, width=w, joint="curve")
+    
+    return img
+
 _refresh_img = create_refresh_icon()
 _rotate_img = create_rotate_icon()
 _save_img = create_save_icon()
@@ -149,6 +168,7 @@ _arrow_img = create_arrow_icon()
 _rect_img = create_rect_icon()
 _copy_file_img = create_copy_file_icon()
 _copy_clip_img = create_copy_clipboard_icon()
+_folder_collapsed_img = create_folder_collapsed_icon()
 
 _icon_cache = {}
 
@@ -176,6 +196,8 @@ def get_icon(name, size=(20, 20)):
         img = ctk.CTkImage(light_image=_copy_file_img, dark_image=_copy_file_img, size=size)
     elif name == "copy_clip":
         img = ctk.CTkImage(light_image=_copy_clip_img, dark_image=_copy_clip_img, size=size)
+    elif name == "folder_collapsed":
+        img = ctk.CTkImage(light_image=_folder_collapsed_img, dark_image=_folder_collapsed_img, size=size)
         
     if img:
         _icon_cache[cache_key] = img
