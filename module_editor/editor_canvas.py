@@ -3,7 +3,7 @@ import json
 import os
 import math
 from PIL import Image, ImageTk, ImageDraw
-from module_editor import utils, constants
+from module_editor import utils, constants, editor_tools
 
 class VectorCanvas(tk.Canvas):
     """Motor de dibujo vectorial sobre imágenes con soporte para zoom y persistencia JSON."""
@@ -41,7 +41,6 @@ class VectorCanvas(tk.Canvas):
         self.bind("<B1-Motion>", self.on_drag)
         self.bind("<ButtonRelease-1>", self.on_release)
         self.bind("<Delete>", self.delete_selected_vector)
-        # Zoom (Windows y Linux)
         self.bind("<Control-MouseWheel>", self.on_zoom)
         self.bind("<Control-Button-4>", self.on_zoom)
         self.bind("<Control-Button-5>", self.on_zoom)
@@ -67,11 +66,12 @@ class VectorCanvas(tk.Canvas):
     def _update_background_image(self, cw, ch):
         iw, ih = self.current_pil_image.size
         
-        # Calcular ratio Fit
+        # Calcular ratio Fit (ajustar imagen al contenedor)
         self.base_ratio = min(cw/iw, ch/ih)
         if self.base_ratio > 1: self.base_ratio = 1
         self.ratio = self.base_ratio * self.zoom_level
         
+        # Calcular dimensiones nuevas y posición de centrado
         nw, nh = int(iw * self.ratio), int(ih * self.ratio)
         self.img_x, self.img_y = max((cw - nw) // 2, 0), max((ch - nh) // 2, 0)
         
@@ -82,12 +82,13 @@ class VectorCanvas(tk.Canvas):
         self.img_item = self.create_image(self.img_x, self.img_y, image=self.tk_image, anchor="nw", tags="background")
         self.tag_lower("background")
         
-        # Sincronizar región de scroll
+        # Sincronizar región de scroll para permitir navegación interna
         sr_w, sr_h = max(nw + self.img_x*2, cw), max(nh + self.img_y*2, ch)
         self.configure(scrollregion=(0, 0, sr_w, sr_h))
 
     def on_zoom(self, event):
         if not self.current_pil_image: return
+        # Coordenadas actuales del mouse en el mundo real de la imagen
         cx, cy = self.canvasx(event.x), self.canvasy(event.y)
         x_real, y_real = (cx - self.img_x) / self.ratio, (cy - self.img_y) / self.ratio
         
@@ -97,7 +98,7 @@ class VectorCanvas(tk.Canvas):
         
         if self.zoom_level != old_zoom:
             self._render(force_resize=True)
-            # Centrar sobre el punto del mouse
+            # Re-centrar el scroll sobre el punto que estaba bajo el mouse
             new_cx, new_cy = self.img_x + (x_real * self.ratio), self.img_y + (y_real * self.ratio)
             sr = [float(x) for x in self.cget("scrollregion").split()]
             if sr[2] > 0: self.xview_moveto((self.canvasx(0) + (new_cx - cx)) / sr[2])
@@ -116,28 +117,21 @@ class VectorCanvas(tk.Canvas):
         v_width = max(1, int(constants.VECTOR_WIDTH * self.zoom_level))
         
         for v in self.vectors:
-            x1, y1, x2, y2 = v["coords"]
-            px1, py1 = self.img_x + (x1 * self.ratio), self.img_y + (y1 * self.ratio)
-            px2, py2 = self.img_x + (x2 * self.ratio), self.img_y + (y2 * self.ratio)
-            
-            if v["type"] == "rect":
-                pts = [px1, py1, px2, py1, px2, py2, px1, py2, px1, py1]
-                self.create_line(pts, fill=v["color"], width=v_width, capstyle=tk.ROUND, joinstyle=tk.ROUND, tags=("vector", v["id"]))
-            elif v["type"] == "arrow":
-                self.create_line(px1, py1, px2, py2, fill=v["color"], width=v_width, capstyle=tk.ROUND, joinstyle=tk.ROUND, tags=("vector", v["id"]))
-                # Aletas de la flecha
-                ang = math.atan2(py2 - py1, px2 - px1)
-                wlen = constants.ARROW_WING_LEN * self.zoom_level
-                for a in [-math.pi/6, math.pi/6]:
-                    self.create_line(px2, py2, px2 - wlen * math.cos(ang-a), py2 - wlen * math.sin(ang-a), 
-                                     fill=v["color"], width=v_width, capstyle=tk.ROUND, joinstyle=tk.ROUND, tags=("vector", v["id"]))
-                
-            if self.selected_vector_id == v["id"]:
-                self._draw_grips(px1, py1, px2, py2, v["id"], v["type"])
+            tool = editor_tools.ToolDispatcher.get_tool(v["type"])
+            if tool:
+                tool.render(self, v["coords"], v["color"], v_width, self.zoom_level, self.ratio, self.img_x, self.img_y, v["id"])
 
-    def _draw_grips(self, x1, y1, x2, y2, v_id, v_type):
+            if self.selected_vector_id == v["id"]:
+                self._draw_grips(v)
+
+    def _draw_grips(self, v):
         r = constants.GRIP_SIZE
-        corners = [(x1, y1, "tl"), (x2, y1, "tr"), (x1, y2, "bl"), (x2, y2, "br")] if v_type == "rect" else [(x1, y1, "start"), (x2, y2, "end")]
+        x1, y1, x2, y2 = v["coords"]
+        px1, py1 = self.img_x + (x1 * self.ratio), self.img_y + (y1 * self.ratio)
+        px2, py2 = self.img_x + (x2 * self.ratio), self.img_y + (y2 * self.ratio)
+        v_id, v_type = v["id"], v["type"]
+
+        corners = [(px1, py1, "tl"), (px2, py1, "tr"), (px1, py2, "bl"), (px2, py2, "br")] if v_type == "rect" else [(px1, py1, "start"), (px2, py2, "end")]
         for cx, cy, ctype in corners:
             self.create_rectangle(cx-r, cy-r, cx+r, cy+r, fill="white", outline="black", tags=("grip", f"grip_{ctype}_{v_id}"))
 
@@ -146,14 +140,14 @@ class VectorCanvas(tk.Canvas):
         self._is_new = False
         cx, cy = self.canvasx(event.x), self.canvasy(event.y)
         
-        # 1. Grips
+        # 1. Grips (Controladores)
         for g in self.find_withtag("grip"):
             if self._is_point_in_bbox(cx, cy, self.bbox(g)):
                 self.active_grip = self.gettags(g)[1].split("_")[1]
                 self._drag_start_x, self._drag_start_y = cx, cy
                 return
                 
-        # 2. Nuevo Vector
+        # 2. Nuevo Vector (Dibujo)
         if self.draw_mode:
             rx, ry = (cx - self.img_x) / self.ratio, (cy - self.img_y) / self.ratio
             new_id = f"{self.draw_mode}_{len(self.vectors)}"
@@ -164,7 +158,7 @@ class VectorCanvas(tk.Canvas):
             self._render(force_resize=False)
             return
             
-        # 3. Seleccionar existente
+        # 3. Seleccionar Existente
         for v in self.find_withtag("vector"):
             b = self.bbox(v)
             if b and (b[0]-5 <= cx <= b[2]+5) and (b[1]-5 <= cy <= b[3]+5):
@@ -236,16 +230,10 @@ class VectorCanvas(tk.Canvas):
         comp = self.current_pil_image.copy()
         draw = ImageDraw.Draw(comp)
         for v in self.vectors:
-            x1, y1, x2, y2 = v["coords"]
-            w = max(5, int(constants.VECTOR_WIDTH / self.base_ratio))
-            if v["type"] == "rect":
-                draw.rectangle([min(x1,x2), min(y1,y2), max(x1,x2), max(y1,y2)], outline=v["color"], width=w)
-            elif v["type"] == "arrow":
-                draw.line([x1, y1, x2, y2], fill=v["color"], width=w)
-                ang = math.atan2(y2 - y1, x2 - x1)
-                wlen = constants.ARROW_WING_LEN / self.base_ratio
-                for a in [-math.pi/6, math.pi/6]:
-                    draw.line([x2, y2, x2 - wlen * math.cos(ang-a), y2 - wlen * math.sin(ang-a)], fill=v["color"], width=w)
+            tool = editor_tools.ToolDispatcher.get_tool(v["type"])
+            if tool:
+                width = max(5, int(constants.VECTOR_WIDTH / self.base_ratio))
+                tool.render_native(draw, v["coords"], v["color"], width, self.base_ratio)
         return comp
 
     def copy_to_clipboard(self):
