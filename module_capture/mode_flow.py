@@ -4,6 +4,7 @@ import time
 import mouse
 import keyboard
 import threading
+import tkinter
 from core import config
 from module_capture.capture_screen import capture_screen
 from module_capture import constants as c
@@ -25,7 +26,6 @@ class FlowManager:
 
     def _get_screen_width(self):
         try:
-            import tkinter
             root = tkinter.Tk()
             width = root.winfo_screenwidth()
             root.destroy()

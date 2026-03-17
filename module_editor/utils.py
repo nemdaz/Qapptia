@@ -2,6 +2,9 @@ import tkinter as tk
 import os
 import subprocess
 import customtkinter as ctk
+import io
+import ctypes
+from ctypes import wintypes
 from module_editor import constants
 
 class Tooltip:
@@ -35,33 +38,54 @@ class Tooltip:
             self.tooltip_window = None
 
 def copy_image_to_clipboard(pil_image):
-    """Funde la imagen y la envía al portapapeles de Windows vía PowerShell."""
+    """Envía la imagen al portapapeles de Windows de forma instantánea usando Win32 API."""
     if not pil_image:
         return False
-        
-    tmp_path = os.path.join(os.environ.get("TEMP", "C:/Windows/Temp"), "qas_clipboard.bmp")
-    
+
     try:
-        # Convertir imagen a BMP (Windows nativo para portapapeles)
-        pil_image.convert("RGB").save(tmp_path, "BMP")
+        # 1. Convertir imagen a formato BMP de Windows (DIB)
+        output = io.BytesIO()
+        pil_image.convert("RGB").save(output, format="BMP")
+        data = output.getvalue()[14:]  # Omitir los 14 bytes de cabecera del archivo BMP
+        output.close()
+
+        # 2. Definir constantes y funciones de Win32
+        CF_DIB = 8
+        GMEM_MOVEABLE = 0x0002
         
-        # Comando de PowerShell: Carga la imagen desde el archivo temporal y la pone en el clipboard
-        ps_script = "[void][Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms');"
-        ps_script += "[void][Reflection.Assembly]::LoadWithPartialName('System.Drawing');"
-        ps_script += f"$img = [System.Drawing.Image]::FromFile('{tmp_path.replace('\\', '/')}'); "
-        ps_script += "[System.Windows.Forms.Clipboard]::SetImage($img); "
-        ps_script += "$img.Dispose();"
+        user32 = ctypes.windll.user32
+        kernel32 = ctypes.windll.kernel32
         
-        subprocess.run(["powershell", "-NoProfile", "-Command", ps_script], check=True)
+        # Tipar las funciones para evitar truncamiento de punteros (crítico en 64 bits)
+        kernel32.GlobalAlloc.restype = wintypes.HGLOBAL
+        kernel32.GlobalAlloc.argtypes = [wintypes.UINT, ctypes.c_size_t]
+        kernel32.GlobalLock.restype = wintypes.LPVOID
+        kernel32.GlobalLock.argtypes = [wintypes.HGLOBAL]
+        kernel32.GlobalUnlock.argtypes = [wintypes.HGLOBAL]
+        user32.OpenClipboard.argtypes = [wintypes.HWND]
+        user32.SetClipboardData.argtypes = [wintypes.UINT, wintypes.HANDLE]
+
+        # 3. Reservar memoria global para los datos
+        h_mem = kernel32.GlobalAlloc(GMEM_MOVEABLE, len(data))
+        if not h_mem: return False
+            
+        p_mem = kernel32.GlobalLock(h_mem)
+        if not p_mem: return False
+            
+        ctypes.memmove(p_mem, data, len(data))
+        kernel32.GlobalUnlock(h_mem)
         
-        # Limpieza
-        if os.path.exists(tmp_path):
-            os.remove(tmp_path)
-        return True
+        # 4. Interactuar con el portapapeles
+        if user32.OpenClipboard(None):
+            try:
+                user32.EmptyClipboard()
+                user32.SetClipboardData(CF_DIB, h_mem)
+            finally:
+                user32.CloseClipboard()
+            return True
+        return False
     except Exception as e:
-        if os.path.exists(tmp_path):
-            os.remove(tmp_path)
-        print(f"Error al copiar al clipboard: {e}")
+        print(f"Error nativo al copiar al clipboard: {e}")
         return False
 
 def show_toast(parent, message, duration=2000):

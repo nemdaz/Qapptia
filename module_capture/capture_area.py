@@ -20,9 +20,15 @@ class CaptureAreaUI:
         self.canvas.pack(fill="both", expand=True)
         self.canvas.create_image(0, 0, image=self.bg_image, anchor="nw")
         
-        # Overlay oscuro simulado
-        self.overlay = self.canvas.create_rectangle(0, 0, self.root.winfo_screenwidth(), self.root.winfo_screenheight(), 
-                                                 fill="black", stipple="gray50", outline="")
+        # Overlay oscuro mediante máscara (4 rectángulos)
+        # Esto permite dejar el centro (selección) totalmente claro
+        self.overlay_top = self.canvas.create_rectangle(0, 0, 0, 0, fill="black", stipple="gray50", outline="")
+        self.overlay_bottom = self.canvas.create_rectangle(0, 0, 0, 0, fill="black", stipple="gray50", outline="")
+        self.overlay_left = self.canvas.create_rectangle(0, 0, 0, 0, fill="black", stipple="gray50", outline="")
+        self.overlay_right = self.canvas.create_rectangle(0, 0, 0, 0, fill="black", stipple="gray50", outline="")
+        
+        # Inicializar máscara cubriendo toda la pantalla
+        self._update_mask(self.root.winfo_screenwidth(), self.root.winfo_screenheight(), 0, 0, 0, 0)
         
         self.start_x = None
         self.start_y = None
@@ -38,6 +44,17 @@ class CaptureAreaUI:
         self.canvas.bind("<Motion>", self.update_guides)
         self.root.bind("<Escape>", lambda e: self.root.destroy())
         
+    def _update_mask(self, sw, sh, x1, y1, x2, y2):
+        """Actualiza los 4 rectángulos para dejar un hueco claro en (x1, y1) -> (x2, y2)"""
+        # Asegurar orden de coordenadas
+        xa, xb = sorted([x1, x2])
+        ya, yb = sorted([y1, y2])
+        
+        self.canvas.coords(self.overlay_top, 0, 0, sw, ya)
+        self.canvas.coords(self.overlay_bottom, 0, yb, sw, sh)
+        self.canvas.coords(self.overlay_left, 0, ya, xa, yb)
+        self.canvas.coords(self.overlay_right, xb, ya, sw, yb)
+
     def update_guides(self, event):
         w = self.root.winfo_screenwidth()
         h = self.root.winfo_screenheight()
@@ -55,6 +72,8 @@ class CaptureAreaUI:
 
     def on_drag(self, event):
         self.canvas.coords(self.rect_border, self.start_x, self.start_y, event.x, event.y)
+        self._update_mask(self.root.winfo_screenwidth(), self.root.winfo_screenheight(), 
+                         self.start_x, self.start_y, event.x, event.y)
         self.update_guides(event)
 
     def on_release(self, event):
