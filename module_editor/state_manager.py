@@ -18,7 +18,7 @@ def load_state():
                 return json.load(f)
         except:
             pass
-    return {"expanded_folders": [], "last_selected_file": None}
+    return {"expanded_folders": [], "last_selected_file": None, "active_fav_color": constants.DEFAULT_FAV_COLOR}
 
 def save_state(state):
     path = get_state_path()
@@ -41,4 +41,9 @@ def update_expanded(folder_path, expanded):
 def set_last_selected(file_path):
     state = load_state()
     state["last_selected_file"] = file_path
+    save_state(state)
+
+def set_active_color(color_name):
+    state = load_state()
+    state["active_fav_color"] = color_name
     save_state(state)

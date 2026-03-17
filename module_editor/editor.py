@@ -26,6 +26,13 @@ class EditorApp(ctk.CTk):
         self.current_pil_image = None
         self.current_rotation = 0
         self.active_tool_btn = None 
+        self.active_color_btn = None
+        self.color_btns = {}
+        
+        # Cargar estado persistente
+        self.editor_state = state_manager.load_state()
+        self.current_color_name = self.editor_state.get("active_fav_color", constants.DEFAULT_FAV_COLOR)
+        self.current_color_hex = constants.FAVORITE_COLORS.get(self.current_color_name, "#00ff00")
         
         self.setup_ui()
         
@@ -34,13 +41,16 @@ class EditorApp(ctk.CTk):
         self.bind("<Button-1>", self.on_window_click)
 
     def on_window_click(self, event):
-        """Deselecciona herramientas si se clica fuera de la zona de dibujo."""
+        """Deselecciona herramientas si se clica fuera de la zona de dibujo o toolbar."""
         if not self.active_tool_btn: return
         try:
             widget = self.winfo_containing(event.x_root, event.y_root)
             if not widget: return
             w_str = str(widget)
-            if w_str.startswith(str(self.active_tool_btn)) or w_str.startswith(str(self.vector_canvas)):
+            # No deseleccionar si el clic es en la herramienta actual, el canvas o la toolbar
+            if (w_str.startswith(str(self.active_tool_btn)) or 
+                w_str.startswith(str(self.vector_canvas)) or
+                w_str.startswith(str(self.toolbar))):
                 return
         except: pass
         self.set_tool(None)
@@ -56,19 +66,25 @@ class EditorApp(ctk.CTk):
         self.toolbar.grid(row=0, column=0, columnspan=3, sticky="ew", padx=10, pady=(10, 0))
         
         # Botones de Acción
-        self.btn_rotate = self._create_toolbar_btn("rotate", self.rotate_image, "Rotar")
-        self.btn_copy_file = self._create_toolbar_btn("copy_file", None, "Copiar Archivo")
-        self.btn_copy_clip = self._create_toolbar_btn("copy_clip", self.copy_to_clipboard_with_deselect, "Copiar al Portapapeles")
-        
-        self.btn_save = self._create_toolbar_btn("save", self.save_rotation, "Guardar", fg="green", hover="darkgreen")
+        self.btn_save = self._create_toolbar_btn("save", self.save_rotation, constants.TOOLTIPS["save"])
         self.btn_save.configure(state="disabled")
+        
+        self.btn_rotate = self._create_toolbar_btn("rotate", self.rotate_image, constants.TOOLTIPS["rotate"])
+        self.btn_copy_file = self._create_toolbar_btn("copy_file", self.copy_file_to_clipboard, constants.TOOLTIPS["copy_file"])
+        self.btn_copy_clip = self._create_toolbar_btn("copy_clip", self.copy_to_clipboard_with_deselect, constants.TOOLTIPS["copy_clip"])
         
         # Separador
         ctk.CTkFrame(self.toolbar, width=2, height=30, fg_color="gray30").pack(side="left", padx=10, pady=10)
         
-        # Botones de Herramientas
-        self.btn_arrow = self._create_toolbar_btn("arrow", lambda: self.set_tool("arrow"), "Dibujar Flecha")
-        self.btn_rect = self._create_toolbar_btn("rect", lambda: self.set_tool("rect"), "Dibujar Rectángulo")
+        # Botones        # Herramientas de Dibujo
+        self.btn_arrow = self._create_toolbar_btn("arrow", lambda: self.set_tool("arrow"), constants.TOOLTIPS["arrow"])
+        self.btn_rect = self._create_toolbar_btn("rect", lambda: self.set_tool("rect"), constants.TOOLTIPS["rect"])
+        
+        # Separador
+        ctk.CTkFrame(self.toolbar, width=2, height=30, fg_color="gray30").pack(side="left", padx=10, pady=10)
+        
+        # --- Colores Favoritos ---
+        self._create_favorites_palette()
         
         # --- Canvas y Scrollbars ---
         self.frame_image = ctk.CTkFrame(self)
@@ -94,7 +110,8 @@ class EditorApp(ctk.CTk):
         self.sidebar = EditorSidebar(self, on_image_selected_callback=self.show_image)
         self.sidebar.grid(row=1, column=2, sticky="nsew", padx=(0, 10), pady=10)
 
-    def _create_toolbar_btn(self, icon_name, command, tooltip, fg=None, hover=None):
+    def _create_toolbar_btn(self, icon_name, command, tooltip, fg="transparent", hover=None):
+        hover = hover or constants.HIGHLIGHT_COLOR
         btn = ctk.CTkButton(
             self.toolbar, text="", image=assets.get_icon(icon_name), 
             width=40, command=command, fg_color=fg, hover_color=hover
@@ -102,6 +119,42 @@ class EditorApp(ctk.CTk):
         btn.pack(side="left", padx=5, pady=10)
         utils.Tooltip(btn, tooltip)
         return btn
+
+    def _create_favorites_palette(self):
+        """Crea la hilera de botones de colores favoritos usando constantes centralizadas."""
+        for name, hex_val in constants.FAVORITE_COLORS.items():
+            icon_img = assets.create_color_square_icon(hex_val)
+            ctk_icon = ctk.CTkImage(light_image=icon_img, dark_image=icon_img, size=(20, 20))
+            
+            btn = ctk.CTkButton(
+                self.toolbar, text="", image=ctk_icon, width=32, height=32,
+                fg_color="transparent", hover_color=constants.HIGHLIGHT_COLOR,
+                command=lambda n=name, h=hex_val: self.set_active_color(n, h)
+            )
+            btn.pack(side="left", padx=2, pady=10)
+            self.color_btns[name] = btn
+            
+            display_name = constants.FAVORITE_COLOR_NAMES.get(name, name.capitalize())
+            utils.Tooltip(btn, f"{constants.TOOLTIPS['color_prefix']}{display_name}")
+        
+        self.update_color_ui()
+
+    def set_active_color(self, name, hex_val):
+        """Cambia el color activo para los nuevos vectores y actualiza el seleccionado."""
+        self.current_color_name = name
+        self.current_color_hex = hex_val
+        state_manager.set_active_color(name)
+        self.update_color_ui()
+        self.vector_canvas.change_selected_color(hex_val)
+
+    def update_color_ui(self):
+        """Actualiza el resaltado visual de los botones de color mediante bordes."""
+        for name, btn in self.color_btns.items():
+            if name == self.current_color_name:
+                btn.configure(border_width=2, border_color=constants.ACTIVE_TOOL_COLOR)
+                self.active_color_btn = btn
+            else:
+                btn.configure(border_width=0)
 
     def load_latest_image(self):
         """Carga la imagen desde el histórico o busca la más reciente en disco."""
@@ -149,15 +202,15 @@ class EditorApp(ctk.CTk):
         self.grid_columnconfigure(2, minsize=new_width)
 
     def set_tool(self, tool):
-        """Activa/Desactiva herramientas de dibujo con feedback visual."""
+        """Activa/Desactiva herramientas con resaltado de borde de alto contraste."""
         if self.active_tool_btn:
-            self.active_tool_btn.configure(fg_color=ctk.ThemeManager.theme["CTkButton"]["fg_color"])
+            self.active_tool_btn.configure(border_width=0)
             
         btn = self.btn_arrow if tool == "arrow" else (self.btn_rect if tool == "rect" else None)
             
         if btn and self.active_tool_btn != btn:
             self.active_tool_btn = btn
-            btn.configure(fg_color=constants.ACTIVE_TOOL_COLOR)
+            btn.configure(border_width=2, border_color=constants.ACTIVE_TOOL_COLOR)
             self.vector_canvas.set_draw_mode(tool)
         else:
             self.active_tool_btn = None
@@ -190,6 +243,14 @@ class EditorApp(ctk.CTk):
         else:
             utils.show_toast(self, "Error al copiar")
         
+    def copy_file_to_clipboard(self):
+        """Copia la ruta del archivo actual al portapapeles."""
+        if self.current_image_path:
+            self.clipboard_clear()
+            self.clipboard_append(self.current_image_path)
+            self.update() # Refrescar portapapeles
+            utils.show_toast(self, "¡Ruta copiada!")
+
     def save_rotation(self):
         if self.current_pil_image and self.current_image_path and self.current_rotation != 0:
             self.set_tool(None)

@@ -65,47 +65,47 @@ def copy_image_to_clipboard(pil_image):
         return False
 
 def show_toast(parent, message, duration=2000):
-    """Muestra una notificación flotante centrada que desaparece sola."""
+    """Muestra una notificación flotante de alto contraste."""
     toast = tk.Toplevel(parent)
     toast.overrideredirect(True)
     toast.attributes("-topmost", True)
+    toast.attributes("-alpha", 0.0)
     
-    # Hacerlo transparente (Windows soporta alpha en Toplevel)
-    try:
-        toast.attributes("-alpha", 0.0)
-    except:
-        pass
+    # Establecer fondo transparente (opcional según el sistema)
+    toast.config(bg="gray10") # Color base oscuro
 
-    frame = ctk.CTkFrame(toast, fg_color="#333333", corner_radius=10, border_width=1, border_color="gray30")
+    frame = ctk.CTkFrame(toast, fg_color="#333333", corner_radius=10, border_width=1, border_color="gray50")
     frame.pack(padx=2, pady=2)
     
     label = ctk.CTkLabel(frame, text=message, font=("Arial", 13, "bold"), text_color="white", padx=20, pady=10)
     label.pack()
 
-    # Centrado respecto al padre
-    parent.update_idletasks()
+    # Cálculo de posición más robusto
+    toast.update_idletasks()
+    # Usamos winfo_rootx/y del padre para posición absoluta en pantalla
     px = parent.winfo_rootx() + (parent.winfo_width() // 2)
     py = parent.winfo_rooty() + (parent.winfo_height() // 2)
     
-    toast.update_idletasks()
-    tx = px - (toast.winfo_width() // 2)
-    ty = py - (toast.winfo_height() // 2)
+    tw = toast.winfo_width()
+    th = toast.winfo_height()
     
-    toast.geometry(f"+{tx}+{ty}")
+    toast.geometry(f"+{px - tw//2}+{py - th//2}")
 
-    # Animación simple de fade-in y fade-out
+    # Animación
     def fade_in(alpha=0.0):
-        if alpha < 0.95:
-            alpha += 0.1
-            toast.attributes("-alpha", alpha)
+        if alpha < 1.0:
+            alpha += 0.2
+            try: toast.attributes("-alpha", alpha)
+            except: pass
             toast.after(20, lambda: fade_in(alpha))
         else:
-            toast.after(duration, lambda: fade_out(0.95))
+            toast.after(duration, lambda: fade_out(1.0))
 
     def fade_out(alpha):
         if alpha > 0.0:
-            alpha -= 0.1
-            toast.attributes("-alpha", alpha)
+            alpha -= 0.2
+            try: toast.attributes("-alpha", alpha)
+            except: pass
             toast.after(20, lambda: fade_out(alpha))
         else:
             toast.destroy()

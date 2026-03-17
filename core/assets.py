@@ -159,6 +159,18 @@ def create_folder_collapsed_icon(color="white"):
     
     return img
 
+def create_color_square_icon(hex_color, size=(24, 24), padding=4):
+    """Genera un icono de un cuadrado de color sólido con bordes redondeados suaves."""
+    img = Image.new("RGBA", size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    
+    # Dibujar el cuadrado de color con un ligero borde
+    x1, y1 = padding, padding
+    x2, y2 = size[0] - padding, size[1] - padding
+    draw.rounded_rectangle([x1, y1, x2, y2], radius=3, fill=hex_color, outline="#444444", width=1)
+    
+    return img
+
 _refresh_img = create_refresh_icon()
 _rotate_img = create_rotate_icon()
 _save_img = create_save_icon()

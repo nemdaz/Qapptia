@@ -25,7 +25,7 @@ class RectTool(BaseTool):
         px2, py2 = img_x + (x2 * ratio), img_y + (y2 * ratio)
         
         pts = [px1, py1, px2, py1, px2, py2, px1, py2, px1, py1]
-        canvas.create_line(pts, fill=color, width=width, capstyle=tk.ROUND, joinstyle=tk.ROUND, tags=("vector", v_id))
+        canvas.create_line(pts, fill=color, width=width, capstyle=tk.ROUND, joinstyle=tk.ROUND, tags=("vector", v_id, "type_rect"))
 
     def render_native(self, draw, coords, color, width, base_ratio):
         x1, y1, x2, y2 = coords
@@ -39,14 +39,14 @@ class ArrowTool(BaseTool):
         px2, py2 = img_x + (x2 * ratio), img_y + (y2 * ratio)
         
         # Cuerpo de la flecha
-        canvas.create_line(px1, py1, px2, py2, fill=color, width=width, capstyle=tk.ROUND, joinstyle=tk.ROUND, tags=("vector", v_id))
+        canvas.create_line(px1, py1, px2, py2, fill=color, width=width, capstyle=tk.ROUND, joinstyle=tk.ROUND, tags=("vector", v_id, "type_arrow"))
         
         # Aletas
         ang = math.atan2(py2 - py1, px2 - px1)
         wlen = constants.ARROW_WING_LEN * zoom_level
         for a in [-math.pi/6, math.pi/6]:
             canvas.create_line(px2, py2, px2 - wlen * math.cos(ang-a), py2 - wlen * math.sin(ang-a), 
-                             fill=color, width=width, capstyle=tk.ROUND, joinstyle=tk.ROUND, tags=("vector", v_id))
+                             fill=color, width=width, capstyle=tk.ROUND, joinstyle=tk.ROUND, tags=("vector", v_id, "type_arrow"))
 
     def render_native(self, draw, coords, color, width, base_ratio):
         x1, y1, x2, y2 = coords

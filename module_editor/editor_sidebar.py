@@ -45,10 +45,12 @@ class EditorSidebar(ctk.CTkFrame):
         
         btn_refresh = ctk.CTkButton(
             header, text="", image=assets.get_icon("refresh", size=constants.ICON_SIZE_SMALL),
-            width=constants.BTN_REFRESH_SIZE, height=constants.BTN_REFRESH_SIZE, command=self.refresh_all
+            width=constants.BTN_REFRESH_SIZE, height=constants.BTN_REFRESH_SIZE, 
+            fg_color="transparent", hover_color=constants.HIGHLIGHT_COLOR,
+            command=self.refresh_all
         )
         btn_refresh.pack(side="right")
-        Tooltip(btn_refresh, "Recargar Archivos")
+        Tooltip(btn_refresh, constants.TOOLTIPS["refresh"])
         
         self.tree_container = ctk.CTkFrame(self, fg_color="transparent")
         self.tree_container.grid(row=1, column=0, sticky="nsew", padx=5, pady=(0, 10))

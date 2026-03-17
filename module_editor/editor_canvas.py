@@ -147,26 +147,36 @@ class VectorCanvas(tk.Canvas):
                 self._drag_start_x, self._drag_start_y = cx, cy
                 return
                 
-        # 2. Nuevo Vector (Dibujo)
+        # 2. Seleccionar Existente
+        # Priorizamos seleccionar antes de dibujar uno nuevo para permitir edición rápida
+        for v in self.find_withtag("vector"):
+            b = self.bbox(v)
+            if b and (b[0]-5 <= cx <= b[2]+5) and (b[1]-5 <= cy <= b[3]+5):
+                # Si es un rectángulo, el centro es hueco (excepto bordes)
+                v_tags = self.gettags(v)
+                if "type_rect" in v_tags:
+                    if cx > b[0]+10 and cx < b[2]-10 and cy > b[1]+10 and cy < b[3]-10: continue
+                
+                self.selected_vector_id, self.active_grip = v_tags[1], "move"
+                self._drag_start_x, self._drag_start_y = cx, cy
+                self._render()
+                return
+                
+        # 3. Nuevo Vector (Dibujo)
         if self.draw_mode:
             rx, ry = (cx - self.img_x) / self.ratio, (cy - self.img_y) / self.ratio
             new_id = f"{self.draw_mode}_{len(self.vectors)}"
-            self.vectors.append({"type": self.draw_mode, "id": new_id, "coords": [rx, ry, rx, ry], "color": constants.DEFAULT_VECTOR_COLOR})
+            
+            # Obtener color actual del editor (master de frame_image)
+            color = getattr(self.master.master, "current_color_hex", constants.DEFAULT_VECTOR_COLOR)
+            
+            self.vectors.append({"type": self.draw_mode, "id": new_id, "coords": [rx, ry, rx, ry], "color": color})
             self.selected_vector_id, self.active_grip = new_id, ("br" if self.draw_mode == "rect" else "end")
             self._drag_start_x, self._drag_start_y = cx, cy
             self._is_new = True
             self._render(force_resize=False)
             return
             
-        # 3. Seleccionar Existente
-        for v in self.find_withtag("vector"):
-            b = self.bbox(v)
-            if b and (b[0]-5 <= cx <= b[2]+5) and (b[1]-5 <= cy <= b[3]+5):
-                if cx > b[0]+10 and cx < b[2]-10 and cy > b[1]+10 and cy < b[3]-10: continue
-                self.selected_vector_id, self.active_grip = self.gettags(v)[1], "move"
-                self._drag_start_x, self._drag_start_y = cx, cy
-                self._render(); return
-                
         self.selected_vector_id, self.active_grip = None, None
         self._render(force_resize=False)
 
@@ -203,6 +213,15 @@ class VectorCanvas(tk.Canvas):
             self.vectors = [v for v in self.vectors if v["id"] != self.selected_vector_id]
             self.selected_vector_id = None
             self._render(); self._save_vector_metadata()
+
+    def change_selected_color(self, new_color):
+        """Cambia el color del vector actualmente seleccionado."""
+        if self.selected_vector_id:
+            v = next((v for v in self.vectors if v["id"] == self.selected_vector_id), None)
+            if v:
+                v["color"] = new_color
+                self._render()
+                self._save_vector_metadata()
 
     def _is_point_in_bbox(self, x, y, bbox):
         return bbox and bbox[0]-3 <= x <= bbox[2]+3 and bbox[1]-3 <= y <= bbox[3]+3
