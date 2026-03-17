@@ -23,4 +23,5 @@ def setup_hotkeys(on_shortcut_callback):
 
 def on_default_shortcut():
     """Acción por defecto para el atajo de pantalla completa."""
+    config.load_config()
     capture_screen()

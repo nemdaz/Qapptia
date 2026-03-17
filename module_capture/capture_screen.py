@@ -22,8 +22,12 @@ def capture_screen(play_sound=True, flow_session_path=None):
         if config.get("show_mouse"):
             try:
                 x, y = mouse.get_position()
+                # Capturar apariencia real justo antes del screenshot
+                scale = utils.get_dpi_scaling()
+                cursor_data = utils.get_current_cursor(scale)
+                
                 hl = config.get("highlight_mouse")
-                screen = utils.draw_mouse_overlay(screen, x, y, hl)
+                screen = utils.draw_mouse_overlay(screen, x * scale, y * scale, hl, cursor_data=cursor_data)
             except Exception as ptr_e:
                  print(f"Error dibujo mouse: {ptr_e}")
         

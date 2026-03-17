@@ -1,9 +1,9 @@
 import tkinter as tk
 from PIL import Image, ImageTk, ImageGrab
-import os
 import datetime
 from core import config, utils
 import threading
+import mouse
 
 class CaptureAreaUI:
     def __init__(self, on_capture_callback=None):
@@ -14,6 +14,17 @@ class CaptureAreaUI:
         
         self.on_capture_callback = on_capture_callback
         self.full_screenshot = ImageGrab.grab(all_screens=True)
+        
+        # Capturar posición y apariencia del mouse en el momento del "congelado" de pantalla
+        try:
+            self.mouse_pos = mouse.get_position()
+            # Obtener escala y datos del cursor real (imagen + hotspot)
+            scale = utils.get_dpi_scaling()
+            self.cursor_data = utils.get_current_cursor(scale)
+        except:
+            self.mouse_pos = None
+            self.cursor_data = None
+            
         self.bg_image = ImageTk.PhotoImage(self.full_screenshot)
         
         self.canvas = tk.Canvas(self.root, highlightthickness=0, bg="black")
@@ -77,20 +88,45 @@ class CaptureAreaUI:
         self.update_guides(event)
 
     def on_release(self, event):
+        if self.start_x is None or self.start_y is None:
+            self.root.destroy()
+            return
+            
         x1, x2 = sorted([self.start_x, event.x])
         y1, y2 = sorted([self.start_y, event.y])
         
         self.root.withdraw()
         
         if (x2 - x1) > 5 and (y2 - y1) > 5:
-            cropped_img = self.full_screenshot.crop((x1, y1, x2, y2))
-            self.save_capture(cropped_img)
+            # Obtener factor de escala
+            scale = utils.get_dpi_scaling()
+            
+            # Recortar usando coordenadas físicas reales
+            cropped_img = self.full_screenshot.crop((
+                int(x1 * scale), int(y1 * scale), 
+                int(x2 * scale), int(y2 * scale)
+            ))
+            self.save_capture(cropped_img, x_offset=int(x1 * scale), y_offset=int(y1 * scale), scale=scale)
         
         self.root.destroy()
 
-    def save_capture(self, pil_img):
+    def save_capture(self, pil_img, x_offset=0, y_offset=0, scale=1.0):
+        import os
         try:
             now = datetime.datetime.now()
+            # Aplicar overlay de mouse si está configurado y el mouse estaba dentro del área
+            if config.get("show_mouse") and self.mouse_pos:
+                mx, my = self.mouse_pos
+                # Convertir mouse (lógico) a físico
+                # Usar el factor de escala obtenido de utils.get_dpi_scaling() para el mouse
+                mouse_scale = utils.get_dpi_scaling()
+                pmx, pmy = mx * mouse_scale, my * mouse_scale
+                
+                # Comprobamos si el mouse está dentro del recorte (dimensiones físicas)
+                if x_offset <= pmx <= x_offset + pil_img.width and y_offset <= pmy <= y_offset + pil_img.height:
+                    hl = config.get("highlight_mouse")
+                    pil_img = utils.draw_mouse_overlay(pil_img, pmx - x_offset, pmy - y_offset, hl, cursor_data=self.cursor_data)
+            
             save_dir = utils.get_save_directory(config.get("save_path"), now)
             filename = utils.parse_filename_format(config.get("filename_format"), now).replace(".png", "_area.png")
             filepath = os.path.join(save_dir, filename)

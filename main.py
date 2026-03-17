@@ -31,24 +31,30 @@ def toggle_flow_menu(icon, item=None):
     print(f"Modo flujo {'activado' if is_active else 'desactivado'}.")
 
 def capture_full_menu(icon, item=None):
-    """Captura pantalla completa desde el menú."""
+    """Captura pantalla completa desde el menú enviando a manual_capture (por el delay)."""
+    config.load_config()
     trigger_manual_capture()
 
 def capture_area_menu(icon, item=None):
     """Inicia captura de área desde el menú."""
+    config.load_config()
     trigger_area_capture()
 
 def open_editor(icon, item=None):
-    """Abre el editor de capturas."""
+    """Abre el editor de capturas usando el propio ejecutable o script."""
     print("Abriendo Editor...")
-    script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "module_editor", "editor.py")
-    subprocess.Popen([sys.executable, script_path])
+    if getattr(sys, 'frozen', False):
+        subprocess.Popen([sys.executable, "--editor"])
+    else:
+        subprocess.Popen([sys.executable, sys.argv[0], "--editor"])
 
 def open_config(icon, item=None):
-    """Abre la ventana de configuración."""
+    """Abre la ventana de configuración usando el propio ejecutable o script."""
     print("Abriendo configuración...")
-    script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "module_capture", "gui.py")
-    subprocess.Popen([sys.executable, script_path])
+    if getattr(sys, 'frozen', False):
+        subprocess.Popen([sys.executable, "--config"])
+    else:
+        subprocess.Popen([sys.executable, sys.argv[0], "--config"])
 
 def quit_app(icon, item=None):
     """Cierra la aplicación."""
@@ -63,6 +69,18 @@ def setup(icon):
     mouse.hook(on_mouse_event)
 
 def main():
+    # Despachador para modo portable / PyInstaller
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "--editor":
+            from module_editor.editor import EditorApp
+            app = EditorApp()
+            app.mainloop()
+            return
+        elif sys.argv[1] == "--config":
+            from module_capture.gui import run_gui
+            run_gui()
+            return
+
     global should_exit
     config.load_config()
     setup_hotkeys(on_default_shortcut)
