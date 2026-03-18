@@ -16,6 +16,8 @@ from module_capture.mode_flow import flow_manager
 
 # Estado global
 should_exit = False
+_editor_last_click = 0
+_is_editor_launching = False
 
 def create_image():
     # Icono simple para la bandeja
@@ -42,13 +44,43 @@ def capture_area_menu(icon, item=None):
     trigger_area_capture()
 
 def open_editor(icon, item=None):
-    """Abre el editor de capturas o lo trae al frente si ya está abierto."""
+    """Maneja la apertura del editor con detección forzada de doble clic."""
+    global _editor_last_click, _is_editor_launching
+    
+    current_time = time.time()
+    # Si la diferencia entre clics es mayor a 0.4s, lo tratamos como un primer clic y esperamos
+    # pystray default=True a veces envía un solo clic, así que forzamos la lógica de tiempo.
+    if current_time - _editor_last_click > 0.4:
+        _editor_last_click = current_time
+        print("Clic detectado, esperando segundo clic para abrir editor...")
+        return
+
+    # Si llegamos aquí, es un doble clic válido
+    _editor_last_click = 0 # Resetear para el siguiente
+    
+    # 1. Verificar si ya hay una instancia respondiendo (IPC)
     print("Verificando instancia del Editor...")
     if ipc.is_editor_running():
         print("Editor ya en ejecución. Enviada señal de despertar.")
         return
 
+    # 2. Verificar si ya hay un proceso lanzándose (Protección de carrera)
+    if _is_editor_launching:
+        print("El editor ya se está iniciando, por favor espera...")
+        return
+
+    # 3. Lanzar nueva instancia
     print("Iniciando nueva instancia del Editor...")
+    _is_editor_launching = True
+    
+    # Resetear el flag de lanzamiento después de un tiempo prudencial (5s)
+    # Esto permite que el editor tenga tiempo de abrir su socket IPC.
+    import threading
+    def reset_launching_flag():
+        global _is_editor_launching
+        _is_editor_launching = False
+    threading.Timer(5.0, reset_launching_flag).start()
+
     if getattr(sys, 'frozen', False):
         subprocess.Popen([sys.executable, "--editor"])
     else:
@@ -95,7 +127,7 @@ def main():
         pystray.MenuItem('Capturar ahora', capture_full_menu),
         pystray.MenuItem(lambda text: 'Detener Flujo' if flow_manager.is_active else 'Iniciar Flujo', toggle_flow_menu),
         pystray.Menu.SEPARATOR,
-        pystray.MenuItem('Abrir Editor (Galería)', open_editor),
+        pystray.MenuItem('Abrir Editor (Galería)', open_editor, default=True),
         pystray.MenuItem('Configuración...', open_config),
         pystray.MenuItem('Salir', quit_app)
     )

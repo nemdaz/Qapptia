@@ -17,6 +17,9 @@ class EditorApp(ctk.CTk):
     def __init__(self):
         super().__init__()
         
+        # Iniciar servidor IPC lo más pronto posible para evitar condiciones de carrera
+        ipc.start_ipc_server(self.wake_up)
+        
         self.title(constants.WINDOW_TITLE)
         self.geometry(constants.WINDOW_SIZE)
         self.minsize(constants.MIN_WIDTH, constants.MIN_HEIGHT)
@@ -38,9 +41,6 @@ class EditorApp(ctk.CTk):
         
         self.after(constants.INITIAL_LOAD_DELAY_MS, self.load_latest_image)
         self.bind("<Button-1>", self.on_window_click)
-        
-        # Iniciar servidor IPC para control de instancia única
-        ipc.start_ipc_server(self.wake_up)
 
     def wake_up(self):
         """Trae la ventana al frente y refresca el contenido."""
