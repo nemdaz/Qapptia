@@ -62,7 +62,7 @@ El script principal implementa tres "modos" de captura:
 
 ### Interfaz Visual y Persistencia
 Se añadió soporte persistente e interfaz para que la app sea configurable al vuelo.
-1. `config.py`: Módulo para salvar y leer propiedades de un `config.json`. Ahora usa un _default_ root directory apuntando directo en `%USERPROFILE%\QAScreens` para portabilidad universal.
+1. `config.py`: Módulo para salvar y leer propiedades de un `config.json`. Ahora usa un _default_ root directory apuntando directo en `%USERPROFILE%\QACappta` para portabilidad universal.
 2. `gui.py`: Ventana de configuraciones interactiva en `customtkinter`.
     - **General**: Configurar directorio base, formato de nombramiento usando tokens de fecha (ej: YYYYMMDD_HHmmSS), compresión general de imágenes y creación de subcarpetas en base al Mes, Día y Hora (crecimiento en árbol si varias se juntan, precargadas en _Mes_ y _Día_ por defecto). También incluye una ayuda de formato como tooltip (`transient` para no deformar su botón de cerrar).
     - **Capturas**: Timer para Modo Manual, atajos configurables globalmente en Modo Atajo (graba 3 teclas en tiempo real), y atajos de interrupción temporales en el Modo de Flujo (graba 2 teclas, precargado a _ctrl+shift_ por defecto) agrupados individualmente mediante frames.

@@ -3,3 +3,4 @@ keyboard
 Pillow
 mouse
 customtkinter
+pyinstaller

@@ -1,11 +1,11 @@
 import os
-from core.version import VERSION
+from core.version import VERSION, APP_NAME
 
-APP_NAME = "QA Screenshot"
+# El nombre de la aplicación se centraliza en core.version
 CONFIG_FILE = "config.json"
 
 DEFAULT_CONFIG = {
-    "save_path": os.path.expandvars(os.path.join("%USERPROFILE%", "QAScreens")),
+    "save_path": os.path.expandvars(os.path.join("%USERPROFILE%", APP_NAME)),
     "filename_format": "Screenshot_YYYYMMDD_HHmmSS",
     "image_quality": 100,
     "subfolder_month": True,

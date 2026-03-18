@@ -2,7 +2,7 @@ import socket
 import threading
 import time
 
-# Puerto dedicado para el Editor de QA Screenshot
+# Puerto dedicado para el Editor de QACappta
 IPC_PORT = 49999
 WAKE_UP_SIGNAL = b"WAKE_UP"
 

@@ -3,7 +3,7 @@ import subprocess
 import shutil
 import sys
 import zipfile
-from core.version import VERSION
+from core.version import VERSION, APP_NAME
 
 def is_version_valid(current_v):
     history_file = "build_history.txt"
@@ -41,7 +41,7 @@ def build():
         return
 
     # Verificar si el ZIP ya existe
-    zip_name = f"QA-Screenshot-v{VERSION}-Win64.zip"
+    zip_name = f"{APP_NAME}-v{VERSION}-Win64.zip"
     if os.path.exists(zip_name):
         print(f"Error: El archivo {zip_name} ya existe. Sube la versión en core/version.py")
         return
@@ -71,7 +71,7 @@ def build():
     cmd = [
         "pyinstaller",
         "--noconsole",
-        "--name=QA-Screenshot",
+        f"--name={APP_NAME}",
         f"--add-data=core{separator}core",
         f"--add-data=module_capture{separator}module_capture",
         f"--add-data=module_editor{separator}module_editor",
@@ -89,7 +89,7 @@ def build():
         return
 
     # 4. Crear archivo ZIP para distribución
-    dist_folder = os.path.join("dist", "QA-Screenshot")
+    dist_folder = os.path.join("dist", APP_NAME)
     # zip_name ya se definió al inicio para validación
     
     print(f"Creando paquete comprimido: {zip_name}...")
@@ -109,7 +109,7 @@ def build():
 
     print(f"\n==========================================")
     print(f"PROCESO FINALIZADO CON ÉXITO")
-    print(f"Ejecutable: {os.path.abspath(os.path.join(dist_folder, 'QA-Screenshot.exe'))}")
+    print(f"Ejecutable: {os.path.abspath(os.path.join(dist_folder, f'{APP_NAME}.exe'))}")
     print(f"Paquete ZIP: {os.path.abspath(zip_name)}")
     print(f"==========================================\n")
 

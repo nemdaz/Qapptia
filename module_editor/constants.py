@@ -1,8 +1,9 @@
 """
 Constantes para el módulo de edición (EditorApp).
 """
+from core.version import APP_NAME
 
-WINDOW_TITLE = "QA Screenshot Editor"
+WINDOW_TITLE = f"{APP_NAME} Editor"
 WINDOW_SIZE = "1100x700"
 MIN_WIDTH = 800
 MIN_HEIGHT = 500
