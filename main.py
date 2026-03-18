@@ -6,7 +6,8 @@ import time
 import subprocess
 import sys
 
-from core import config, utils
+from core import config
+from core.constants import APP_NAME, VERSION
 from module_capture.capture_screen import capture_screen
 from module_capture.capture_area import trigger_area_capture
 from module_capture.mode_manual import trigger_manual_capture
@@ -94,7 +95,7 @@ def main():
         pystray.MenuItem('Salir', quit_app)
     )
     
-    icon = pystray.Icon("screenshot_app", create_image(), "QA Screenshot", menu)
+    icon = pystray.Icon("screenshot_app", create_image(), f"{APP_NAME} v{VERSION}", menu)
     
     icon.run_detached(setup)
     

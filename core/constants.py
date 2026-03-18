@@ -1,5 +1,7 @@
 import os
+from core.version import VERSION
 
+APP_NAME = "QA Screenshot"
 CONFIG_FILE = "config.json"
 
 DEFAULT_CONFIG = {

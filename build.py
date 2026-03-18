@@ -3,9 +3,48 @@ import subprocess
 import shutil
 import sys
 import zipfile
+from core.version import VERSION
+
+def is_version_valid(current_v):
+    history_file = "build_history.txt"
+    if not os.path.exists(history_file):
+        return True
+    
+    with open(history_file, "r") as f:
+        versions = [line.strip() for line in f.readlines() if line.strip()]
+    
+    if not versions:
+        return True
+    
+    # Simple comparación SemVer lógica (Major.Minor.Patch)
+    # Para mayor robustez, se podría usar packaging.version, 
+    # pero mantendremos dependencias mínimas.
+    last_v = versions[-1]
+    
+    if current_v == last_v:
+        print(f"Error: La versión {current_v} ya ha sido construida anteriormente.")
+        return False
+        
+    # Aquí podríamos añadir lógica de comparación jerárquica más compleja
+    # Por ahora, bloqueo por duplicidad exacta es el primer escudo.
+    return True
+
+def save_build_history(v):
+    with open("build_history.txt", "a") as f:
+        f.write(v + "\n")
 
 def build():
-    print("Iniciando proceso de construcción de QA-Screenshot...")
+    print(f"Iniciando construcción de {VERSION}...")
+    
+    if not is_version_valid(VERSION):
+        print("Abortando build para proteger la integridad de versiones.")
+        return
+
+    # Verificar si el ZIP ya existe
+    zip_name = f"QA-Screenshot-v{VERSION}-Win64.zip"
+    if os.path.exists(zip_name):
+        print(f"Error: El archivo {zip_name} ya existe. Sube la versión en core/version.py")
+        return
     
     # 1. Limpieza previa
     for folder in ['build', 'dist']:
@@ -51,7 +90,7 @@ def build():
 
     # 4. Crear archivo ZIP para distribución
     dist_folder = os.path.join("dist", "QA-Screenshot")
-    zip_name = "QA-Screenshot-Portable-Win64.zip"
+    # zip_name ya se definió al inicio para validación
     
     print(f"Creando paquete comprimido: {zip_name}...")
     
@@ -65,6 +104,8 @@ def build():
                 abs_path = os.path.join(root, file)
                 rel_path = os.path.relpath(abs_path, os.path.dirname(dist_folder))
                 zipf.write(abs_path, rel_path)
+
+    save_build_history(VERSION)
 
     print(f"\n==========================================")
     print(f"PROCESO FINALIZADO CON ÉXITO")
