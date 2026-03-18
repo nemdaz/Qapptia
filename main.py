@@ -6,7 +6,7 @@ import time
 import subprocess
 import sys
 
-from core import config
+from core import config, ipc
 from core.constants import APP_NAME, VERSION
 from module_capture.capture_screen import capture_screen
 from module_capture.capture_area import trigger_area_capture
@@ -42,8 +42,13 @@ def capture_area_menu(icon, item=None):
     trigger_area_capture()
 
 def open_editor(icon, item=None):
-    """Abre el editor de capturas usando el propio ejecutable o script."""
-    print("Abriendo Editor...")
+    """Abre el editor de capturas o lo trae al frente si ya está abierto."""
+    print("Verificando instancia del Editor...")
+    if ipc.is_editor_running():
+        print("Editor ya en ejecución. Enviada señal de despertar.")
+        return
+
+    print("Iniciando nueva instancia del Editor...")
     if getattr(sys, 'frozen', False):
         subprocess.Popen([sys.executable, "--editor"])
     else:

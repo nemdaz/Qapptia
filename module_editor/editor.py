@@ -6,7 +6,7 @@ from PIL import Image
 # Configurar ruta base del proyecto
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from core import config, assets
+from core import config, assets, ipc
 from module_editor import constants, state_manager, utils
 from module_editor.editor_sidebar import EditorSidebar
 from module_editor.editor_canvas import VectorCanvas
@@ -36,9 +36,36 @@ class EditorApp(ctk.CTk):
         
         self.setup_ui()
         
-        # Carga inicial diferida para asegurar renderizado de UI
         self.after(constants.INITIAL_LOAD_DELAY_MS, self.load_latest_image)
         self.bind("<Button-1>", self.on_window_click)
+        
+        # Iniciar servidor IPC para control de instancia única
+        ipc.start_ipc_server(self.wake_up)
+
+    def wake_up(self):
+        """Trae la ventana al frente y refresca el contenido."""
+        self.after(0, self._handle_wake_up)
+
+    def _handle_wake_up(self):
+        """Intenta traer la ventana al frente con seguridad."""
+        try:
+            self.deiconify()
+            # Forzar ventana al frente en Windows
+            self.attributes("-topmost", True)
+            self.attributes("-topmost", False)
+            self.lift()
+            self.focus_force()
+        except Exception as e:
+            print(f"Error al intentar enfocar el editor: {e}")
+            # Fallback mínimo: al menos intentar desminimizar
+            try: self.deiconify()
+            except: pass
+            
+        # El refresco de la sidebar es independiente del foco de la ventana
+        try:
+            self.sidebar.refresh_all()
+        except Exception as e:
+            print(f"Error al refrescar sidebar en wake_up: {e}")
 
     def on_window_click(self, event):
         """Deselecciona herramientas si se clica fuera de la zona de dibujo o toolbar."""
