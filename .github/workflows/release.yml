@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*' # Se activa con tags como v1.0.0, v1.0.0-beta.1, etc.
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
