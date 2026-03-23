@@ -1,5 +1,6 @@
 import pystray
 import mouse
+import keyboard
 from PIL import Image
 import os
 import time
@@ -43,20 +44,9 @@ def capture_area_menu(icon, item=None):
     config.load_config()
     trigger_area_capture()
 
-def open_editor(icon, item=None):
-    """Maneja la apertura del editor con detección forzada de doble clic."""
-    global _editor_last_click, _is_editor_launching
-    
-    current_time = time.time()
-    # Si la diferencia entre clics es mayor a 0.4s, lo tratamos como un primer clic y esperamos
-    # pystray default=True a veces envía un solo clic, así que forzamos la lógica de tiempo.
-    if current_time - _editor_last_click > 0.4:
-        _editor_last_click = current_time
-        print("Clic detectado, esperando segundo clic para abrir editor...")
-        return
-
-    # Si llegamos aquí, es un doble clic válido
-    _editor_last_click = 0 # Resetear para el siguiente
+def launch_editor_process():
+    """Lógica central para abrir el editor con protección de instancias multiples."""
+    global _is_editor_launching
     
     # 1. Verificar si ya hay una instancia respondiendo (IPC)
     print("Verificando instancia del Editor...")
@@ -74,7 +64,6 @@ def open_editor(icon, item=None):
     _is_editor_launching = True
     
     # Resetear el flag de lanzamiento después de un tiempo prudencial (5s)
-    # Esto permite que el editor tenga tiempo de abrir su socket IPC.
     import threading
     def reset_launching_flag():
         global _is_editor_launching
@@ -85,6 +74,23 @@ def open_editor(icon, item=None):
         subprocess.Popen([sys.executable, "--editor"])
     else:
         subprocess.Popen([sys.executable, sys.argv[0], "--editor"])
+
+def open_editor_icon(icon, item=None):
+    """Maneja el clic directo en el icono del tray (requiere doble clic)."""
+    global _editor_last_click
+    
+    current_time = time.time()
+    if current_time - _editor_last_click > 0.4:
+        _editor_last_click = current_time
+        print("Clic detectado en el icono, esperando segundo clic para abrir editor...")
+        return
+
+    _editor_last_click = 0
+    launch_editor_process()
+
+def open_editor_menu(icon, item=None):
+    """Maneja el clic explícito en la opción del menú (abre con 1 clic)."""
+    launch_editor_process()
 
 def open_config(icon, item=None):
     """Abre la ventana de configuración usando el propio ejecutable o script."""
@@ -101,7 +107,24 @@ def quit_app(icon, item=None):
     icon.stop()
     should_exit = True
 
+def reload_hooks(icon=None, item=None):
+    """Reinicia los hooks de teclado y ratón (Útil tras suspensión/hibernación)."""
+    print("Reiniciando capturador (Limpiando hooks residuales)...")
+    try:
+        keyboard.unhook_all()
+    except: pass
+    try:
+        mouse.unhook_all()
+    except: pass
+    
+    config.load_config()
+    setup_hotkeys(on_default_shortcut)
+    try:
+        mouse.hook(on_mouse_event)
+    except: pass
+
 def setup(icon):
+
     icon.visible = True
     # Siempre escuchamos el mouse, FlowManager decide si actuar
     mouse.hook(on_mouse_event)
@@ -124,10 +147,13 @@ def main():
     setup_hotkeys(on_default_shortcut)
     
     menu = pystray.Menu(
+        pystray.MenuItem('Abrir_oculto', open_editor_icon, default=True, visible=False),
         pystray.MenuItem('Capturar ahora', capture_full_menu),
         pystray.MenuItem(lambda text: 'Detener Flujo' if flow_manager.is_active else 'Iniciar Flujo', toggle_flow_menu),
         pystray.Menu.SEPARATOR,
-        pystray.MenuItem('Abrir Editor (Galería)', open_editor, default=True),
+        pystray.MenuItem('Reiniciar capturador', reload_hooks),
+        pystray.Menu.SEPARATOR,
+        pystray.MenuItem('Abrir Editor (Galería)', open_editor_menu),
         pystray.MenuItem('Configuración...', open_config),
         pystray.MenuItem('Salir', quit_app)
     )
@@ -136,8 +162,18 @@ def main():
     
     icon.run_detached(setup)
     
+    last_time = time.time()
     while not should_exit:
         time.sleep(1)
+        current_time = time.time()
+        
+        # Watchdog: Si pasa mucho tiempo en un solo 'sleep(1)', el PC fue suspendido
+        jump = current_time - last_time
+        if jump > 10.0:
+            print(f"Salto de tiempo detectado ({jump:.1f}s). Probable suspensión. Reiniciando capturador...")
+            reload_hooks()
+            
+        last_time = current_time
         
     # Limpieza final
     mouse.unhook_all()
