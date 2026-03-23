@@ -53,7 +53,30 @@ class CaptureAreaUI:
         self.canvas.bind("<B1-Motion>", self.on_drag)
         self.canvas.bind("<ButtonRelease-1>", self.on_release)
         self.canvas.bind("<Motion>", self.update_guides)
-        self.root.bind("<Escape>", lambda e: self.root.destroy())
+        
+        # Secuestrar eventos y forzar foco post-renderizado 
+        self.root.grab_set()
+        self.root.after(50, self.root.focus_force)
+        self.canvas.focus_set()
+        
+        # INTERCEPCIÓN GLOBAL HARDCORE: Escuchar a nivel SO (Hardware) 
+        # independientemente de a quién le dio foco Windows.
+        # IMPORTANTE: El callback de keyboard ocurre en un hilo C de fondo.
+        # No podemos destruir Tcl/Tk desde ese hilo, por lo que usamos after() para delegarlo.
+        import keyboard
+        self.esc_hook = keyboard.on_press_key("esc", lambda e: self.root.after(0, self.close), suppress=True)
+        
+        self.root.bind("<Escape>", lambda e: self.close())
+        self.canvas.bind("<Escape>", lambda e: self.close())
+
+    def close(self):
+        """Limpieza y destrucción garantizada."""
+        import keyboard
+        try:
+            keyboard.unhook(self.esc_hook)
+        except Exception:
+            pass
+        self.root.destroy()
         
     def _update_mask(self, sw, sh, x1, y1, x2, y2):
         """Actualiza los 4 rectángulos para dejar un hueco claro en (x1, y1) -> (x2, y2)"""
@@ -89,7 +112,7 @@ class CaptureAreaUI:
 
     def on_release(self, event):
         if self.start_x is None or self.start_y is None:
-            self.root.destroy()
+            self.close()
             return
             
         x1, x2 = sorted([self.start_x, event.x])
@@ -108,7 +131,7 @@ class CaptureAreaUI:
             ))
             self.save_capture(cropped_img, x_offset=int(x1 * scale), y_offset=int(y1 * scale), scale=scale)
         
-        self.root.destroy()
+        self.close()
 
     def save_capture(self, pil_img, x_offset=0, y_offset=0, scale=1.0):
         import os

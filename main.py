@@ -17,6 +17,7 @@ from module_capture.mode_flow import flow_manager
 
 # Estado global
 should_exit = False
+should_restart = False
 _editor_last_click = 0
 _is_editor_launching = False
 
@@ -108,20 +109,13 @@ def quit_app(icon, item=None):
     should_exit = True
 
 def reload_hooks(icon=None, item=None):
-    """Reinicia los hooks de teclado y ratón (Útil tras suspensión/hibernación)."""
-    print("Reiniciando capturador (Limpiando hooks residuales)...")
-    try:
-        keyboard.unhook_all()
-    except: pass
-    try:
-        mouse.unhook_all()
-    except: pass
-    
-    config.load_config()
-    setup_hotkeys(on_default_shortcut)
-    try:
-        mouse.hook(on_mouse_event)
-    except: pass
+    """Reinicia la aplicación completa para restaurar hooks a bajo nivel."""
+    global should_exit, should_restart
+    print("Reiniciando capturador completo (Recuperación de hilos OS)...")
+    should_restart = True
+    if icon:
+        icon.stop()
+    should_exit = True
 
 def setup(icon):
 
@@ -130,6 +124,7 @@ def setup(icon):
     mouse.hook(on_mouse_event)
 
 def main():
+    global should_exit, should_restart
     # Despachador para modo portable / PyInstaller
     if len(sys.argv) > 1:
         if sys.argv[1] == "--editor":
@@ -170,14 +165,27 @@ def main():
         # Watchdog: Si pasa mucho tiempo en un solo 'sleep(1)', el PC fue suspendido
         jump = current_time - last_time
         if jump > 10.0:
-            print(f"Salto de tiempo detectado ({jump:.1f}s). Probable suspensión. Reiniciando capturador...")
-            reload_hooks()
+            print(f"Salto de tiempo detectado ({jump:.1f}s). Probable suspensión del OS. Reiniciando de raíz...")
+            should_restart = True
+            icon.stop()
+            break
             
         last_time = current_time
         
     # Limpieza final
-    mouse.unhook_all()
-    os._exit(0)
+    try:
+        mouse.unhook_all()
+    except: pass
+    
+    if should_restart:
+        print("Ejecutando reinicio maestro de proceso...")
+        time.sleep(0.5) # Dar tiempo a Windows para limpiar el icono de la bandeja
+        if getattr(sys, 'frozen', False):
+            os.execv(sys.executable, sys.argv)
+        else:
+            os.execv(sys.executable, [sys.executable] + sys.argv)
+    else:
+        os._exit(0)
 
 if __name__ == "__main__":
     main()
