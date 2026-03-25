@@ -1,22 +1,22 @@
+import sys
+import os
+import time
+import subprocess
+import threading
 import pystray
 import mouse
 import keyboard
 from PIL import Image
-import os
-import time
-import subprocess
-import sys
 
-from core import config, ipc
+from core import config, ipc, utils
 from core.constants import APP_NAME, VERSION
 from module_capture.capture_screen import capture_screen
-from module_capture.capture_area import trigger_area_capture
-from module_capture.mode_manual import trigger_manual_capture
-from module_capture.mode_hotkey import setup_hotkeys, on_default_shortcut
+from module_capture import mode_screen, mode_area, mode_flow
 from module_capture.mode_flow import flow_manager
+from module_capture.gui import run_gui
+from module_editor.editor import EditorApp
 
 # --- Configuración de consciencia de DPI (Agnóstica al SO) ---
-from core import utils
 utils.set_dpi_awareness()
 # --------------------------------------------------------
 
@@ -41,14 +41,14 @@ def toggle_flow_menu(icon, item=None):
     print(f"Modo flujo {'activado' if is_active else 'desactivado'}.")
 
 def capture_full_menu(icon, item=None):
-    """Captura pantalla completa desde el menú enviando a manual_capture (por el delay)."""
+    """Captura pantalla completa desde el menú."""
     config.load_config()
-    trigger_manual_capture()
+    mode_screen.trigger_screen_capture()
 
 def capture_area_menu(icon, item=None):
     """Inicia captura de área desde el menú."""
     config.load_config()
-    trigger_area_capture()
+    mode_area.trigger_area_capture()
 
 def launch_editor_process():
     """Lógica central para abrir el editor con protección de instancias multiples."""
@@ -70,7 +70,6 @@ def launch_editor_process():
     _is_editor_launching = True
     
     # Resetear el flag de lanzamiento después de un tiempo prudencial (5s)
-    import threading
     def reset_launching_flag():
         global _is_editor_launching
         _is_editor_launching = False
@@ -133,18 +132,19 @@ def main():
     # Despachador para modo portable / PyInstaller
     if len(sys.argv) > 1:
         if sys.argv[1] == "--editor":
-            from module_editor.editor import EditorApp
             app = EditorApp()
             app.mainloop()
             return
         elif sys.argv[1] == "--config":
-            from module_capture.gui import run_gui
             run_gui()
             return
 
     global should_exit
     config.load_config()
-    setup_hotkeys(on_default_shortcut)
+    # Iniciar atajos de cada modo
+    mode_screen.setup()
+    mode_area.setup()
+    mode_flow.setup()
     
     menu = pystray.Menu(
         pystray.MenuItem('Abrir_oculto', open_editor_icon, default=True, visible=False),

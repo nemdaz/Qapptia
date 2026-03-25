@@ -200,9 +200,3 @@ class CaptureAreaUI:
     def run(self):
         self.root.mainloop()
 
-def trigger_area_capture(callback=None):
-    app = CaptureAreaUI(on_capture_callback=callback)
-    app.run()
-
-if __name__ == "__main__":
-    trigger_area_capture()

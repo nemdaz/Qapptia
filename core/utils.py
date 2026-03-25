@@ -355,3 +355,16 @@ def draw_mouse_overlay(screen_image, mouse_x, mouse_y, highlight=False, cursor_d
         print(f"Error en el dibujo del mouse: {e}")
         
     return screen_image
+
+def register_hotkey(hotkey, callback, description=""):
+    """Registra un atajo de teclado de forma segura con log de consola."""
+    import keyboard
+    if not hotkey: return False
+    try:
+        keyboard.add_hotkey(hotkey, callback)
+        desc_str = f"({description})" if description else ""
+        print(f"Atajo {desc_str} '{hotkey}' registrado con éxito.")
+        return True
+    except Exception as e:
+        print(f"Error al registrar atajo {description} '{hotkey}': {e}")
+        return False

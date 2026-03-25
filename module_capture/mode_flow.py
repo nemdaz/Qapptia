@@ -71,7 +71,7 @@ class FlowManager:
             self._handle_move(event)
 
     def _is_paused_by_key(self):
-        pause_key = config.get("flow_pause_key")
+        pause_key = config.get("shortcut_flow_pause")
         if not pause_key: return False
         try:
             keys = [k.strip() for k in pause_key.split('+')]
@@ -139,51 +139,54 @@ class FlowManager:
                 _, self._last_y = mouse.get_position()
 
     def _start_velocity_monitor(self):
-        if not self._is_manual_scrolling: return
-        
+        # Protecciones críticas: No iniciar si ya hay uno o si el modo no está activo
+        if not self._is_manual_scrolling or not self.is_active: return
+        if self._velocity_timer and self._velocity_timer.is_alive(): return
+            
         def monitor():
-            if not self._is_manual_scrolling: return
+            if not self._is_manual_scrolling or not self.is_active: return
             
             y_before = self._last_y
             time.sleep(c.VELOCITY_CHECK_INTERVAL)
             y_after = self._last_y
             
-            if self._is_manual_scrolling:
+            # Validar estado tras el tiempo de espera
+            if self._is_manual_scrolling and self.is_active:
                 v = abs(y_after - y_before)
                 dist_from_last = abs(y_after - self._last_captured_y)
                 
-                # Clasificación de estado
                 if v < c.JITTER_THRESHOLD:
-                    # REPOSO / PAUSA
                     if dist_from_last > c.MIN_DISTANCE_BETWEEN_CAPTURES:
-                        print(f"Pausa detectada en scroll manual (Y={y_after})")
                         self._last_captured_y = y_after
                         self._capture("Pausa Scroll")
-                    self._slow_scroll_start_time = time.time() # Reset cadencia en reposo
+                    self._slow_scroll_start_time = time.time()
                     
                 elif v <= c.SLOW_SCROLL_MAX_SPEED:
-                    # SCROLL LENTO (LECTURA)
                     elapsed = time.time() - self._slow_scroll_start_time
                     if elapsed >= c.SLOW_SCROLL_CADENCE_TIME and dist_from_last > c.MIN_DISTANCE_SLOW_SCROLL:
-                        print(f"Cadencia de scroll lento alcanzada (2.5s, Y={y_after})")
                         self._last_captured_y = y_after
                         self._capture("Cadencia Scroll Lento")
-                        self._slow_scroll_start_time = time.time() # Reset cadencia tras captura
+                        self._slow_scroll_start_time = time.time()
                 else:
-                    # SCROLL RÁPIDO (BÚSQUEDA)
-                    self._slow_scroll_start_time = time.time() # Reset cadencia en rápido
+                    self._slow_scroll_start_time = time.time()
 
-            # Re-agendar
-            if self._is_manual_scrolling:
+            # Re-agendar el siguiente ciclo de forma segura y daemonizada
+            if self._is_manual_scrolling and self.is_active:
                 self._velocity_timer = threading.Timer(0.1, monitor)
+                self._velocity_timer.daemon = True
                 self._velocity_timer.start()
 
-        self._velocity_timer = threading.Timer(c.VELOCITY_CHECK_INTERVAL, monitor)
+        self._velocity_timer = threading.Timer(0.1, monitor)
         self._velocity_timer.daemon = True
         self._velocity_timer.start()
 
     def _capture(self, reason):
         capture_screen(play_sound=False, flow_session_path=self.session_path)
         print(f"--- Captura automática ({reason}) ---")
+
+def setup():
+    """Configura los disparadores del Modo Flujo."""
+    hotkey = config.get("shortcut_flow")
+    utils.register_hotkey(hotkey, flow_manager.toggle, "Modo Flujo (Toggle)")
 
 flow_manager = FlowManager()

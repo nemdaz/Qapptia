@@ -14,7 +14,9 @@ DEFAULT_CONFIG = {
     "show_mouse": True,
     "highlight_mouse": False,
     "manual_timer": 0,
-    "shortcut_key": "ctrl+shift+q",
-    "flow_pause_key": "ctrl+shift",
+    "shortcut_screen": "ctrl+shift+q",
+    "shortcut_area": "ctrl+shift+a",
+    "shortcut_flow": "ctrl+shift+f",
+    "shortcut_flow_pause": "ctrl+shift",
     "enable_scroll_capture": True
 }

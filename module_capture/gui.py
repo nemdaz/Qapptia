@@ -17,7 +17,7 @@ class ConfigApp(ctk.CTk):
         self.on_close_callback = on_close_callback
         
         self.title("Configuración de Capturador")
-        self.geometry("540x480")
+        self.geometry("600x520")
         self.resizable(False, False)
         
         # Tabs
@@ -29,6 +29,14 @@ class ConfigApp(ctk.CTk):
         
         self.setup_general_tab()
         self.setup_capturas_tab()
+        
+        # Forzar pérdida de foco al hacer clic en fondo/etiquetas
+        def on_bg_click(e):
+            # Evitar interferencia con el foco al entrar al input
+            if "entry" not in str(e.widget).lower():
+                self.focus_set()
+        
+        self.bind("<Button-1>", on_bg_click)
         
         # Save button
         self.btn_save = ctk.CTkButton(self, text="Guardar y Cerrar", command=self.save_and_close)
@@ -119,7 +127,7 @@ class ConfigApp(ctk.CTk):
         help_win = ctk.CTkToplevel(self)
         help_win.title("Ayuda de Formato")
         
-        # Tamaño incrementado para que el texto encaje perfectamente
+        # Dimensiones optimizadas para el mensaje de ayuda
         win_width = 350
         win_height = 200
         
@@ -136,7 +144,7 @@ class ConfigApp(ctk.CTk):
         help_win.geometry(f"{win_width}x{win_height}+{pos_x}+{pos_y}")
         help_win.resizable(False, False)
         
-        # Enlazar ventana principal para comportamiento modal visual
+        # Vinculación modal con ventana principal
         help_win.transient(self)
         
         # Asegurar que está por encima y enfocada
@@ -155,63 +163,75 @@ class ConfigApp(ctk.CTk):
         lbl.pack(padx=20, pady=20)
         
     def setup_capturas_tab(self):
-        # --- Modo Manual ---
-        frame_manual = ctk.CTkFrame(self.tab_capturas)
-        frame_manual.pack(fill="x", padx=10, pady=5)
-        ctk.CTkLabel(frame_manual, text="Modo Manual", font=("Arial", 14, "bold")).pack(anchor="w", padx=10, pady=(5,0))
+        LBL_W = 100
+        ATAJO_W = 150
+        TIMER_W = 80
+
+        # --- Modo Pantalla ---
+        frame_pantalla = ctk.CTkFrame(self.tab_capturas)
+        frame_pantalla.pack(fill="x", padx=10, pady=5)
+        ctk.CTkLabel(frame_pantalla, text="Modo Pantalla", font=("Arial", 14, "bold")).pack(anchor="w", padx=10, pady=(5,0))
         
-        container_manual = ctk.CTkFrame(frame_manual, fg_color="transparent")
-        container_manual.pack(fill="x", padx=10, pady=5)
+        container_p = ctk.CTkFrame(frame_pantalla, fg_color="transparent")
+        container_p.pack(fill="x", padx=10, pady=5)
         
-        ctk.CTkLabel(container_manual, text="Timer (segs):").grid(row=0, column=0, padx=10, pady=5, sticky="w")
-        self.entry_timer = ctk.CTkEntry(container_manual, width=100)
-        self.entry_timer.insert(0, str(config.get("manual_timer")))
-        self.entry_timer.grid(row=0, column=1, padx=10, pady=5, sticky="w")
-        
-        # --- Modo Atajo ---
-        frame_atajo = ctk.CTkFrame(self.tab_capturas)
-        frame_atajo.pack(fill="x", padx=10, pady=5)
-        ctk.CTkLabel(frame_atajo, text="Modo Atajo", font=("Arial", 14, "bold")).pack(anchor="w", padx=10, pady=(5,0))
-        
-        container_atajo = ctk.CTkFrame(frame_atajo, fg_color="transparent")
-        container_atajo.pack(fill="x", padx=10, pady=5)
-        
-        ctk.CTkLabel(container_atajo, text="Combinación Global:").grid(row=0, column=0, padx=10, pady=5, sticky="w")
-        self.entry_shortcut = ctk.CTkEntry(container_atajo, width=150)
-        
-        shortcut_val = config.get("shortcut_key") or "ctrl+shift+q"
+        # Fila 0: Atajo
+        ctk.CTkLabel(container_p, text="Atajo:", width=LBL_W, anchor="w").grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        self.entry_shortcut = ctk.CTkEntry(container_p, width=ATAJO_W)
+        shortcut_val = config.get("shortcut_screen") or "ctrl+shift+q"
         self.entry_shortcut.insert(0, str(shortcut_val).upper())
-        self.entry_shortcut.grid(row=0, column=1, padx=10, pady=5, sticky="w")
+        self.entry_shortcut.grid(row=0, column=1, padx=5, pady=5, sticky="w")
         self.enable_shortcut_recording(self.entry_shortcut, 3)
         
-        self.btn_reset_atajo = ctk.CTkButton(container_atajo, text="Restablecer", width=80, command=self.reset_atajo)
-        self.btn_reset_atajo.grid(row=0, column=2, padx=10, pady=5)
+        # Fila 1: Timer
+        ctk.CTkLabel(container_p, text="Timer (s):", width=LBL_W, anchor="w").grid(row=1, column=0, padx=5, pady=5, sticky="w")
+        self.entry_timer = ctk.CTkEntry(container_p, width=TIMER_W)
+        self.entry_timer.insert(0, str(config.get("manual_timer")))
+        self.entry_timer.grid(row=1, column=1, padx=5, pady=5, sticky="w")
+        
+        # --- Modo Area ---
+        frame_area = ctk.CTkFrame(self.tab_capturas)
+        frame_area.pack(fill="x", padx=10, pady=5)
+        ctk.CTkLabel(frame_area, text="Modo Area", font=("Arial", 14, "bold")).pack(anchor="w", padx=10, pady=(5,0))
+        
+        container_a = ctk.CTkFrame(frame_area, fg_color="transparent")
+        container_a.pack(fill="x", padx=10, pady=5)
+        
+        # Fila 0: Atajo
+        ctk.CTkLabel(container_a, text="Atajo:", width=LBL_W, anchor="w").grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        self.entry_shortcut_area = ctk.CTkEntry(container_a, width=ATAJO_W)
+        shortcut_area_val = config.get("shortcut_area") or "ctrl+shift+a"
+        self.entry_shortcut_area.insert(0, str(shortcut_area_val).upper())
+        self.entry_shortcut_area.grid(row=0, column=1, padx=5, pady=5, sticky="w")
+        self.enable_shortcut_recording(self.entry_shortcut_area, 3)
         
         # --- Modo Flujo ---
         frame_flujo = ctk.CTkFrame(self.tab_capturas)
         frame_flujo.pack(fill="x", padx=10, pady=5)
         ctk.CTkLabel(frame_flujo, text="Modo Flujo", font=("Arial", 14, "bold")).pack(anchor="w", padx=10, pady=(5,0))
         
-        container_flujo = ctk.CTkFrame(frame_flujo, fg_color="transparent")
-        container_flujo.pack(fill="x", padx=10, pady=5)
+        container_f = ctk.CTkFrame(frame_flujo, fg_color="transparent")
+        container_f.pack(fill="x", padx=10, pady=5)
         
-        ctk.CTkLabel(container_flujo, text="Pausa Temporal (Teclas):").grid(row=0, column=0, padx=10, pady=5, sticky="w")
-        self.entry_pause = ctk.CTkEntry(container_flujo, width=150)
-        
-        pause_val = config.get("flow_pause_key")
-        if pause_val is None or pause_val == "":
-            pause_val = "CTRL+SHIFT"
-            
+        # Fila 0: Atajo principal (Toggle)
+        ctk.CTkLabel(container_f, text="Atajo:", width=LBL_W, anchor="w").grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        self.entry_shortcut_flow = ctk.CTkEntry(container_f, width=ATAJO_W)
+        shortcut_flow_val = config.get("shortcut_flow") or "ctrl+shift+f"
+        self.entry_shortcut_flow.insert(0, str(shortcut_flow_val).upper())
+        self.entry_shortcut_flow.grid(row=0, column=1, padx=5, pady=5, sticky="w")
+        self.enable_shortcut_recording(self.entry_shortcut_flow, 3)
+
+        # Fila 1: Atajo Pausa
+        ctk.CTkLabel(container_f, text="Pausa:", width=LBL_W, anchor="w").grid(row=1, column=0, padx=5, pady=5, sticky="w")
+        self.entry_pause = ctk.CTkEntry(container_f, width=ATAJO_W)
+        pause_val = config.get("shortcut_flow_pause") or "CTRL+SHIFT"
         self.entry_pause.insert(0, str(pause_val).upper())
-        self.entry_pause.grid(row=0, column=1, padx=10, pady=5, sticky="w")
+        self.entry_pause.grid(row=1, column=1, padx=5, pady=5, sticky="w")
         self.enable_shortcut_recording(self.entry_pause, 2)
         
-        self.btn_clear_pause = ctk.CTkButton(container_flujo, text="Limpiar", width=60, command=self.clear_pause)
-        self.btn_clear_pause.grid(row=0, column=2, padx=10, pady=5)
-        
-        # Opción: Capturar Scroll
-        self.chk_enable_scroll = ctk.CTkCheckBox(container_flujo, text="Habilitar Captura de Scroll Inteligente")
-        self.chk_enable_scroll.grid(row=1, column=0, columnspan=2, padx=10, pady=(10, 5), sticky="w")
+        # Fila 2: Opción de Scroll
+        self.chk_enable_scroll = ctk.CTkCheckBox(container_f, text="Habilitar Captura de Scroll Inteligente")
+        self.chk_enable_scroll.grid(row=2, column=0, columnspan=2, padx=15, pady=(10, 5), sticky="w")
         if bool(config.get("enable_scroll_capture")):
             self.chk_enable_scroll.select()
         else:
@@ -235,10 +255,27 @@ class ConfigApp(ctk.CTk):
 
     def enable_shortcut_recording(self, entry, max_keys):
         entry._recorded_keys = []
+        entry._prev_val = ""
         
         def on_focus(e):
+            # Respaldar valor actual antes de limpiar
+            current = entry.get()
+            if current and current != "Presiona teclas...":
+                entry._prev_val = current
             entry._recorded_keys = []
             entry.delete(0, 'end')
+            entry.configure(placeholder_text="Presiona teclas...")
+        
+        def on_focus_out(e):
+            # Restaurar previo si se pierde foco sin cambios
+            def restore_if_empty():
+                if not entry.get() or not entry._recorded_keys:
+                    entry.delete(0, 'end')
+                    entry.insert(0, entry._prev_val)
+                    entry.configure(placeholder_text="")
+            
+            # Retardo para asegurar procesamiento de eventos globales
+            entry.after(100, restore_if_empty)
             
         def on_key(e):
             if e.keysym.lower() == 'tab':
@@ -264,6 +301,7 @@ class ConfigApp(ctk.CTk):
             return "break"
             
         entry.bind("<FocusIn>", on_focus)
+        entry.bind("<FocusOut>", on_focus_out)
         entry.bind("<KeyPress>", on_key)
         
     def save_and_close(self):
@@ -283,8 +321,10 @@ class ConfigApp(ctk.CTk):
         except ValueError:
             pass
             
-        config.set("shortcut_key", self.entry_shortcut.get().lower())
-        config.set("flow_pause_key", self.entry_pause.get().lower())
+        config.set("shortcut_screen", self.entry_shortcut.get().lower())
+        config.set("shortcut_area", self.entry_shortcut_area.get().lower())
+        config.set("shortcut_flow", self.entry_shortcut_flow.get().lower())
+        config.set("shortcut_flow_pause", self.entry_pause.get().lower())
         config.set("enable_scroll_capture", bool(self.chk_enable_scroll.get()))
         
         if self.on_close_callback:
