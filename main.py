@@ -148,13 +148,13 @@ def main():
     
     menu = pystray.Menu(
         pystray.MenuItem('Abrir_oculto', open_editor_icon, default=True, visible=False),
-        pystray.MenuItem('Capturar ahora', capture_full_menu),
-        pystray.MenuItem(lambda text: 'Detener Flujo' if flow_manager.is_active else 'Iniciar Flujo', toggle_flow_menu),
+        pystray.MenuItem('Capturar pantalla', capture_full_menu),
+        pystray.MenuItem(lambda text: 'Capturar flujo (Detener)' if flow_manager.is_active else 'Capturar flujo (Iniciar)', toggle_flow_menu),
         pystray.Menu.SEPARATOR,
-        pystray.MenuItem('Reiniciar capturador', reload_hooks),
+        pystray.MenuItem('Editor', open_editor_menu),
+        pystray.MenuItem('Configuración', open_config),
         pystray.Menu.SEPARATOR,
-        pystray.MenuItem('Abrir Editor (Galería)', open_editor_menu),
-        pystray.MenuItem('Configuración...', open_config),
+        pystray.MenuItem('Reiniciar', reload_hooks),
         pystray.MenuItem('Salir', quit_app)
     )
     
