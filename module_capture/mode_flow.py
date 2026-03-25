@@ -5,7 +5,7 @@ import mouse
 import keyboard
 import threading
 import tkinter
-from core import config
+from core import config, utils
 from module_capture.capture_screen import capture_screen
 from module_capture import constants as c
 
@@ -17,21 +17,10 @@ class FlowManager:
         self._scroll_check_timer = None
         self._is_manual_scrolling = False
         
-        # Para detección de pausa y cadencia en scroll manual
         self._last_y = 0
         self._velocity_timer = None
-        self._last_captured_y = -1 # Para evitar capturas duplicadas en el mismo sitio
-        self._slow_scroll_start_time = 0 # Temporizador para cadencia
-        self._screen_width = self._get_screen_width()
-
-    def _get_screen_width(self):
-        try:
-            root = tkinter.Tk()
-            width = root.winfo_screenwidth()
-            root.destroy()
-            return width
-        except:
-            return 1920
+        self._last_captured_y = -1
+        self._slow_scroll_start_time = 0
 
     def toggle(self, state=None):
         if state is not None:
@@ -71,6 +60,7 @@ class FlowManager:
 
     def handle_mouse_event(self, event):
         if not self.is_active: return
+        # print(f"Evento mouse detectado: {type(event)}") # Demasiado ruido
         if self._is_paused_by_key(): return
 
         if isinstance(event, mouse.ButtonEvent):
@@ -93,14 +83,17 @@ class FlowManager:
         if event.button == 'left':
             mx, my = mouse.get_position()
             
+            # Dimensiones del monitor activo para zona de scroll dinámica
+            mon_x, mon_y, mon_w, mon_h = utils.get_monitor_at_cursor()
+            rel_x = mx - mon_x
+            
             if event.event_type == 'down':
-                # ¿Zona de scroll y está habilitada la captura de scroll?
                 enable_scroll = config.get("enable_scroll_capture")
-                is_in_zone = enable_scroll and (mx > (self._screen_width * c.SCROLL_ZONE_WIDTH_RATIO) or \
-                             mx > (self._screen_width - c.SCROLL_ZONE_WIDTH_PIXELS))
+                is_in_zone = enable_scroll and (rel_x > (mon_w * c.SCROLL_ZONE_WIDTH_RATIO) or \
+                             rel_x > (mon_w - c.SCROLL_ZONE_WIDTH_PIXELS))
                 
                 if is_in_zone:
-                    print(f"Inicio de Scroll Manual en X={mx}")
+                    print(f"Inicio de Scroll Manual en X relativa={rel_x}")
                     self._is_manual_scrolling = True
                     self._last_y = my
                     self._last_captured_y = my
