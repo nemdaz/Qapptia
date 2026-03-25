@@ -33,9 +33,17 @@ def get_save_directory(base_path, now):
     return full_path
 
 def play_beep_async():
-    """Reproduce el beep de éxito de captura."""
+    """Reproduce el beep de éxito de captura de forma agnóstica."""
     try:
-        winsound.Beep(1500, 150)
+        if sys.platform == "win32":
+            import winsound
+            winsound.Beep(1500, 150)
+        elif sys.platform == "linux":
+            # Intentar usar el sistema de campana de X11 o similar
+            print('\a', end='', flush=True)
+        else:
+            # macOS u otros
+            pass
     except:
         pass
 
@@ -250,6 +258,66 @@ def get_current_cursor(scale):
         cursor_img, hotspot = _get_fallback_cursor(scale)
         
     return cursor_img, hotspot
+
+def set_dpi_awareness():
+    """Configura la consciencia de DPI de forma agnóstica al SO."""
+    if sys.platform == "win32":
+        try:
+            ctypes.windll.shcore.SetProcessDpiAwareness(2) # PROCESS_PER_MONITOR_DPI_AWARE
+        except:
+            try:
+                ctypes.windll.user32.SetProcessDPIAware()
+            except:
+                pass
+    elif sys.platform == "linux":
+        # En Linux, la escala suele gestionarse vía variables de entorno (GDK_SCALE)
+        # o a nivel de toolkit (Qt/GTK), no requiere llamada global de proceso.
+        pass
+    elif sys.platform == "darwin":
+        # macOS gestiona DPI (Retina) de forma nativa y transparente para el proceso.
+        pass
+
+def get_monitor_at_cursor():
+    """Obtiene dimensiones (x, y, w, h) del monitor bajo el cursor."""
+    if sys.platform == "win32":
+        user32 = ctypes.windll.user32
+        pt = wintypes.POINT()
+        user32.GetCursorPos(ctypes.byref(pt))
+        hMonitor = user32.MonitorFromPoint(pt, 1) # MONITOR_DEFAULTTONEAREST
+        
+        class MONITORINFO(ctypes.Structure):
+            _fields_ = [("cbSize", wintypes.DWORD), ("rcMonitor", wintypes.RECT),
+                        ("rcWork", wintypes.RECT), ("dwFlags", wintypes.DWORD)]
+        
+        mi = MONITORINFO()
+        mi.cbSize = ctypes.sizeof(MONITORINFO)
+        user32.GetMonitorInfoW(hMonitor, ctypes.byref(mi))
+        r = mi.rcMonitor
+        return r.left, r.top, r.right - r.left, r.bottom - r.top
+    
+    elif sys.platform == "linux":
+        # TODO: Implementar usando xrandr o librerías específicas de X11/Wayland
+        return 0, 0, 1920, 1080
+    
+    elif sys.platform == "darwin":
+        # TODO: Implementar usando AppKit (NSScreen)
+        return 0, 0, 1920, 1080
+        
+    return 0, 0, 1920, 1080 # Fallback absoluto
+
+def get_virtual_screen_origin():
+    """Obtiene el origen (x, y) del escritorio virtual completo."""
+    if sys.platform == "win32":
+        user32 = ctypes.windll.user32
+        # SM_XVIRTUALSCREEN = 76, SM_YVIRTUALSCREEN = 77
+        return user32.GetSystemMetrics(76), user32.GetSystemMetrics(77)
+    elif sys.platform == "linux":
+        # TODO: Implementar para X11/Wayland viewports
+        return 0, 0
+    elif sys.platform == "darwin":
+        # Apple usa un sistema de coordenadas donde el origen suele ser el monitor principal
+        return 0, 0
+    return 0, 0
 
 def draw_mouse_overlay(screen_image, mouse_x, mouse_y, highlight=False, cursor_data=None):
     """Dibuja el cursor sobre la captura. Permite pasar cursor_data=(img, hotspot) pre-capturado."""

@@ -204,7 +204,6 @@ class EditorSidebar(ctk.CTkFrame):
             for root, dirs, files in os.walk(path):
                 if any(f.lower().endswith(('.png', '.jpg', '.jpeg')) for f in files):
                     has = True; break
-                if len(dirs) > 5: break
         except: pass
         self._has_images_cache[path] = has
         return has

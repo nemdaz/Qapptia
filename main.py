@@ -15,6 +15,11 @@ from module_capture.mode_manual import trigger_manual_capture
 from module_capture.mode_hotkey import setup_hotkeys, on_default_shortcut
 from module_capture.mode_flow import flow_manager
 
+# --- Configuración de consciencia de DPI (Agnóstica al SO) ---
+from core import utils
+utils.set_dpi_awareness()
+# --------------------------------------------------------
+
 # Estado global
 should_exit = False
 should_restart = False
