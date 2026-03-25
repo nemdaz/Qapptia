@@ -17,17 +17,27 @@ def capture_screen(play_sound=True, flow_session_path=None):
         filename = utils.parse_filename_format(config.get("filename_format"), now)
         filepath = os.path.join(downloads_path, filename)
 
-        screen = ImageGrab.grab()
+        # Monitor activo y origen del escritorio virtual
+        mx, my, mw, mh = utils.get_monitor_at_cursor()
+        vx, vy = utils.get_virtual_screen_origin()
+
+        # Captura global y recorte al monitor detectado
+        full_img = ImageGrab.grab(all_screens=True)
+        ix, iy = mx - vx, my - vy
+        screen = full_img.crop((ix, iy, ix + mw, iy + mh))
         
         if config.get("show_mouse"):
             try:
-                x, y = mouse.get_position()
-                # Capturar apariencia real justo antes del screenshot
+                # Posición física del mouse y escala
+                tx, ty = mouse.get_position()
                 scale = utils.get_dpi_scaling()
                 cursor_data = utils.get_current_cursor(scale)
                 
+                # Posición relativa al monitor capturado
+                rel_x, rel_y = (tx - mx) * scale, (ty - my) * scale
+                
                 hl = config.get("highlight_mouse")
-                screen = utils.draw_mouse_overlay(screen, x * scale, y * scale, hl, cursor_data=cursor_data)
+                screen = utils.draw_mouse_overlay(screen, rel_x, rel_y, hl, cursor_data=cursor_data)
             except Exception as ptr_e:
                  print(f"Error dibujo mouse: {ptr_e}")
         
