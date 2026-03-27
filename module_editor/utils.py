@@ -132,6 +132,28 @@ def show_toast(parent, message, duration=2000):
     fade_in()
 
 def hex_to_rgb(hex_color):
-    """Hex a RGB tuple."""
+    # Hex a RGB tuple.
     hex_color = hex_color.lstrip('#')
     return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+
+def is_point_in_rect(px, py, x1, y1, x2, y2, tol=10, hollow=False):
+    # Detección transversal de punto en rectángulo (con filtro estricto).
+    min_x, max_x = min(x1, x2), max(x1, x2)
+    min_y, max_y = min(y1, y2), max(y1, y2)
+    if not (min_x-tol <= px <= max_x+tol and min_y-tol <= py <= max_y+tol): return False
+    if not hollow: return True
+    inner = (min_x+tol < px < max_x-tol) and (min_y+tol < py < max_y-tol)
+    return not inner
+
+def is_point_near_segment(px, py, x1, y1, x2, y2, tol=10):
+    # Detección transversal de punto cerca de un segmento (con filtro de caja).
+    min_x, max_x = min(x1, x2) - tol, max(x1, x2) + tol
+    min_y, max_y = min(y1, y2) - tol, max(y1, y2) + tol
+    if not (min_x <= px <= max_x and min_y <= py <= max_y): return False
+    
+    dx, dy = x2 - x1, y2 - y1
+    l2 = dx*dx + dy*dy
+    if l2 < 1e-6: return ((px-x1)**2 + (py-y1)**2)**0.5 < tol
+    
+    t = max(0, min(1, ((px - x1) * dx + (py - y1) * dy) / l2))
+    return ((px - (x1 + t * dx))**2 + (py - (y1 + t * dy))**2)**0.5 < tol
