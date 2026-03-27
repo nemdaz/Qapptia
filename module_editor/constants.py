@@ -28,13 +28,17 @@ TOOLTIP_FG_COLOR = "#ffffff"
 FAVORITE_COLORS = {
     "green": "#00ff00",
     "red": "#ff0000",
-    "lightblue": "#33BBFF",
+    "blue": "#0078D7",
+    "cyan": "#00B7C3",
+    "yellow": "#F7EB0C",
     "orange": "#ffa500"
 }
 FAVORITE_COLOR_NAMES = {
     "green": "Verde",
     "red": "Rojo",
-    "lightblue": "Azul claro",
+    "blue": "Azul",
+    "cyan": "Celeste",
+    "yellow": "Amarillo",
     "orange": "Naranja"
 }
 DEFAULT_FAV_COLOR = "green"
