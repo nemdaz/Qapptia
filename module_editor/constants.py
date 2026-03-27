@@ -47,9 +47,12 @@ TOOLTIPS = {
     "save": "Guardar cambios",
     "arrow": "Dibujar flecha (A)",
     "rect": "Dibujar rectángulo (R)",
+    "highlighter": "Resaltador (H)",
     "refresh": "Recargar explorador",
     "color_prefix": "Color: "
 }
+
+HIGHLIGHTER_ALPHA = 102
 
 # Fuentes
 FONT_FAMILY = "Arial"

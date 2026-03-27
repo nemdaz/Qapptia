@@ -32,6 +32,7 @@ class VectorCanvas(tk.Canvas):
         self.active_grip = None
         self._drag_start_x = 0
         self._drag_start_y = 0
+        self._photo_cache = [] # Evitar garbage collection de PhotoImages
 
         self._setup_bindings()
 
@@ -88,7 +89,7 @@ class VectorCanvas(tk.Canvas):
 
     def on_zoom(self, event):
         if not self.current_pil_image: return
-        # Coordenadas actuales del mouse en el mundo real de la imagen
+        # Coordenadas reales del mouse
         cx, cy = self.canvasx(event.x), self.canvasy(event.y)
         x_real, y_real = (cx - self.img_x) / self.ratio, (cy - self.img_y) / self.ratio
         
@@ -98,7 +99,7 @@ class VectorCanvas(tk.Canvas):
         
         if self.zoom_level != old_zoom:
             self._render(force_resize=True)
-            # Re-centrar el scroll sobre el punto que estaba bajo el mouse
+            # Re-centrar scroll
             new_cx, new_cy = self.img_x + (x_real * self.ratio), self.img_y + (y_real * self.ratio)
             sr = [float(x) for x in self.cget("scrollregion").split()]
             if sr[2] > 0: self.xview_moveto((self.canvasx(0) + (new_cx - cx)) / sr[2])
@@ -114,6 +115,7 @@ class VectorCanvas(tk.Canvas):
 
     def _redraw_vectors(self):
         self.delete("vector", "grip")
+        self._photo_cache = [] # Limpiar caché de fotos
         v_width = max(1, int(constants.VECTOR_WIDTH * self.zoom_level))
         
         for v in self.vectors:
@@ -131,7 +133,7 @@ class VectorCanvas(tk.Canvas):
         px2, py2 = self.img_x + (x2 * self.ratio), self.img_y + (y2 * self.ratio)
         v_id, v_type = v["id"], v["type"]
 
-        corners = [(px1, py1, "tl"), (px2, py1, "tr"), (px1, py2, "bl"), (px2, py2, "br")] if v_type == "rect" else [(px1, py1, "start"), (px2, py2, "end")]
+        corners = [(px1, py1, "tl"), (px2, py1, "tr"), (px1, py2, "bl"), (px2, py2, "br")] if v_type in ["rect", "highlighter"] else [(px1, py1, "start"), (px2, py2, "end")]
         for cx, cy, ctype in corners:
             self.create_rectangle(cx-r, cy-r, cx+r, cy+r, fill="white", outline="black", tags=("grip", f"grip_{ctype}_{v_id}"))
 
@@ -140,15 +142,14 @@ class VectorCanvas(tk.Canvas):
         self._is_new = False
         cx, cy = self.canvasx(event.x), self.canvasy(event.y)
         
-        # 1. Grips (Controladores)
+        # Buscar controladores
         for g in self.find_withtag("grip"):
             if self._is_point_in_bbox(cx, cy, self.bbox(g)):
                 self.active_grip = self.gettags(g)[1].split("_")[1]
                 self._drag_start_x, self._drag_start_y = cx, cy
                 return
                 
-        # 2. Seleccionar Existente
-        # Priorizamos seleccionar antes de dibujar uno nuevo para permitir edición rápida
+        # Seleccionar existente
         for v in self.find_withtag("vector"):
             b = self.bbox(v)
             if b and (b[0]-5 <= cx <= b[2]+5) and (b[1]-5 <= cy <= b[3]+5):
@@ -162,16 +163,16 @@ class VectorCanvas(tk.Canvas):
                 self._render()
                 return
                 
-        # 3. Nuevo Vector (Dibujo)
+        # Nuevo vector
         if self.draw_mode:
             rx, ry = (cx - self.img_x) / self.ratio, (cy - self.img_y) / self.ratio
             new_id = f"{self.draw_mode}_{len(self.vectors)}"
             
-            # Obtener color actual del editor (master de frame_image)
+            # Color actual del editor
             color = getattr(self.master.master, "current_color_hex", constants.DEFAULT_VECTOR_COLOR)
             
             self.vectors.append({"type": self.draw_mode, "id": new_id, "coords": [rx, ry, rx, ry], "color": color})
-            self.selected_vector_id, self.active_grip = new_id, ("br" if self.draw_mode == "rect" else "end")
+            self.selected_vector_id, self.active_grip = new_id, ("br" if self.draw_mode in ["rect", "highlighter"] else "end")
             self._drag_start_x, self._drag_start_y = cx, cy
             self._is_new = True
             self._render(force_resize=False)

@@ -57,11 +57,52 @@ class ArrowTool(BaseTool):
         for a in [-math.pi/6, math.pi/6]:
             draw.line([x2, y2, x2 - wlen * math.cos(ang-a), y2 - wlen * math.sin(ang-a)], fill=color, width=width)
 
+class HighlighterTool(BaseTool):
+    """Estrategia para dibujo de resaltadores (Rectángulos rellenos con transparencia)."""
+    def render(self, canvas, coords, color, width, zoom_level, ratio, img_x, img_y, v_id):
+        x1, y1, x2, y2 = coords
+        px1, py1 = img_x + (x1 * ratio), img_y + (y1 * ratio)
+        px2, py2 = img_x + (x2 * ratio), img_y + (y2 * ratio)
+        
+        # Dimensiones del resaltador
+        w = int(abs(px2 - px1))
+        h = int(abs(py2 - py1))
+        if w < 1 or h < 1: return
+        
+        # Imagen PIL con transparencia
+        from module_editor import utils
+        from PIL import ImageTk, Image
+        r, g, b = utils.hex_to_rgb(color)
+        
+        # Obtener alpha paramétrico
+        alpha = constants.HIGHLIGHTER_ALPHA
+        
+        overlay = Image.new("RGBA", (w, h), (r, g, b, alpha))
+        tk_img = ImageTk.PhotoImage(overlay)
+        
+        # Caché para evitar garbage collection
+        if hasattr(canvas, "_photo_cache"):
+            canvas._photo_cache.append(tk_img)
+        
+        # Dibujar como imagen en el Canvas
+        canvas.create_image(min(px1, px2), min(py1, py2), image=tk_img, anchor="nw",
+                            tags=("vector", v_id, "type_highlighter"))
+
+    def render_native(self, draw, coords, color, width, base_ratio):
+        x1, y1, x2, y2 = coords
+        from module_editor import utils
+        r, g, b = utils.hex_to_rgb(color)
+        alpha = constants.HIGHLIGHTER_ALPHA
+        # Rectángulo relleno con transparencia Alpha en PIL
+        draw.rectangle([min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2)], 
+                       fill=(r, g, b, alpha))
+
 class ToolDispatcher:
     """Gestor de estrategias de herramientas."""
     _tools = {
         "rect": RectTool(),
-        "arrow": ArrowTool()
+        "arrow": ArrowTool(),
+        "highlighter": HighlighterTool()
     }
     
     @classmethod

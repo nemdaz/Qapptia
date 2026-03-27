@@ -6,15 +6,14 @@ def create_refresh_icon(color="white"):
     d = ImageDraw.Draw(img)
     w = 2
     
-    # Cabeza de la flecha en la esquina superior derecha
+    # Cabeza de flecha
     d.line([(21, 3), (21, 8)], fill=color, width=w, joint="curve")
     d.line([(21, 8), (16, 8)], fill=color, width=w, joint="curve")
     
-    # Unión de la cabeza al arco
+    # Unión al arco
     d.line([(21, 8), (18, 5.3)], fill=color, width=w, joint="curve")
     
-    # Arco abierto que rodea el centro
-    # El SVG parte aproximadamente desde el ángulo 25° y muere en 315° (-45°)
+    # Arco abierto
     d.arc([3, 3, 21, 21], start=25, end=315, fill=color, width=w)
     
     return img
@@ -41,8 +40,8 @@ def create_arrow_icon(color="white"):
     img = Image.new("RGBA", (24, 24), (255, 255, 255, 0))
     d = ImageDraw.Draw(img)
     w = 2
-    # d="M19 13v6m0 0h-6m6 0L5 5" (Modificamos 19,13 por algo visualmente centrado)
-    d.line([(5, 5), (19, 19)], fill=color, width=w) # L5 5 -> 19 19
+    # Cuerpo de flecha
+    d.line([(5, 5), (19, 19)], fill=color, width=w)
     d.line([(19, 13), (19, 19)], fill=color, width=w) # v6
     d.line([(13, 19), (19, 19)], fill=color, width=w) # h-6
     return img
@@ -57,11 +56,11 @@ def create_copy_file_icon(color="white"):
     img = Image.new("RGBA", (24, 24), (255, 255, 255, 0))
     d = ImageDraw.Draw(img)
     w = 2
-    # Documento trasero
+    # Doc trasero
     d.line([(3.5, 10), (3.5, 22), (14, 22)], fill=color, width=w, joint="curve")
     d.line([(9.5, 10), (11.5, 10)], fill=color, width=w)
     d.line([(9.5, 14), (15.5, 14)], fill=color, width=w)
-    # Documento frontal
+    # Doc frontal
     d.polygon([(6.5, 19), (20.5, 19), (20.5, 8), (15, 8), (15, 2), (6.5, 2)], outline=color, width=w)
     d.line([(15, 2), (20.5, 8)], fill=color, width=w) # Doblez
     return img
@@ -71,22 +70,22 @@ def create_copy_clipboard_icon(color="white"):
     d = ImageDraw.Draw(img)
     w = 2
 
-    # Clip superior (Grapadora del portapapeles)
+    # Clip superior
     d.rounded_rectangle([9, 3, 15, 7], radius=2, outline=color, width=w)
     
-    # Contorno Izquierdo de la Tabla
+    # Contorno izquierdo
     d.line([(9, 5), (7, 5)], fill=color, width=w)
     d.arc([5, 5, 9, 9], start=180, end=270, fill=color, width=w)  # curva sup-izq
     d.line([(5, 7), (5, 19)], fill=color, width=w)
     d.arc([5, 17, 9, 21], start=90, end=180, fill=color, width=w) # curva inf-izq
     d.line([(7, 21), (12, 21)], fill=color, width=w)
     
-    # Contorno Derecho de la Tabla
+    # Contorno derecho
     d.line([(15, 5), (17, 5)], fill=color, width=w)
     d.arc([15, 5, 19, 9], start=270, end=360, fill=color, width=w) # curva sup-der
     d.line([(19, 7), (19, 13)], fill=color, width=w)
     
-    # Símbolo Copy interno (L invertida atrás, rounded rect adelante)
+    # Símbolo Copy
     # L atrás:
     d.line([(13, 19), (13, 14)], fill=color, width=w)
     d.arc([13, 13, 15, 15], start=180, end=270, fill=color, width=w) # curva de L
@@ -100,11 +99,11 @@ def create_save_icon(color="white"):
     img = Image.new("RGBA", (24, 24), (255, 255, 255, 0))
     d = ImageDraw.Draw(img)
     
-    # Borde de disquete
+    # Borde disquete
     d.rectangle([4, 4, 20, 20], outline=color, width=2)
-    # Etiqueta superior
+    # Etiqueta
     d.rectangle([8, 4, 16, 10], fill=color)
-    # Slider metálico inferior
+    # Slider
     d.rectangle([7, 14, 17, 20], outline=color, width=2)
     return img
 
@@ -160,15 +159,25 @@ def create_folder_collapsed_icon(color="white"):
     return img
 
 def create_color_square_icon(hex_color, size=(24, 24), padding=4):
-    """Genera un icono de un cuadrado de color sólido con bordes redondeados suaves."""
+    """Icono de color sólido."""
     img = Image.new("RGBA", size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
     
-    # Dibujar el cuadrado de color con un ligero borde
+    # Cuadrado con borde
     x1, y1 = padding, padding
     x2, y2 = size[0] - padding, size[1] - padding
     draw.rounded_rectangle([x1, y1, x2, y2], radius=3, fill=hex_color, outline="#444444", width=1)
     
+    return img
+
+def create_highlighter_icon(color="white"):
+    img = Image.new("RGBA", (24, 24), (255, 255, 255, 0))
+    d = ImageDraw.Draw(img)
+    w = 2
+    # Cuerpo del resaltador
+    d.polygon([(16, 4), (20, 8), (10, 18), (6, 14)], outline=color, width=w)
+    # Punta gruesa
+    d.polygon([(6, 14), (10, 18), (8, 20), (4, 16)], fill=color)
     return img
 
 _refresh_img = create_refresh_icon()
@@ -181,6 +190,7 @@ _rect_img = create_rect_icon()
 _copy_file_img = create_copy_file_icon()
 _copy_clip_img = create_copy_clipboard_icon()
 _folder_collapsed_img = create_folder_collapsed_icon()
+_highlighter_img = create_highlighter_icon()
 
 _icon_cache = {}
 
@@ -210,6 +220,8 @@ def get_icon(name, size=(20, 20)):
         img = ctk.CTkImage(light_image=_copy_clip_img, dark_image=_copy_clip_img, size=size)
     elif name == "folder_collapsed":
         img = ctk.CTkImage(light_image=_folder_collapsed_img, dark_image=_folder_collapsed_img, size=size)
+    elif name == "highlighter":
+        img = ctk.CTkImage(light_image=_highlighter_img, dark_image=_highlighter_img, size=size)
         
     if img:
         _icon_cache[cache_key] = img

@@ -38,26 +38,24 @@ class Tooltip:
             self.tooltip_window = None
 
 def copy_image_to_clipboard(pil_image):
-    """Envía la imagen al portapapeles de Windows de forma instantánea usando Win32 API."""
+    """Copia al portapapeles (Win32 API)."""
     if not pil_image:
         return False
 
     try:
-        # 1. Convertir imagen a formato BMP de Windows (DIB)
+        # Convertir a BMP (DIB)
         output = io.BytesIO()
         pil_image.convert("RGB").save(output, format="BMP")
-        data = output.getvalue()[14:]  # Omitir los 14 bytes de cabecera del archivo BMP
+        data = output.getvalue()[14:] # Omitir cabecera BMP
         output.close()
 
-        # 2. Definir constantes y funciones de Win32
+        # Win32 API
         CF_DIB = 8
         GMEM_MOVEABLE = 0x0002
         
         user32 = ctypes.windll.user32
         kernel32 = ctypes.windll.kernel32
         
-        # Tipar las funciones para evitar truncamiento de punteros (crítico en 64 bits)
-        kernel32.GlobalAlloc.restype = wintypes.HGLOBAL
         kernel32.GlobalAlloc.argtypes = [wintypes.UINT, ctypes.c_size_t]
         kernel32.GlobalLock.restype = wintypes.LPVOID
         kernel32.GlobalLock.argtypes = [wintypes.HGLOBAL]
@@ -65,7 +63,7 @@ def copy_image_to_clipboard(pil_image):
         user32.OpenClipboard.argtypes = [wintypes.HWND]
         user32.SetClipboardData.argtypes = [wintypes.UINT, wintypes.HANDLE]
 
-        # 3. Reservar memoria global para los datos
+        # Memoria global
         h_mem = kernel32.GlobalAlloc(GMEM_MOVEABLE, len(data))
         if not h_mem: return False
             
@@ -75,7 +73,7 @@ def copy_image_to_clipboard(pil_image):
         ctypes.memmove(p_mem, data, len(data))
         kernel32.GlobalUnlock(h_mem)
         
-        # 4. Interactuar con el portapapeles
+        # Portapapeles
         if user32.OpenClipboard(None):
             try:
                 user32.EmptyClipboard()
@@ -89,14 +87,13 @@ def copy_image_to_clipboard(pil_image):
         return False
 
 def show_toast(parent, message, duration=2000):
-    """Muestra una notificación flotante de alto contraste."""
+    """Notificación flotante."""
     toast = tk.Toplevel(parent)
     toast.overrideredirect(True)
     toast.attributes("-topmost", True)
     toast.attributes("-alpha", 0.0)
     
-    # Establecer fondo transparente (opcional según el sistema)
-    toast.config(bg="gray10") # Color base oscuro
+    toast.config(bg="gray10")
 
     frame = ctk.CTkFrame(toast, fg_color="#333333", corner_radius=10, border_width=1, border_color="gray50")
     frame.pack(padx=2, pady=2)
@@ -104,9 +101,7 @@ def show_toast(parent, message, duration=2000):
     label = ctk.CTkLabel(frame, text=message, font=("Arial", 13, "bold"), text_color="white", padx=20, pady=10)
     label.pack()
 
-    # Cálculo de posición más robusto
-    toast.update_idletasks()
-    # Usamos winfo_rootx/y del padre para posición absoluta en pantalla
+    # Posición de centrado
     px = parent.winfo_rootx() + (parent.winfo_width() // 2)
     py = parent.winfo_rooty() + (parent.winfo_height() // 2)
     
@@ -135,3 +130,8 @@ def show_toast(parent, message, duration=2000):
             toast.destroy()
 
     fade_in()
+
+def hex_to_rgb(hex_color):
+    """Hex a RGB tuple."""
+    hex_color = hex_color.lstrip('#')
+    return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))

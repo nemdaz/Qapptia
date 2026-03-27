@@ -17,7 +17,7 @@ class EditorApp(ctk.CTk):
     def __init__(self):
         super().__init__()
         
-        # Iniciar servidor IPC lo más pronto posible para evitar condiciones de carrera
+        # Servidor IPC
         ipc.start_ipc_server(self.wake_up)
         
         self.title(constants.WINDOW_TITLE)
@@ -32,7 +32,7 @@ class EditorApp(ctk.CTk):
         self.active_color_btn = None
         self.color_btns = {}
         
-        # Cargar estado persistente
+        # Cargar estado
         self.editor_state = state_manager.load_state()
         self.current_color_name = self.editor_state.get("active_fav_color", constants.DEFAULT_FAV_COLOR)
         self.current_color_hex = constants.FAVORITE_COLORS.get(self.current_color_name, "#00ff00")
@@ -50,14 +50,14 @@ class EditorApp(ctk.CTk):
         """Intenta traer la ventana al frente con seguridad."""
         try:
             self.deiconify()
-            # Forzar ventana al frente en Windows
+            # Forzar ventana al frente
             self.attributes("-topmost", True)
             self.attributes("-topmost", False)
             self.lift()
             self.focus_force()
         except Exception as e:
             print(f"Error al intentar enfocar el editor: {e}")
-            # Fallback mínimo: al menos intentar desminimizar
+            # Fallback: desminimizar
             try: self.deiconify()
             except: pass
             
@@ -74,7 +74,7 @@ class EditorApp(ctk.CTk):
             widget = self.winfo_containing(event.x_root, event.y_root)
             if not widget: return
             w_str = str(widget)
-            # No deseleccionar si el clic es en la herramienta actual, el canvas o la toolbar
+            # Evitar deselección en herramientas o canvas
             if (w_str.startswith(str(self.active_tool_btn)) or 
                 w_str.startswith(str(self.vector_canvas)) or
                 w_str.startswith(str(self.toolbar))):
@@ -88,11 +88,11 @@ class EditorApp(ctk.CTk):
         self.grid_columnconfigure(1, weight=0, minsize=5) 
         self.grid_columnconfigure(2, weight=0, minsize=constants.SIDEBAR_WIDTH)
         
-        # --- Toolbar ---
+        # Toolbar
         self.toolbar = ctk.CTkFrame(self, height=50)
         self.toolbar.grid(row=0, column=0, columnspan=3, sticky="ew", padx=10, pady=(10, 0))
         
-        # Botones de Acción
+        # Acciones
         self.btn_save = self._create_toolbar_btn("save", self.save_rotation, constants.TOOLTIPS["save"])
         self.btn_save.configure(state="disabled")
         
@@ -103,17 +103,18 @@ class EditorApp(ctk.CTk):
         # Separador
         ctk.CTkFrame(self.toolbar, width=2, height=30, fg_color="gray30").pack(side="left", padx=10, pady=10)
         
-        # Botones        # Herramientas de Dibujo
+        # Herramientas de dibujo
         self.btn_arrow = self._create_toolbar_btn("arrow", lambda: self.set_tool("arrow"), constants.TOOLTIPS["arrow"])
         self.btn_rect = self._create_toolbar_btn("rect", lambda: self.set_tool("rect"), constants.TOOLTIPS["rect"])
+        self.btn_highlighter = self._create_toolbar_btn("highlighter", lambda: self.set_tool("highlighter"), constants.TOOLTIPS["highlighter"])
         
         # Separador
         ctk.CTkFrame(self.toolbar, width=2, height=30, fg_color="gray30").pack(side="left", padx=10, pady=10)
         
-        # --- Colores Favoritos ---
+        # Colores favoritos
         self._create_favorites_palette()
         
-        # --- Canvas y Scrollbars ---
+        # Canvas y scrollbars
         self.frame_image = ctk.CTkFrame(self)
         self.frame_image.grid(row=1, column=0, sticky="nsew", padx=(10, 5), pady=10)
         self.frame_image.grid_rowconfigure(0, weight=1)
@@ -126,14 +127,14 @@ class EditorApp(ctk.CTk):
         self.h_scrollbar = ctk.CTkScrollbar(self.frame_image, orientation="horizontal", command=self.vector_canvas.xview)
         self.vector_canvas.configure(yscrollcommand=self.v_scrollbar.set, xscrollcommand=self.h_scrollbar.set)
         
-        # --- Drag Handle (Sidebar Resize) ---
+        # Redimensionado lateral
         self.drag_handle = ctk.CTkFrame(self, width=5, cursor="sb_h_double_arrow", fg_color="transparent")
         self.drag_handle.grid(row=1, column=1, sticky="ns", pady=10)
         self.drag_handle.bind("<B1-Motion>", self.resize_sidebar)
         self.drag_handle.bind("<Enter>", lambda e: self.drag_handle.configure(fg_color="gray50"))
         self.drag_handle.bind("<Leave>", lambda e: self.drag_handle.configure(fg_color="transparent"))
         
-        # --- Sidebar ---
+        # Sidebar
         self.sidebar = EditorSidebar(self, on_image_selected_callback=self.show_image)
         self.sidebar.grid(row=1, column=2, sticky="nsew", padx=(0, 10), pady=10)
 
@@ -148,7 +149,7 @@ class EditorApp(ctk.CTk):
         return btn
 
     def _create_favorites_palette(self):
-        """Crea la hilera de botones de colores favoritos usando constantes centralizadas."""
+        """Fila de colores favoritos."""
         for name, hex_val in constants.FAVORITE_COLORS.items():
             icon_img = assets.create_color_square_icon(hex_val)
             ctk_icon = ctk.CTkImage(light_image=icon_img, dark_image=icon_img, size=(20, 20))
@@ -175,7 +176,7 @@ class EditorApp(ctk.CTk):
         self.vector_canvas.change_selected_color(hex_val)
 
     def update_color_ui(self):
-        """Actualiza el resaltado visual de los botones de color mediante bordes."""
+        """UI de selección de color."""
         for name, btn in self.color_btns.items():
             if name == self.current_color_name:
                 btn.configure(border_width=2, border_color=constants.ACTIVE_TOOL_COLOR)
@@ -184,7 +185,7 @@ class EditorApp(ctk.CTk):
                 btn.configure(border_width=0)
 
     def load_latest_image(self):
-        """Carga la imagen desde el histórico o busca la más reciente en disco."""
+        """Cargar última imagen."""
         state = state_manager.load_state()
         last_file = state.get("last_selected_file")
         
@@ -233,7 +234,10 @@ class EditorApp(ctk.CTk):
         if self.active_tool_btn:
             self.active_tool_btn.configure(border_width=0)
             
-        btn = self.btn_arrow if tool == "arrow" else (self.btn_rect if tool == "rect" else None)
+        btn = None
+        if tool == "arrow": btn = self.btn_arrow
+        elif tool == "rect": btn = self.btn_rect
+        elif tool == "highlighter": btn = self.btn_highlighter
             
         if btn and self.active_tool_btn != btn:
             self.active_tool_btn = btn
