@@ -38,52 +38,53 @@ class Tooltip:
             self.tooltip_window = None
 
 def copy_image_to_clipboard(pil_image):
-    """Copia al portapapeles (Win32 API)."""
-    if not pil_image:
-        return False
-
+    # Copia al portapapeles usando Win32 API con firmas estrictas (x64 compatible).
+    if not pil_image: return False
     try:
-        # Convertir a BMP (DIB)
         output = io.BytesIO()
         pil_image.convert("RGB").save(output, format="BMP")
-        data = output.getvalue()[14:] # Omitir cabecera BMP
+        data = output.getvalue()[14:] # BITMAPINFOHEADER + Pixels
         output.close()
 
-        # Win32 API
         CF_DIB = 8
-        GMEM_MOVEABLE = 0x0002
-        
+        GMEM_MOVEABLE = 2
         user32 = ctypes.windll.user32
         kernel32 = ctypes.windll.kernel32
-        
-        kernel32.GlobalAlloc.argtypes = [wintypes.UINT, ctypes.c_size_t]
-        kernel32.GlobalLock.restype = wintypes.LPVOID
-        kernel32.GlobalLock.argtypes = [wintypes.HGLOBAL]
-        kernel32.GlobalUnlock.argtypes = [wintypes.HGLOBAL]
-        user32.OpenClipboard.argtypes = [wintypes.HWND]
-        user32.SetClipboardData.argtypes = [wintypes.UINT, wintypes.HANDLE]
 
-        # Memoria global
+        # Definir firmas para evitar truncamiento de punteros en 64 bits
+        kernel32.GlobalAlloc.argtypes = [wintypes.UINT, ctypes.c_size_t]
+        kernel32.GlobalAlloc.restype = wintypes.HGLOBAL
+        kernel32.GlobalLock.argtypes = [wintypes.HGLOBAL]
+        kernel32.GlobalLock.restype = wintypes.LPVOID
+        kernel32.GlobalUnlock.argtypes = [wintypes.HGLOBAL]
+        kernel32.GlobalUnlock.restype = wintypes.BOOL
+        user32.OpenClipboard.argtypes = [wintypes.HWND]
+        user32.OpenClipboard.restype = wintypes.BOOL
+        user32.EmptyClipboard.restype = wintypes.BOOL
+        user32.SetClipboardData.argtypes = [wintypes.UINT, wintypes.HANDLE]
+        user32.SetClipboardData.restype = wintypes.HANDLE
+        user32.CloseClipboard.restype = wintypes.BOOL
+
         h_mem = kernel32.GlobalAlloc(GMEM_MOVEABLE, len(data))
         if not h_mem: return False
-            
         p_mem = kernel32.GlobalLock(h_mem)
         if not p_mem: return False
-            
+        
         ctypes.memmove(p_mem, data, len(data))
         kernel32.GlobalUnlock(h_mem)
-        
-        # Portapapeles
+
         if user32.OpenClipboard(None):
             try:
                 user32.EmptyClipboard()
-                user32.SetClipboardData(CF_DIB, h_mem)
+                if not user32.SetClipboardData(CF_DIB, h_mem):
+                    # print("Error: SetClipboardData falló.")
+                    pass
             finally:
                 user32.CloseClipboard()
             return True
         return False
     except Exception as e:
-        print(f"Error nativo al copiar al clipboard: {e}")
+        # print(f"Error nativo al copiar al clipboard: {e}")
         return False
 
 def show_toast(parent, message, duration=2000):
