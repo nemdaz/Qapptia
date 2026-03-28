@@ -1,12 +1,20 @@
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
-
-# Virtual environments
-venv/
-env/
-ENV/
 .env
+.venv
+env/
+venv/
+ENV/
+
+# PyInstaller / Build
+build/
+dist/
+releases/
+*.spec
+*.zip
+!release_assets/*.zip
 
 # OS generated files
 .DS_Store
@@ -16,3 +24,4 @@ ENV/
 .Trashes
 ehthumbs.db
 Thumbs.db
+config.json
