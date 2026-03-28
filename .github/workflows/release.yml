@@ -27,7 +27,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Build with PyInstaller
-        run: python build.py
+        run: python build.py --version ${{ github.ref_name }}
 
       - name: Get App Name
         shell: pwsh
@@ -38,7 +38,7 @@ jobs:
       - name: Create Release and Upload Asset
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ env.APP_NAME }}-v*.zip
+          files: releases/${{ env.APP_NAME }}-v*.zip
           draft: false
           prerelease: contains(github.ref, 'alpha') || contains(github.ref, 'beta')
           generate_release_notes: true

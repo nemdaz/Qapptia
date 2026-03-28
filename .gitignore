@@ -11,6 +11,7 @@ ENV/
 # PyInstaller / Build
 build/
 dist/
+releases/
 *.spec
 *.zip
 !release_assets/*.zip
