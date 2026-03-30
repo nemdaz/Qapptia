@@ -192,7 +192,7 @@ class CaptureAreaUI:
             if self.on_capture_callback:
                 self.on_capture_callback(filepath)
             
-            threading.Thread(target=utils.play_beep_async, daemon=True).start()
+            utils.play_beep_async() # Llamada pos-procesamiento para observar impacto
             print(f"Área capturada: {filepath}")
         except Exception as e:
             print(f"Error al guardar captura de área: {e}")

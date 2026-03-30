@@ -41,11 +41,12 @@ def capture_screen(play_sound=True, flow_session_path=None):
             except Exception as ptr_e:
                  print(f"Error dibujo mouse: {ptr_e}")
         
+        # El guardado a disco (PNG) causa latencias de 100ms-400ms.
         screen.save(filepath, 'PNG', quality=config.get("image_quality"))
         
         if play_sound:
-            threading.Thread(target=utils.play_beep_async, daemon=True).start()
-        
+            utils.play_beep_async() # Llamada post-procesamiento
+            
         print(f"Captura guardada: {filepath}")
     except Exception as e:
         print(f"Error captura: {e}")

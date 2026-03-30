@@ -3,6 +3,9 @@ import sys
 import winsound
 import ctypes
 import platform
+import time
+import keyboard
+import subprocess
 from ctypes import wintypes
 from PIL import ImageDraw, Image, ImageFilter
 from core import config
@@ -32,20 +35,37 @@ def get_save_directory(base_path, now):
         os.makedirs(full_path, exist_ok=True)
     return full_path
 
+# Caché global para datos de audio (evita latencia de disco)
+_AUDIO_CACHE = {}
+
 def play_beep_async():
-    """Reproduce el beep de éxito de captura de forma agnóstica."""
+    """Reproduce el sonido de obturador profesional con precarga y telemetría."""
+    timestamp = time.strftime('%H:%M:%S')
+    print(f"[AUDIO] Solicitud de reproducción a las {timestamp}")
+    global _AUDIO_CACHE
     try:
         if sys.platform == "win32":
-            import winsound
-            winsound.Beep(1500, 150)
+            sound_key = "shutter"
+            
+            if sound_key not in _AUDIO_CACHE:
+                sound_path = get_resource_path(os.path.join("core", "assets", "sounds", "shutter_a.wav"))
+                print(f"[AUDIO] Verificando archivo local: {sound_path}")
+                if os.path.exists(sound_path):
+                    _AUDIO_CACHE[sound_key] = sound_path
+                    print("[AUDIO] Ruta de audio referenciada exitosamente.")
+                else:
+                    print("[AUDIO] ERROR: Archivo no encontrado. Ejecutando Beep de emergencia.")
+                    winsound.Beep(1500, 150)
+                    return
+
+            # Reproducción instantánea desde archivo caché por OS
+            winsound.PlaySound(_AUDIO_CACHE[sound_key], winsound.SND_FILENAME | winsound.SND_ASYNC)
+            print("[AUDIO] Comando PlaySound enviado al OS.")
+            
         elif sys.platform == "linux":
-            # Intentar usar el sistema de campana de X11 o similar
             print('\a', end='', flush=True)
-        else:
-            # macOS u otros
-            pass
-    except:
-        pass
+    except Exception as e:
+        print(f"[AUDIO] Error al reproducir audio: {e}")
 
 def parse_filename_format(base_format, now_datetime):
     """Pule y devuelve el string final usando los tokens amigables."""
@@ -91,7 +111,6 @@ def _get_dpi_linux():
         if 'GDK_SCALE' in os.environ:
             return float(os.environ['GDK_SCALE'])
         # Fallback a xrandr si está disponible
-        import subprocess
         res = subprocess.check_output(['xrandr', '--current'], stderr=subprocess.STDOUT).decode()
         if ' connected primary' in res:
              # Lógica simplificada: comparar resoluciones si es necesario
@@ -357,13 +376,27 @@ def draw_mouse_overlay(screen_image, mouse_x, mouse_y, highlight=False, cursor_d
     return screen_image
 
 def register_hotkey(hotkey, callback, description=""):
-    """Registra un atajo de teclado de forma segura con log de consola."""
-    import keyboard
+    """Registra un atajo de teclado con validación de estado físico de modificadores."""
     if not hotkey: return False
+    
+    # Desglosamos el atajo para identificar teclas modificadoras (ctrl, shift, alt)
+    parts = [p.strip().lower() for p in hotkey.split('+')]
+    modifiers = [p for p in parts if p in ('ctrl', 'shift', 'alt', 'windows', 'cmd')]
+    
+    def safe_callback():
+        """Validador de modificadores para prevenir activaciones accidentales."""
+        time.sleep(0.05)
+        if all(keyboard.is_pressed(m) for m in modifiers):
+             print(f"[HOTKEY] Disparando '{description}' ({hotkey})")
+             callback()
+        else:
+             print(f"[HOTKEY] Ignorada activacion de tecla solitaria: '{hotkey}'")
+             
     try:
-        keyboard.add_hotkey(hotkey, callback)
+        # Usamos suppress=False para no interferir con otras apps (más estable)
+        keyboard.add_hotkey(hotkey, safe_callback, suppress=False)
         desc_str = f"({description})" if description else ""
-        print(f"Atajo {desc_str} '{hotkey}' registrado con éxito.")
+        print(f"Atajo {desc_str} '{hotkey}' registrado (Protegido).")
         return True
     except Exception as e:
         print(f"Error al registrar atajo {description} '{hotkey}': {e}")
