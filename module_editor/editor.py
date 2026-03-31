@@ -103,6 +103,27 @@ class EditorApp(ctk.CTk):
         # Separador
         ctk.CTkFrame(self.toolbar, width=2, height=30, fg_color="gray30").pack(side="left", padx=10, pady=10)
         
+        # --- Control de Zoom ---
+        self.zoom_values = constants.ZOOM_PRESETS
+        self.zoom_var = ctk.StringVar(value="100%")
+        self.zoom_combo = ctk.CTkComboBox(
+            self.toolbar, 
+            values=self.zoom_values, 
+            variable=self.zoom_var, 
+            width=80,
+            command=self._on_zoom_combo_select
+        )
+        self.zoom_combo.pack(side="left", padx=5, pady=10)
+        
+        self.zoom_combo.bind("<Return>", self._on_zoom_combo_enter)
+        self.zoom_var.trace_add("write", self._validate_zoom_input)
+        
+        self.btn_fit = self._create_toolbar_btn("fit", self.fit_image_to_canvas, constants.TOOLTIPS["fit"])
+        # -----------------------
+        
+        # Separador
+        ctk.CTkFrame(self.toolbar, width=2, height=30, fg_color="gray30").pack(side="left", padx=10, pady=10)
+        
         # Herramientas de dibujo
         self.btn_arrow = self._create_toolbar_btn("arrow", lambda: self.set_tool("arrow"), constants.TOOLTIPS["arrow"])
         self.btn_rect = self._create_toolbar_btn("rect", lambda: self.set_tool("rect"), constants.TOOLTIPS["rect"])
@@ -249,6 +270,14 @@ class EditorApp(ctk.CTk):
 
     def update_scrollbar_visibility(self):
         self.update_idletasks()
+        
+        # Sincronizar el combobox de zoom si cambió con la rueda del ratón
+        if hasattr(self, 'zoom_var') and self.vector_canvas:
+            current_zoom = int(self.vector_canvas.zoom_level * 100)
+            if self.zoom_var.get() != f"{current_zoom}%":
+                # Deshabilitamos temporalmente el trace si es posible, o simplemente seteamos con cuidado
+                self.zoom_var.set(f"{current_zoom}%")
+
         sr = self.vector_canvas.cget("scrollregion")
         if not sr: return
         _, _, sr_w, sr_h = map(float, sr.split())
@@ -282,6 +311,19 @@ class EditorApp(ctk.CTk):
             self.update() # Refrescar portapapeles
             utils.show_toast(self, "¡Ruta copiada!")
 
+    def fit_image_to_canvas(self):
+        if not self.current_pil_image: return
+        self.set_tool(None)
+        
+        cw, ch = self.vector_canvas.winfo_width(), self.vector_canvas.winfo_height()
+        if cw < 10 or ch < 10: cw, ch = constants.MIN_WIDTH, constants.MIN_HEIGHT
+        iw, ih = self.current_pil_image.size
+        fit_zoom = min(cw/iw, ch/ih)
+        fit_zoom = fit_zoom if fit_zoom < 1.0 else 1.0
+        
+        self.vector_canvas.set_zoom_level(fit_zoom)
+        self.zoom_var.set(f"{int(fit_zoom * 100)}%")
+
     def save_rotation(self):
         if self.current_pil_image and self.current_image_path and self.current_rotation != 0:
             self.set_tool(None)
@@ -294,6 +336,31 @@ class EditorApp(ctk.CTk):
                 utils.show_toast(self, "¡Imagen guardada!")
             except Exception as e:
                 utils.show_toast(self, "Error al guardar")
+
+    def _validate_zoom_input(self, *args):
+        val = self.zoom_var.get()
+        # Solo permitir digitos y %, maximo 4 digitos
+        digits = ''.join([c for c in val if c.isdigit()])
+        if len(digits) > 4:
+            digits = digits[:4]
+            # Mantenemos el simbolo % si el usuario lo escribio
+            self.zoom_var.set(digits + ("%" if "%" in val else ""))
+
+    def _on_zoom_combo_enter(self, event=None):
+        val = self.zoom_var.get()
+        digits = ''.join([c for c in val if c.isdigit()])
+        if not digits:
+            digits = "100"
+            
+        zm = int(digits)
+        if zm < 1: zm = 1
+        
+        self.zoom_var.set(f"{zm}%")
+        self.vector_canvas.set_zoom_level(zm / 100.0)
+        
+    def _on_zoom_combo_select(self, val):
+        self.focus_set() # Quitar foco del combobox
+        self._on_zoom_combo_enter()
 
 if __name__ == "__main__":
     app = EditorApp()

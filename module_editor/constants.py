@@ -11,9 +11,10 @@ SIDEBAR_WIDTH = 250
 ICON_SIZE = (20, 20)
 
 # Zoom
-ZOOM_MIN = 0.1
-ZOOM_MAX = 5.0
-ZOOM_STEP = 1.1
+ZOOM_MIN = 0.01
+ZOOM_MAX = 10.0
+ZOOM_STEP = 1.2
+ZOOM_PRESETS = ["1%", "10%", "25%", "50%", "100%", "150%", "200%", "250%", "300%", "350%", "400%", "450%", "500%", "550%", "600%"]
 
 # Colores de UI
 BG_COLOR_DARK = "#2b2b2b"
@@ -53,7 +54,8 @@ TOOLTIPS = {
     "rect": "Dibujar rectángulo (R)",
     "highlighter": "Resaltador (H)",
     "refresh": "Recargar explorador",
-    "color_prefix": "Color: "
+    "color_prefix": "Color: ",
+    "fit": "Ajustar imagen"
 }
 
 HIGHLIGHTER_ALPHA = 102

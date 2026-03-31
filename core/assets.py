@@ -180,6 +180,21 @@ def create_highlighter_icon(color="white"):
     d.polygon([(6, 14), (10, 18), (8, 20), (4, 16)], fill=color)
     return img
 
+def create_fit_icon(color="white"):
+    img = Image.new("RGBA", (24, 24), (255, 255, 255, 0))
+    d = ImageDraw.Draw(img)
+    
+    # Cuadrado principal
+    d.rectangle([5, 5, 18, 18], outline=color, width=1)
+    
+    # Triángulo en la esquina superior izquierda (apuntando afuera)
+    d.polygon([(2, 2), (8, 2), (2, 8)], fill=color)
+    
+    # Triángulo en la esquina inferior derecha (apuntando afuera)
+    d.polygon([(21, 21), (15, 21), (21, 15)], fill=color)
+    
+    return img
+
 _refresh_img = create_refresh_icon()
 _rotate_img = create_rotate_icon()
 _save_img = create_save_icon()
@@ -191,6 +206,7 @@ _copy_file_img = create_copy_file_icon()
 _copy_clip_img = create_copy_clipboard_icon()
 _folder_collapsed_img = create_folder_collapsed_icon()
 _highlighter_img = create_highlighter_icon()
+_fit_img = create_fit_icon()
 
 _icon_cache = {}
 
@@ -222,6 +238,8 @@ def get_icon(name, size=(20, 20)):
         img = ctk.CTkImage(light_image=_folder_collapsed_img, dark_image=_folder_collapsed_img, size=size)
     elif name == "highlighter":
         img = ctk.CTkImage(light_image=_highlighter_img, dark_image=_highlighter_img, size=size)
+    elif name == "fit":
+        img = ctk.CTkImage(light_image=_fit_img, dark_image=_fit_img, size=size)
         
     if img:
         _icon_cache[cache_key] = img

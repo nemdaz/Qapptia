@@ -37,6 +37,11 @@ class VectorCanvas(tk.Canvas):
         self._vector_counter = 0 # Contador para IDs únicos
 
         self._setup_bindings()
+        self._start_viewport_monitor()
+
+    def _start_viewport_monitor(self):
+        self._check_viewport_refresh()
+        self.after(30, self._start_viewport_monitor)
 
     def _setup_bindings(self):
         self.bind("<Configure>", self.on_resize)
@@ -52,9 +57,17 @@ class VectorCanvas(tk.Canvas):
         self.current_pil_image = pil_image
         self.image_path = path
         self.vectors = []
-        self.zoom_level = 1.0
+        
+        # Auto-fit zoom inicial
+        cw, ch = self.winfo_width(), self.winfo_height()
+        if cw < 10 or ch < 10: cw, ch = constants.MIN_WIDTH, constants.MIN_HEIGHT
+        iw, ih = pil_image.size
+        fit_zoom = min(cw/iw, ch/ih)
+        self.zoom_level = fit_zoom if fit_zoom < 1.0 else 1.0
+        
         self._load_vector_metadata()
         self._render(force_resize=True)
+        if self.on_zoom_callback: self.on_zoom_callback()
 
     def _render(self, force_resize=True, fast=False):
         if not self.current_pil_image: return
@@ -70,25 +83,56 @@ class VectorCanvas(tk.Canvas):
     def _update_background_image(self, cw, ch):
         iw, ih = self.current_pil_image.size
         
-        # Calcular ratio Fit (ajustar imagen al contenedor)
-        self.base_ratio = min(cw/iw, ch/ih)
-        if self.base_ratio > 1: self.base_ratio = 1
-        self.ratio = self.base_ratio * self.zoom_level
+        self.ratio = self.zoom_level
+        self.base_ratio = 1.0 
         
-        # Calcular dimensiones nuevas y posición de centrado
         nw, nh = int(iw * self.ratio), int(ih * self.ratio)
         self.img_x, self.img_y = max((cw - nw) // 2, 0), max((ch - nh) // 2, 0)
         
-        resized = self.current_pil_image.resize((nw, nh), Image.Resampling.LANCZOS)
-        self.tk_image = ImageTk.PhotoImage(resized)
+        nw, nh = int(iw * self.ratio), int(ih * self.ratio)
+        self.img_x, self.img_y = max((cw - nw) // 2, 0), max((ch - nh) // 2, 0)
         
-        self.delete("background")
-        self.img_item = self.create_image(self.img_x, self.img_y, image=self.tk_image, anchor="nw", tags="background")
-        self.tag_lower("background")
-        
-        # Sincronizar región de scroll para permitir navegación interna
+        # Sincronizar región de scroll
         sr_w, sr_h = max(nw + self.img_x*2, cw), max(nh + self.img_y*2, ch)
         self.configure(scrollregion=(0, 0, sr_w, sr_h))
+        
+        # Renderizado por Viewport (Optimización de CPU/RAM)
+        vx1, vy1 = self.canvasx(0), self.canvasy(0)
+        vx2, vy2 = self.canvasx(cw), self.canvasy(ch)
+        
+        # Buffer visual para panning
+        bw, bh = cw * 0.25, ch * 0.25
+        c_vx1, c_vy1 = max(0, vx1 - bw - self.img_x), max(0, vy1 - bh - self.img_y)
+        c_vx2, c_vy2 = min(nw, vx2 + bw - self.img_x), min(nh, vy2 + bh - self.img_y)
+        
+        if c_vx1 >= nw or c_vy1 >= nh or c_vx2 <= 0 or c_vy2 <= 0:
+            self.delete("background")
+            return
+            
+        crop_x1, crop_y1 = max(0, int(c_vx1 / self.ratio)), max(0, int(c_vy1 / self.ratio))
+        crop_x2, crop_y2 = min(iw, int(math.ceil(c_vx2 / self.ratio))), min(ih, int(math.ceil(c_vy2 / self.ratio)))
+        
+        tile_w = int((crop_x2 - crop_x1) * self.ratio)
+        tile_h = int((crop_y2 - crop_y1) * self.ratio)
+        if tile_w <= 0 or tile_h <= 0: return
+
+        cropped = self.current_pil_image.crop((crop_x1, crop_y1, crop_x2, crop_y2))
+        resample_filter = Image.Resampling.NEAREST if self.ratio >= 1.0 else Image.Resampling.BILINEAR
+        
+        self.tk_image = ImageTk.PhotoImage(cropped.resize((tile_w, tile_h), resample_filter))
+        self.delete("background")
+        
+        draw_x, draw_y = self.img_x + (crop_x1 * self.ratio), self.img_y + (crop_y1 * self.ratio)
+        self.img_item = self.create_image(draw_x, draw_y, image=self.tk_image, anchor="nw", tags="background")
+        self.tag_lower("background")
+        
+        self._rendered_crop_bounds = (crop_x1, crop_y1, crop_x2, crop_y2)
+
+    def set_zoom_level(self, new_zoom):
+        if not self.current_pil_image: return
+        self.zoom_level = max(constants.ZOOM_MIN, min(new_zoom, constants.ZOOM_MAX))
+        self._render(force_resize=True)
+        if self.on_zoom_callback: self.on_zoom_callback()
 
     def on_zoom(self, event):
         if not self.current_pil_image: return
@@ -97,20 +141,100 @@ class VectorCanvas(tk.Canvas):
         x_real, y_real = (cx - self.img_x) / self.ratio, (cy - self.img_y) / self.ratio
         
         old_zoom = self.zoom_level
-        factor = constants.ZOOM_STEP if (event.num == 4 or event.delta > 0) else (1/constants.ZOOM_STEP)
-        self.zoom_level = max(constants.ZOOM_MIN, min(self.zoom_level * factor, constants.ZOOM_MAX))
+        # Cálculo de escala aditiva por rangos
+        notch = (event.delta / 120.0) if hasattr(event, "delta") and event.delta != 0 else (1 if getattr(event, "num", 0) == 4 else -1)
+        direction = 1 if notch > 0 else -1
+        
+        # Ajustar el escalón base si la dirección es de reducción
+        probe_z = self.zoom_level if direction > 0 else self.zoom_level - 0.01
+        if probe_z < 1.0: step = 0.10
+        elif probe_z < 3.0: step = 0.25
+        else: step = 0.50
+        
+        # Redondeo inercial: Saltos precisos para clics fijos, arrastre continuo para fluid mice
+        if abs(notch) >= 0.9:
+            clean_z = round(self.zoom_level / step) * step
+            target = clean_z + (step * direction)
+        else:
+            target = self.zoom_level + (step * notch)
+            
+        # Acotar truncando a 2 decimales para la UI
+        self.zoom_level = max(constants.ZOOM_MIN, min(round(target, 2), constants.ZOOM_MAX))
         
         if self.zoom_level != old_zoom:
-            self._render(force_resize=True)
-            # Re-centrar scroll
-            new_cx, new_cy = self.img_x + (x_real * self.ratio), self.img_y + (y_real * self.ratio)
-            sr = [float(x) for x in self.cget("scrollregion").split()]
+            # Buffer de estado para coalescencia de eventos de ratón (Throttle)
+            self._zoom_state = (cx, cy, x_real, y_real)
+            
+            # Renderizado intermedio rápido (~33ms / 30FPS) durante rotación continua
+            if not getattr(self, '_is_rendering_zoom', False):
+                self._is_rendering_zoom = True
+                self.after(30, self._flush_zoom_render)
+
+            # Programar renderizado final de alta resolución tras la inercia (150ms)
+            if hasattr(self, '_zoom_throttle_timer') and self._zoom_throttle_timer is not None:
+                self.after_cancel(self._zoom_throttle_timer)
+            self._zoom_throttle_timer = self.after(150, self._flush_hq_render)
+
+    def _flush_zoom_render(self):
+        self._is_rendering_zoom = False
+        if hasattr(self, '_zoom_state'):
+            c, y, xr, yr = self._zoom_state
+            self._apply_zoom(c, y, xr, yr, fast=True)
+
+    def _flush_hq_render(self):
+        if hasattr(self, '_zoom_state'):
+            c, y, xr, yr = self._zoom_state
+            self._apply_zoom(c, y, xr, yr, fast=False)
+
+    def _apply_zoom(self, cx, cy, x_real, y_real, fast=False):
+        self._zoom_throttle_timer = None
+        self._render(force_resize=True, fast=fast)
+        # Re-centrar scroll
+        new_cx, new_cy = self.img_x + (x_real * self.ratio), self.img_y + (y_real * self.ratio)
+        sr = [float(x) for x in self.cget("scrollregion").split()]
+        if len(sr) >= 4:
             if sr[2] > 0: self.xview_moveto((self.canvasx(0) + (new_cx - cx)) / sr[2])
             if sr[3] > 0: self.yview_moveto((self.canvasy(0) + (new_cy - cy)) / sr[3])
-            if self.on_zoom_callback: self.on_zoom_callback()
+        if self.on_zoom_callback: self.on_zoom_callback()
+
+    def xview(self, *args):
+        res = super().xview(*args)
+        if args: self._check_viewport_refresh()
+        return res
+
+    def yview(self, *args):
+        res = super().yview(*args)
+        if args: self._check_viewport_refresh()
+        return res
+
+    def _check_viewport_refresh(self, event=None):
+        if not hasattr(self, '_rendered_crop_bounds'): return
+        cw, ch = self.winfo_width(), self.winfo_height()
+        if cw < 10 or ch < 10: return
+        vx1, vy1 = self.canvasx(0), self.canvasy(0)
+        vx2, vy2 = self.canvasx(cw), self.canvasy(ch)
+        
+        iw, ih = self.current_pil_image.size
+        nw, nh = int(iw * self.ratio), int(ih * self.ratio)
+        c_vx1, c_vy1 = max(0, vx1 - self.img_x), max(0, vy1 - self.img_y)
+        c_vx2, c_vy2 = min(nw, vx2 - self.img_x), min(nh, vy2 - self.img_y)
+        
+        if c_vx1 >= nw or c_vy1 >= nh or c_vx2 <= 0 or c_vy2 <= 0: return
+        
+        req_x1, req_y1 = int(c_vx1 / self.ratio), int(c_vy1 / self.ratio)
+        req_x2, req_y2 = int(math.ceil(c_vx2 / self.ratio)), int(math.ceil(c_vy2 / self.ratio))
+        
+        rx1, ry1, rx2, ry2 = self._rendered_crop_bounds
+        
+        # Generar tile nuevo si la cámara virtual explora pixeles de la imagen fuera del crop cacheado
+        if req_x1 < rx1 or req_y1 < ry1 or req_x2 > rx2 or req_y2 > ry2:
+            self._update_background_image(cw, ch)
 
     def on_resize(self, event):
         self._render(force_resize=True)
+        # Actualizar componentes dependientes de la geometría
+        if self.on_zoom_callback:
+            self.after(50, self.on_zoom_callback)
 
     def set_draw_mode(self, mode):
         self.draw_mode = mode
@@ -121,6 +245,20 @@ class VectorCanvas(tk.Canvas):
         self._photo_cache = []
         if not self.tk_image: return
         
+        # Usar vectores nativos en zoom pronunciado o durante rotación rápida para conservar memoria
+        if self.ratio > 1.5 or fast:
+            for v in self.vectors:
+                tool = editor_tools.ToolDispatcher.get_tool(v["type"])
+                if tool:
+                    v_width = max(1, int(constants.VECTOR_WIDTH * self.zoom_level))
+                    tool.render(self, v["coords"], v["color"], v_width, self.zoom_level, self.ratio, self.img_x, self.img_y, v["id"])
+                    
+            if self.selected_vector_id:
+                v_sel = next((x for x in self.vectors if x["id"] == self.selected_vector_id), None)
+                if v_sel: self._draw_grips(v_sel)
+            return
+
+        # Renderizado estándar con capa estática
         self._draw_static_layer(fast)
         if fast: self._draw_active_vector()
         if self.selected_vector_id:
