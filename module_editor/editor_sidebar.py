@@ -108,10 +108,12 @@ class EditorSidebar(ctk.CTkFrame):
         self._update_navigation_list()
 
     def _build_tree_level(self, path, parent, level):
-        items = self._get_sorted_items(path)
-        for item in items:
-            full_path = os.path.join(path, item).replace("\\", "/")
-            if os.path.isdir(full_path):
+        # Escaneo eficiente de nivel mediante DirEntry metadata
+        entries = self._get_sorted_items(path)
+        for entry in entries:
+            full_path = entry.path.replace("\\", "/")
+            if entry.is_dir():
+                # Poda de carpetas vacías (Algoritmo de visibilidad condicionada)
                 if not self._has_images(full_path): continue
                 
                 block = ctk.CTkFrame(parent, fg_color="transparent")
@@ -121,7 +123,7 @@ class EditorSidebar(ctk.CTkFrame):
                 icon = "folder" if is_expanded else "folder_collapsed"
                 
                 f_btn = ctk.CTkButton(
-                    block, text="  " + item, font=constants.FONT_BOLD, height=constants.BTN_HEIGHT_SMALL,
+                    block, text="  " + entry.name, font=constants.FONT_BOLD, height=constants.BTN_HEIGHT_SMALL,
                     image=assets.get_icon(icon, size=constants.ICON_SIZE_SMALL),
                     fg_color="transparent", anchor="w", hover_color=constants.HIGHLIGHT_COLOR,
                     command=lambda p=full_path: self._toggle_folder(p)
@@ -138,9 +140,9 @@ class EditorSidebar(ctk.CTkFrame):
                     container.pack(fill="x")
                     self._build_tree_level(full_path, container, level + 1)
             
-            elif item.lower().endswith(('.png', '.jpg', '.jpeg')):
+            elif entry.name.lower().endswith(('.png', '.jpg', '.jpeg')):
                 btn = ctk.CTkButton(
-                    parent, text=" " + item, image=assets.get_icon("image_file", size=constants.ICON_SIZE_SMALL),
+                    parent, text=" " + entry.name, image=assets.get_icon("image_file", size=constants.ICON_SIZE_SMALL),
                     fg_color="transparent", anchor="w", height=constants.BTN_HEIGHT_SMALL,
                     hover_color=constants.HIGHLIGHT_COLOR, command=lambda p=full_path: self._on_file_click(p)
                 )
@@ -160,11 +162,12 @@ class EditorSidebar(ctk.CTkFrame):
         self._on_frame_configure()
 
     def _scan_visible_logical(self, path):
-        for item in self._get_sorted_items(path):
-            full_path = os.path.join(path, item).replace("\\", "/")
-            if os.path.isdir(full_path):
+        # Escaneo lógico de archivos visibles para navegación por teclado
+        for entry in self._get_sorted_items(path):
+            full_path = entry.path.replace("\\", "/")
+            if entry.is_dir():
                 if full_path in self.expanded_folders: self._scan_visible_logical(full_path)
-            elif item.lower().endswith(('.png', '.jpg', '.jpeg')):
+            elif entry.name.lower().endswith(('.png', '.jpg', '.jpeg')):
                 self.visible_items.append(full_path)
 
     def _on_arrow_key(self, event):
@@ -189,23 +192,33 @@ class EditorSidebar(ctk.CTkFrame):
         state_manager.set_last_selected(path)
 
     def _get_sorted_items(self, path):
+        # Obtención de DirEntries ordenadas por fecha (mtime) para evitar syscalls redundantes
         try:
             mtime = os.path.getmtime(path)
             if path in self._dir_items_cache:
                 t, items = self._dir_items_cache[path]
                 if mtime == t: return items
-            items = sorted(os.listdir(path), key=lambda x: os.path.getmtime(os.path.join(path, x)), reverse=True)
-            self._dir_items_cache[path] = (mtime, items)
-            return items
+            
+            with os.scandir(path) as it:
+                entries = sorted(it, key=lambda e: e.stat().st_mtime, reverse=True)
+            self._dir_items_cache[path] = (mtime, entries)
+            return entries
         except: return []
 
     def _has_images(self, path):
+        # Algoritmo de detección de imágenes mediante exploración de un solo nivel (poda lógica)
         if path in self._has_images_cache: return self._has_images_cache[path]
         has = False
         try:
-            for root, dirs, files in os.walk(path):
-                if any(f.lower().endswith(('.png', '.jpg', '.jpeg')) for f in files):
-                    has = True; break
+            # Primero checamos archivos directos; si no hay, buscamos en subcarpetas de forma iterativa
+            with os.scandir(path) as it:
+                for entry in it:
+                    if entry.is_file() and entry.name.lower().endswith(('.png', '.jpg', '.jpeg')):
+                        has = True; break
+                    if entry.is_dir():
+                        # Si encontramos una subcarpeta, asumimos que puede tener imágenes (evita os.walk)
+                        # Este es un compromiso de velocidad vs precisión total
+                        has = True; break
         except: pass
         self._has_images_cache[path] = has
         return has

@@ -22,7 +22,13 @@ class EditorApp(ctk.CTk):
         ipc.start_ipc_server(self.wake_up)
         
         self.title(constants.WINDOW_TITLE)
-        self.geometry(constants.WINDOW_SIZE)
+        
+        # Algoritmo de centrado y dimensionamiento al 80% de la resolución de pantalla
+        screen_w, screen_h = self.winfo_screenwidth(), self.winfo_screenheight()
+        w, h = int(screen_w * 0.8), int(screen_h * 0.8)
+        x, y = (screen_w - w) // 2, (screen_h - h) // 2
+        self.geometry(f"{w}x{h}+{x}+{y}")
+        
         self.minsize(constants.MIN_WIDTH, constants.MIN_HEIGHT)
         
         # Variables de estado
