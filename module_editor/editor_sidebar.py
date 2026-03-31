@@ -3,6 +3,7 @@ import tkinter as tk
 import os
 from module_editor import constants, state_manager
 from module_editor.utils import Tooltip
+from core.widgets import CTKSmoothScrollbar
 from core import config, assets
 
 class EditorSidebar(ctk.CTkFrame):
@@ -58,8 +59,9 @@ class EditorSidebar(ctk.CTkFrame):
         self.tree_container.grid_columnconfigure(0, weight=1)
         self.tree_container.grid_columnconfigure(1, weight=0, minsize=constants.SCROLL_RESERVE_WIDTH)
         
+        # Canvas y scrollbar con anclaje de puntero (Smooth)
         self.tree_canvas = tk.Canvas(self.tree_container, bg=constants.BG_COLOR_DARK, highlightthickness=0)
-        self.vsb = ctk.CTkScrollbar(self.tree_container, orientation="vertical", command=self.tree_canvas.yview)
+        self.vsb = CTKSmoothScrollbar(self.tree_container, orientation="vertical", command=self.tree_canvas.yview)
         
         self.tree_canvas.configure(yscrollcommand=self.vsb.set)
         self.tree_canvas.grid(row=0, column=0, sticky="nsew")
@@ -213,7 +215,7 @@ class EditorSidebar(ctk.CTkFrame):
         bbox = self.tree_canvas.bbox("all")
         if not bbox: return
         self.tree_canvas.configure(scrollregion=bbox)
-        # Visibilidad inteligente de scrollbar
+        # Cálculo de visibilidad de scroll según desbordamiento de bbox
         if (bbox[3] - bbox[1]) > self.tree_canvas.winfo_height() + 5:
             self.vsb.grid(row=0, column=1, sticky="ns")
         else:

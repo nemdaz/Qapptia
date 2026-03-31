@@ -92,11 +92,11 @@ class VectorCanvas(tk.Canvas):
         nw, nh = int(iw * self.ratio), int(ih * self.ratio)
         self.img_x, self.img_y = max((cw - nw) // 2, 0), max((ch - nh) // 2, 0)
         
-        # Sincronizar región de scroll
+        # Sincronización de scrollregion según dimensiones reales
         sr_w, sr_h = max(nw + self.img_x*2, cw), max(nh + self.img_y*2, ch)
         self.configure(scrollregion=(0, 0, sr_w, sr_h))
         
-        # Renderizado por Viewport (Optimización de CPU/RAM)
+        # Algoritmo de renderizado por Viewport (Optimización de CPU/RAM)
         vx1, vy1 = self.canvasx(0), self.canvasy(0)
         vx2, vy2 = self.canvasx(cw), self.canvasy(ch)
         
@@ -136,12 +136,12 @@ class VectorCanvas(tk.Canvas):
 
     def on_zoom(self, event):
         if not self.current_pil_image: return
-        # Coordenadas reales del mouse
-        cx, cy = self.canvasx(event.x), self.canvasy(event.y)
+        # Obtención de coordenadas estáticas de ventana y virtuales del mouse
+        win_x, win_y = event.x, event.y
+        cx, cy = self.canvasx(win_x), self.canvasy(win_y)
         x_real, y_real = (cx - self.img_x) / self.ratio, (cy - self.img_y) / self.ratio
         
-        old_zoom = self.zoom_level
-        # Cálculo de escala aditiva por rangos
+        # Cálculo de escala aditiva por rangos dinámicos
         notch = (event.delta / 120.0) if hasattr(event, "delta") and event.delta != 0 else (1 if getattr(event, "num", 0) == 4 else -1)
         direction = 1 if notch > 0 else -1
         
@@ -151,7 +151,7 @@ class VectorCanvas(tk.Canvas):
         elif probe_z < 3.0: step = 0.25
         else: step = 0.50
         
-        # Redondeo inercial: Saltos precisos para clics fijos, arrastre continuo para fluid mice
+        # Algoritmo de redondeo inercial para saltos precisos y fluidos
         if abs(notch) >= 0.9:
             clean_z = round(self.zoom_level / step) * step
             target = clean_z + (step * direction)
@@ -162,15 +162,15 @@ class VectorCanvas(tk.Canvas):
         self.zoom_level = max(constants.ZOOM_MIN, min(round(target, 2), constants.ZOOM_MAX))
         
         if self.zoom_level != old_zoom:
-            # Buffer de estado para coalescencia de eventos de ratón (Throttle)
-            self._zoom_state = (cx, cy, x_real, y_real)
+            # Buffer de estado para coalescencia de eventos (Throttle)
+            self._zoom_state = (win_x, win_y, x_real, y_real)
             
-            # Renderizado intermedio rápido (~33ms / 30FPS) durante rotación continua
+            # Ejecución de renderizado rápido si no hay uno en curso
             if not getattr(self, '_is_rendering_zoom', False):
                 self._is_rendering_zoom = True
                 self.after(30, self._flush_zoom_render)
 
-            # Programar renderizado final de alta resolución tras la inercia (150ms)
+            # Programación de renderizado HQ diferido tras inercia
             if hasattr(self, '_zoom_throttle_timer') and self._zoom_throttle_timer is not None:
                 self.after_cancel(self._zoom_throttle_timer)
             self._zoom_throttle_timer = self.after(150, self._flush_hq_render)
@@ -178,23 +178,28 @@ class VectorCanvas(tk.Canvas):
     def _flush_zoom_render(self):
         self._is_rendering_zoom = False
         if hasattr(self, '_zoom_state'):
-            c, y, xr, yr = self._zoom_state
-            self._apply_zoom(c, y, xr, yr, fast=True)
+            wx, wy, xr, yr = self._zoom_state
+            self._apply_zoom(wx, wy, xr, yr, fast=True)
 
     def _flush_hq_render(self):
         if hasattr(self, '_zoom_state'):
-            c, y, xr, yr = self._zoom_state
-            self._apply_zoom(c, y, xr, yr, fast=False)
+            wx, wy, xr, yr = self._zoom_state
+            self._apply_zoom(wx, wy, xr, yr, fast=False)
 
-    def _apply_zoom(self, cx, cy, x_real, y_real, fast=False):
+    def _apply_zoom(self, win_x, win_y, x_real, y_real, fast=False):
         self._zoom_throttle_timer = None
         self._render(force_resize=True, fast=fast)
-        # Re-centrar scroll
-        new_cx, new_cy = self.img_x + (x_real * self.ratio), self.img_y + (y_real * self.ratio)
+        # Algoritmo Anti-Drift: Compensación matemática de offsets de scrollregion
+        new_cx = self.img_x + (x_real * self.ratio)
+        new_cy = self.img_y + (y_real * self.ratio)
+        
+        target_view_x = new_cx - win_x
+        target_view_y = new_cy - win_y
+        
         sr = [float(x) for x in self.cget("scrollregion").split()]
         if len(sr) >= 4:
-            if sr[2] > 0: self.xview_moveto((self.canvasx(0) + (new_cx - cx)) / sr[2])
-            if sr[3] > 0: self.yview_moveto((self.canvasy(0) + (new_cy - cy)) / sr[3])
+            if sr[2] > 0: self.xview_moveto(target_view_x / sr[2])
+            if sr[3] > 0: self.yview_moveto(target_view_y / sr[3])
         if self.on_zoom_callback: self.on_zoom_callback()
 
     def xview(self, *args):
@@ -226,13 +231,13 @@ class VectorCanvas(tk.Canvas):
         
         rx1, ry1, rx2, ry2 = self._rendered_crop_bounds
         
-        # Generar tile nuevo si la cámara virtual explora pixeles de la imagen fuera del crop cacheado
+        # Algoritmo de regeneración de tile por exploración de pixeles fuera de cache
         if req_x1 < rx1 or req_y1 < ry1 or req_x2 > rx2 or req_y2 > ry2:
             self._update_background_image(cw, ch)
 
     def on_resize(self, event):
         self._render(force_resize=True)
-        # Actualizar componentes dependientes de la geometría
+        # Actualización de componentes dependientes de la geometría (Callback de Zoom)
         if self.on_zoom_callback:
             self.after(50, self.on_zoom_callback)
 

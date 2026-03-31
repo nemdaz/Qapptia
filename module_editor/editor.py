@@ -10,6 +10,7 @@ from core import config, assets, ipc
 from module_editor import constants, state_manager, utils
 from module_editor.editor_sidebar import EditorSidebar
 from module_editor.editor_canvas import VectorCanvas
+from core.widgets import CTKSmoothScrollbar
 
 class EditorApp(ctk.CTk):
     """Aplicación principal del Editor de Capturas."""
@@ -136,7 +137,7 @@ class EditorApp(ctk.CTk):
         self._create_favorites_palette()
         
         # Canvas y scrollbars
-        self.frame_image = ctk.CTkFrame(self)
+        self.frame_image = ctk.CTkFrame(self, fg_color=constants.CANVAS_BG_COLOR)
         self.frame_image.grid(row=1, column=0, sticky="nsew", padx=(10, 5), pady=10)
         self.frame_image.grid_rowconfigure(0, weight=1)
         self.frame_image.grid_columnconfigure(0, weight=1)
@@ -144,8 +145,9 @@ class EditorApp(ctk.CTk):
         self.vector_canvas = VectorCanvas(self.frame_image, on_zoom_callback=self.update_scrollbar_visibility)
         self.vector_canvas.grid(row=0, column=0, sticky="nsew")
         
-        self.v_scrollbar = ctk.CTkScrollbar(self.frame_image, orientation="vertical", command=self.vector_canvas.yview)
-        self.h_scrollbar = ctk.CTkScrollbar(self.frame_image, orientation="horizontal", command=self.vector_canvas.xview)
+        # Configuración de scrollbars en modo Overlay (Hijos del Canvas)
+        self.v_scrollbar = CTKSmoothScrollbar(self.vector_canvas, orientation="vertical", bg_color="transparent", command=self.vector_canvas.yview)
+        self.h_scrollbar = CTKSmoothScrollbar(self.vector_canvas, orientation="horizontal", bg_color="transparent", command=self.vector_canvas.xview)
         self.vector_canvas.configure(yscrollcommand=self.v_scrollbar.set, xscrollcommand=self.h_scrollbar.set)
         
         # Redimensionado lateral
@@ -282,11 +284,19 @@ class EditorApp(ctk.CTk):
         if not sr: return
         _, _, sr_w, sr_h = map(float, sr.split())
         
-        if sr_h > self.vector_canvas.winfo_height() + 1: self.v_scrollbar.grid(row=0, column=1, sticky="ns")
-        else: self.v_scrollbar.grid_forget()
+        # Algoritmo de visibilidad Overlay: Posicionamiento flotante al 100%
+        v_show = sr_h > self.vector_canvas.winfo_height() + 1
+        h_show = sr_w > self.vector_canvas.winfo_width() + 1
+        
+        if v_show:
+            self.v_scrollbar.place(relx=1.0, rely=0.0, relheight=1.0, anchor="ne")
+        else:
+            self.v_scrollbar.place_forget()
             
-        if sr_w > self.vector_canvas.winfo_width() + 1: self.h_scrollbar.grid(row=1, column=0, sticky="ew")
-        else: self.h_scrollbar.grid_forget()
+        if h_show:
+            self.h_scrollbar.place(relx=0.0, rely=1.0, relwidth=1.0, anchor="sw")
+        else:
+            self.h_scrollbar.place_forget()
 
     def rotate_image(self):
         if self.current_pil_image:
