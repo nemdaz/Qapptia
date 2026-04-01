@@ -1,3 +1,4 @@
+from core.logger import logger
 from core import config, utils
 from module_capture.capture_area import CaptureAreaUI
 
@@ -9,6 +10,6 @@ def setup():
 def trigger_area_capture(callback=None):
     """Inicia la lógica de negocio y la interfaz del Modo Area."""
     config.load_config()
-    print("Modo Area: Activando selector de pantalla...")
+    logger.info("Modo Area: Activando selector de pantalla...")
     app = CaptureAreaUI(on_capture_callback=callback)
     app.run()

@@ -9,6 +9,7 @@ import subprocess
 from ctypes import wintypes
 from PIL import ImageDraw, Image, ImageFilter
 from core import config
+from core.logger import logger
 
 def get_resource_path(relative_path):
     """ Obtiene la ruta absoluta a un recurso, compatible con PyInstaller y desarrollo. """
@@ -41,7 +42,7 @@ _AUDIO_CACHE = {}
 def play_beep_async():
     """Reproduce el sonido de obturador profesional con precarga y telemetría."""
     timestamp = time.strftime('%H:%M:%S')
-    print(f"[AUDIO] Solicitud de reproducción a las {timestamp}")
+    logger.trace(f"[AUDIO] Solicitud de reproducción a las {timestamp}")
     global _AUDIO_CACHE
     try:
         if sys.platform == "win32":
@@ -49,23 +50,23 @@ def play_beep_async():
             
             if sound_key not in _AUDIO_CACHE:
                 sound_path = get_resource_path(os.path.join("core", "assets", "sounds", "shutter_a.wav"))
-                print(f"[AUDIO] Verificando archivo local: {sound_path}")
+                logger.debug(f"[AUDIO] Verificando archivo local: {sound_path}")
                 if os.path.exists(sound_path):
                     _AUDIO_CACHE[sound_key] = sound_path
-                    print("[AUDIO] Ruta de audio referenciada exitosamente.")
+                    logger.debug("[AUDIO] Ruta de audio referenciada exitosamente.")
                 else:
-                    print("[AUDIO] ERROR: Archivo no encontrado. Ejecutando Beep de emergencia.")
+                    logger.error("[AUDIO] ERROR: Archivo no encontrado. Ejecutando Beep de emergencia.")
                     winsound.Beep(1500, 150)
                     return
 
             # Reproducción instantánea desde archivo caché por OS
             winsound.PlaySound(_AUDIO_CACHE[sound_key], winsound.SND_FILENAME | winsound.SND_ASYNC)
-            print("[AUDIO] Comando PlaySound enviado al OS.")
+            logger.debug("[AUDIO] Comando PlaySound enviado al OS.")
             
         elif sys.platform == "linux":
             print('\a', end='', flush=True)
     except Exception as e:
-        print(f"[AUDIO] Error al reproducir audio: {e}")
+        logger.error(f"[AUDIO] Error al reproducir audio: {e}")
 
 def parse_filename_format(base_format, now_datetime):
     """Pule y devuelve el string final usando los tokens amigables."""
@@ -251,7 +252,7 @@ def _get_real_cursor_win():
         img = Image.frombuffer("RGBA", (cw, ch), buffer, "raw", "BGRA", 0, 1)
         return img.copy(), hotspot # .copy() libera el buffer interno
     except Exception as e:
-        print(f"Error capturando cursor nativo: {e}")
+        logger.error(f"Error capturando cursor nativo: {e}")
         return None, (0, 0)
 
 def _get_real_cursor_linux():
@@ -371,7 +372,7 @@ def draw_mouse_overlay(screen_image, mouse_x, mouse_y, highlight=False, cursor_d
         screen_image = screen_image.convert("RGB")
         
     except Exception as e:
-        print(f"Error en el dibujo del mouse: {e}")
+        logger.error(f"Error en el dibujo del mouse: {e}")
         
     return screen_image
 
@@ -387,17 +388,17 @@ def register_hotkey(hotkey, callback, description=""):
         """Validador de modificadores para prevenir activaciones accidentales."""
         time.sleep(0.05)
         if all(keyboard.is_pressed(m) for m in modifiers):
-             print(f"[HOTKEY] Disparando '{description}' ({hotkey})")
+             logger.debug(f"[HOTKEY] Disparando '{description}' ({hotkey})")
              callback()
         else:
-             print(f"[HOTKEY] Ignorada activacion de tecla solitaria: '{hotkey}'")
+             logger.trace(f"[HOTKEY] Ignorada activacion de tecla solitaria: '{hotkey}'")
              
     try:
         # Usamos suppress=False para no interferir con otras apps (más estable)
         keyboard.add_hotkey(hotkey, safe_callback, suppress=False)
         desc_str = f"({description})" if description else ""
-        print(f"Atajo {desc_str} '{hotkey}' registrado (Protegido).")
+        logger.info(f"Atajo {desc_str} '{hotkey}' registrado (Protegido).")
         return True
     except Exception as e:
-        print(f"Error al registrar atajo {description} '{hotkey}': {e}")
+        logger.error(f"Error al registrar atajo {description} '{hotkey}': {e}")
         return False

@@ -1,5 +1,6 @@
 import json
 import os
+from core.logger import logger
 from core.constants import CONFIG_FILE, DEFAULT_CONFIG
 
 current_config = DEFAULT_CONFIG.copy()
@@ -12,7 +13,7 @@ def load_config():
                 loaded = json.load(f)
                 current_config.update(loaded)
         except Exception as e:
-            print(f"Error loading config: {e}")
+            logger.error(f"Error loading config: {e}")
     else:
         save_config() # Create default file
 
@@ -21,7 +22,7 @@ def save_config():
         with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
             json.dump(current_config, f, indent=4)
     except Exception as e:
-        print(f"Error saving config: {e}")
+        logger.error(f"Error saving config: {e}")
 
 def get(key):
     return current_config.get(key, DEFAULT_CONFIG.get(key))

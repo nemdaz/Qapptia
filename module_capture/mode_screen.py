@@ -1,4 +1,5 @@
 import time
+from core.logger import logger
 from core import config, utils
 from module_capture.capture_screen import capture_screen
 
@@ -12,9 +13,9 @@ def trigger_screen_capture():
     config.load_config()
     timer = config.get("manual_timer")
     if timer > 0:
-        print(f"Modo Pantalla: Captura en {timer} segundos...")
+        logger.info(f"Modo Pantalla: Captura en {timer} segundos...")
         time.sleep(timer)
     else:
-        print("Modo Pantalla: Captura inmediata solicitada...")
+        logger.info("Modo Pantalla: Captura inmediata solicitada...")
     
     capture_screen()

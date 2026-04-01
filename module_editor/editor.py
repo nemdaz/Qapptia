@@ -6,6 +6,7 @@ from PIL import Image
 # Configurar ruta base del proyecto
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from core.logger import logger
 from core import config, assets, ipc
 from module_editor import constants, state_manager, utils
 from module_editor.editor_sidebar import EditorSidebar
@@ -63,7 +64,7 @@ class EditorApp(ctk.CTk):
             self.lift()
             self.focus_force()
         except Exception as e:
-            print(f"Error al intentar enfocar el editor: {e}")
+            logger.error(f"Error al intentar enfocar el editor: {e}")
             # Fallback: desminimizar
             try: self.deiconify()
             except: pass
@@ -72,7 +73,7 @@ class EditorApp(ctk.CTk):
         try:
             self.sidebar.refresh_all()
         except Exception as e:
-            print(f"Error al refrescar sidebar en wake_up: {e}")
+            logger.error(f"Error al refrescar sidebar en wake_up: {e}")
 
     def on_window_click(self, event):
         """Deselecciona herramientas si se clica fuera de la zona de dibujo o toolbar."""
@@ -251,7 +252,7 @@ class EditorApp(ctk.CTk):
             self.sidebar.highlight_path(path)
         except Exception as e:
             utils.show_toast(self, "Error al abrir la imagen")
-            print(f"Error show_image: {e}")
+            logger.error(f"Error show_image: {e}")
 
     def resize_sidebar(self, event):
         new_width = (self.winfo_rootx() + self.winfo_width()) - event.x_root - 10

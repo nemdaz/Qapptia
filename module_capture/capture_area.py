@@ -1,6 +1,7 @@
 import tkinter as tk
 from PIL import Image, ImageTk, ImageGrab
 import datetime
+from core.logger import logger
 from core import config, utils
 import threading
 import mouse
@@ -193,9 +194,9 @@ class CaptureAreaUI:
                 self.on_capture_callback(filepath)
             
             utils.play_beep_async() # Llamada pos-procesamiento para observar impacto
-            print(f"Área capturada: {filepath}")
+            logger.success(f"Área capturada: {filepath}")
         except Exception as e:
-            print(f"Error al guardar captura de área: {e}")
+            logger.error(f"Error al guardar captura de área: {e}")
 
     def run(self):
         self.root.mainloop()

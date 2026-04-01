@@ -5,6 +5,7 @@ import mouse
 import keyboard
 import threading
 import tkinter
+from core.logger import logger
 from core import config, utils
 from module_capture.capture_screen import capture_screen
 from module_capture import constants as c
@@ -51,7 +52,7 @@ class FlowManager:
         
         if not os.path.exists(self.session_path):
             os.makedirs(self.session_path, exist_ok=True)
-        print(f"Sesión de flujo iniciada en: {self.session_path}")
+        logger.info(f"Sesión de flujo iniciada en: {self.session_path}")
 
     def _stop_timers(self):
         if self._scroll_check_timer: self._scroll_check_timer.cancel()
@@ -93,7 +94,7 @@ class FlowManager:
                              rel_x > (mon_w - c.SCROLL_ZONE_WIDTH_PIXELS))
                 
                 if is_in_zone:
-                    print(f"Inicio de Scroll Manual en X relativa={rel_x}")
+                    logger.debug(f"Inicio de Scroll Manual en X relativa={rel_x}")
                     self._is_manual_scrolling = True
                     self._last_y = my
                     self._last_captured_y = my
@@ -104,7 +105,7 @@ class FlowManager:
                     self._capture("Clic")
             
             elif event.event_type == 'up' and self._is_manual_scrolling:
-                print("Fin de Scroll Manual.")
+                logger.debug("Fin de Scroll Manual.")
                 self._is_manual_scrolling = False
                 if self._velocity_timer: self._velocity_timer.cancel()
                 
@@ -112,7 +113,7 @@ class FlowManager:
                 if abs(my - self._last_captured_y) > c.JITTER_THRESHOLD:
                     self._capture("Fin Scroll")
                 else:
-                    print("Fin de Scroll omitido por redundancia (sin movimiento significativo).")
+                    logger.debug("Fin de Scroll omitido por redundancia (sin movimiento significativo).")
 
     def _handle_wheel(self, event):
         if not config.get("enable_scroll_capture"): return
@@ -182,7 +183,7 @@ class FlowManager:
 
     def _capture(self, reason):
         capture_screen(play_sound=False, flow_session_path=self.session_path)
-        print(f"--- Captura automática ({reason}) ---")
+        logger.debug(f"--- Captura automática ({reason}) ---")
 
 def setup():
     """Configura los disparadores del Modo Flujo."""

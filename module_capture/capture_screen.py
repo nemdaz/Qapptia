@@ -3,6 +3,7 @@ import datetime
 import threading
 from PIL import ImageGrab
 import mouse
+from core.logger import logger
 from core import config, utils
 
 def capture_screen(play_sound=True, flow_session_path=None):
@@ -39,7 +40,7 @@ def capture_screen(play_sound=True, flow_session_path=None):
                 hl = config.get("highlight_mouse")
                 screen = utils.draw_mouse_overlay(screen, rel_x, rel_y, hl, cursor_data=cursor_data)
             except Exception as ptr_e:
-                 print(f"Error dibujo mouse: {ptr_e}")
+                 logger.error(f"Error dibujo mouse: {ptr_e}")
         
         # El guardado a disco (PNG) causa latencias de 100ms-400ms.
         screen.save(filepath, 'PNG', quality=config.get("image_quality"))
@@ -47,6 +48,6 @@ def capture_screen(play_sound=True, flow_session_path=None):
         if play_sound:
             utils.play_beep_async() # Llamada post-procesamiento
             
-        print(f"Captura guardada: {filepath}")
+        logger.success(f"Captura guardada: {filepath}")
     except Exception as e:
-        print(f"Error captura: {e}")
+        logger.error(f"Error captura: {e}")

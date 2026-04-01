@@ -8,6 +8,7 @@ import mouse
 import keyboard
 from PIL import Image
 
+from core.logger import logger
 from core import config, ipc, utils
 from core.constants import APP_NAME, VERSION
 from module_capture.capture_screen import capture_screen
@@ -38,7 +39,7 @@ def on_mouse_event(event):
 def toggle_flow_menu(icon, item=None):
     """Activa/Desactiva el modo flujo."""
     is_active = flow_manager.toggle()
-    print(f"Modo flujo {'activado' if is_active else 'desactivado'}.")
+    logger.info(f"Modo flujo {'activado' if is_active else 'desactivado'}.")
 
 def capture_full_menu(icon, item=None):
     """Captura pantalla completa desde el menú."""
@@ -55,18 +56,18 @@ def launch_editor_process():
     global _is_editor_launching
     
     # 1. Verificar si ya hay una instancia respondiendo (IPC)
-    print("Verificando instancia del Editor...")
+    logger.debug("Verificando instancia del Editor...")
     if ipc.is_editor_running():
-        print("Editor ya en ejecución. Enviada señal de despertar.")
+        logger.debug("Editor ya en ejecución. Enviada señal de despertar.")
         return
 
     # 2. Verificar si ya hay un proceso lanzándose (Protección de carrera)
     if _is_editor_launching:
-        print("El editor ya se está iniciando, por favor espera...")
+        logger.debug("El editor ya se está iniciando, por favor espera...")
         return
 
     # 3. Lanzar nueva instancia
-    print("Iniciando nueva instancia del Editor...")
+    logger.info("Iniciando nueva instancia del Editor...")
     _is_editor_launching = True
     
     # Resetear el flag de lanzamiento después de un tiempo prudencial (5s)
@@ -87,7 +88,7 @@ def open_editor_icon(icon, item=None):
     current_time = time.time()
     if current_time - _editor_last_click > 0.4:
         _editor_last_click = current_time
-        print("Clic detectado en el icono, esperando segundo clic para abrir editor...")
+        logger.debug("Clic detectado en el icono, esperando segundo clic para abrir editor...")
         return
 
     _editor_last_click = 0
@@ -99,7 +100,7 @@ def open_editor_menu(icon, item=None):
 
 def open_config(icon, item=None):
     """Abre la ventana de configuración usando el propio ejecutable o script."""
-    print("Abriendo configuración...")
+    logger.info("Abriendo configuración...")
     if getattr(sys, 'frozen', False):
         subprocess.Popen([sys.executable, "--config"])
     else:
@@ -108,14 +109,14 @@ def open_config(icon, item=None):
 def quit_app(icon, item=None):
     """Cierra la aplicación."""
     global should_exit
-    print("Saliendo...")
+    logger.info("Saliendo...")
     icon.stop()
     should_exit = True
 
 def reload_hooks(icon=None, item=None):
     """Reinicia la aplicación completa para restaurar hooks a bajo nivel."""
     global should_exit, should_restart
-    print("Reiniciando capturador completo (Recuperación de hilos OS)...")
+    logger.info("Reiniciando capturador completo (Recuperación de hilos OS)...")
     should_restart = True
     if icon:
         icon.stop()
@@ -170,7 +171,7 @@ def main():
         # Watchdog: Si pasa mucho tiempo en un solo 'sleep(1)', el PC fue suspendido
         jump = current_time - last_time
         if jump > 10.0:
-            print(f"Salto de tiempo detectado ({jump:.1f}s). Probable suspensión del OS. Reiniciando de raíz...")
+            logger.warning(f"Salto de tiempo detectado ({jump:.1f}s). Probable suspensión del OS. Reiniciando de raíz...")
             should_restart = True
             icon.stop()
             break
@@ -183,7 +184,7 @@ def main():
     except: pass
     
     if should_restart:
-        print("Ejecutando reinicio maestro de proceso...")
+        logger.info("Ejecutando reinicio maestro de proceso...")
         time.sleep(0.5) # Dar tiempo a Windows para limpiar el icono de la bandeja
         if getattr(sys, 'frozen', False):
             os.execv(sys.executable, sys.argv)
