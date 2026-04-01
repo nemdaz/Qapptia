@@ -93,19 +93,13 @@ class HighlighterTool(BaseTool):
         return utils.is_point_in_rect(px, py, px1, py1, px2, py2, tolerance, hollow=False)
 
     def render(self, canvas, coords, color, width, zoom_level, ratio, img_x, img_y, v_id):
-        # Highlighter siempre usa su propia lógica (aunque no sea ultra-rápida)
         x1, y1, x2, y2 = coords
         px1, py1 = img_x + (x1 * ratio), img_y + (y1 * ratio)
         px2, py2 = img_x + (x2 * ratio), img_y + (y2 * ratio)
         w, h = int(abs(px2 - px1)), int(abs(py2 - py1))
         if w < 1 or h < 1: return
-        from PIL import ImageTk, Image
-        from module_editor import utils
-        r, g, b = utils.hex_to_rgb(color)
-        overlay = Image.new("RGBA", (w, h), (r, g, b, constants.HIGHLIGHTER_ALPHA))
-        tk_img = ImageTk.PhotoImage(overlay)
-        if hasattr(canvas, "_photo_cache"): canvas._photo_cache.append(tk_img)
-        canvas.create_image(min(px1, px2), min(py1, py2), image=tk_img, anchor="nw", tags=("vector_preview", v_id))
+        canvas.create_rectangle(min(px1, px2), min(py1, py2), max(px1, px2), max(py1, py2),
+                               fill=color, stipple="gray50", outline="", tags=("vector_preview", v_id))
 
     def render_native(self, draw, coords, color, width, base_ratio):
         x1, y1, x2, y2 = coords

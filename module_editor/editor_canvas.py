@@ -141,6 +141,7 @@ class VectorCanvas(tk.Canvas):
         cx, cy = self.canvasx(win_x), self.canvasy(win_y)
         x_real, y_real = (cx - self.img_x) / self.ratio, (cy - self.img_y) / self.ratio
         
+        old_zoom = self.zoom_level
         # Cálculo de escala aditiva por rangos dinámicos
         notch = (event.delta / 120.0) if hasattr(event, "delta") and event.delta != 0 else (1 if getattr(event, "num", 0) == 4 else -1)
         direction = 1 if notch > 0 else -1
@@ -236,7 +237,7 @@ class VectorCanvas(tk.Canvas):
             self._update_background_image(cw, ch)
 
     def on_resize(self, event):
-        self._render(force_resize=True)
+        self._render()
         # Actualización de componentes dependientes de la geometría (Callback de Zoom)
         if self.on_zoom_callback:
             self.after(50, self.on_zoom_callback)
@@ -276,8 +277,18 @@ class VectorCanvas(tk.Canvas):
         
         if not fast or self._tk_static_layer is None:
             ss_factor = 2
-            v_layer_ss = Image.new("RGBA", (vw * ss_factor, vh * ss_factor), (0, 0, 0, 0))
-            draw = ImageDraw.Draw(v_layer_ss)
+            ss_w, ss_h = vw * ss_factor, vh * ss_factor
+            
+            need_new_ss = (not hasattr(self, '_ss_layer_image') or self._ss_layer_image is None
+                           or self._ss_layer_size != (ss_w, ss_h))
+            
+            if need_new_ss:
+                self._ss_layer_image = Image.new("RGBA", (ss_w, ss_h), (0, 0, 0, 0))
+                self._ss_layer_size = (ss_w, ss_h)
+            
+            draw = ImageDraw.Draw(self._ss_layer_image)
+            draw.rectangle([0, 0, ss_w, ss_h], fill=(0, 0, 0, 0))
+            
             for v in self.vectors:
                 if fast and v["id"] == self.selected_vector_id: continue
                 tool = editor_tools.ToolDispatcher.get_tool(v["type"])
@@ -286,7 +297,7 @@ class VectorCanvas(tk.Canvas):
                     scaled_coords = [c * self.ratio * ss_factor for c in v["coords"]]
                     tool.render_native(draw, scaled_coords, v["color"], v_width, 1.0 / (self.zoom_level * ss_factor))
             
-            static_layer = v_layer_ss.resize((vw, vh), Image.Resampling.BILINEAR)
+            static_layer = self._ss_layer_image.resize((vw, vh), Image.Resampling.BILINEAR)
             self._tk_static_layer = ImageTk.PhotoImage(static_layer)
         
         self._photo_cache.append(self._tk_static_layer)
@@ -433,16 +444,19 @@ class VectorCanvas(tk.Canvas):
             except: self.vectors = []
 
     def get_composite_image(self):
-        # Fusiona la imagen con los vectores en resolución nativa para exportar.
         if not self.current_pil_image: return None
-        comp = self.current_pil_image.copy()
-        draw = ImageDraw.Draw(comp)
+        base = self.current_pil_image.copy()
+        if base.mode != "RGBA":
+            base = base.convert("RGBA")
+        # Overlay para composición correcta del alfa
+        overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
+        draw = ImageDraw.Draw(overlay)
         for v in self.vectors:
             tool = editor_tools.ToolDispatcher.get_tool(v["type"])
             if tool:
                 width = max(5, int(constants.VECTOR_WIDTH / self.base_ratio))
                 tool.render_native(draw, v["coords"], v["color"], width, self.base_ratio)
-        return comp
+        return Image.alpha_composite(base, overlay)
 
     def copy_to_clipboard(self):
         img = self.get_composite_image()
