@@ -1,4 +1,3 @@
-import customtkinter as ctk
 from PIL import Image, ImageDraw
 
 def create_refresh_icon(color="white"):
@@ -208,40 +207,3 @@ _folder_collapsed_img = create_folder_collapsed_icon()
 _highlighter_img = create_highlighter_icon()
 _fit_img = create_fit_icon()
 
-_icon_cache = {}
-
-def get_icon(name, size=(20, 20)):
-    cache_key = (name, size)
-    if cache_key in _icon_cache:
-        return _icon_cache[cache_key]
-        
-    img = None
-    if name == "refresh":
-        img = ctk.CTkImage(light_image=_refresh_img, dark_image=_refresh_img, size=size)
-    elif name == "rotate":
-        img = ctk.CTkImage(light_image=_rotate_img, dark_image=_rotate_img, size=size)
-    elif name == "save":
-        img = ctk.CTkImage(light_image=_save_img, dark_image=_save_img, size=size)
-    elif name == "image_file":
-        img = ctk.CTkImage(light_image=_image_file_img, dark_image=_image_file_img, size=size)
-    elif name == "folder":
-        img = ctk.CTkImage(light_image=_folder_img, dark_image=_folder_img, size=size)
-    elif name == "arrow":
-        img = ctk.CTkImage(light_image=_arrow_img, dark_image=_arrow_img, size=size)
-    elif name == "rect":
-        img = ctk.CTkImage(light_image=_rect_img, dark_image=_rect_img, size=size)
-    elif name == "copy_file":
-        img = ctk.CTkImage(light_image=_copy_file_img, dark_image=_copy_file_img, size=size)
-    elif name == "copy_clip":
-        img = ctk.CTkImage(light_image=_copy_clip_img, dark_image=_copy_clip_img, size=size)
-    elif name == "folder_collapsed":
-        img = ctk.CTkImage(light_image=_folder_collapsed_img, dark_image=_folder_collapsed_img, size=size)
-    elif name == "highlighter":
-        img = ctk.CTkImage(light_image=_highlighter_img, dark_image=_highlighter_img, size=size)
-    elif name == "fit":
-        img = ctk.CTkImage(light_image=_fit_img, dark_image=_fit_img, size=size)
-        
-    if img:
-        _icon_cache[cache_key] = img
-        
-    return img

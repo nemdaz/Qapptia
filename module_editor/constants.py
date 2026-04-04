@@ -10,20 +10,30 @@ MIN_HEIGHT = 500
 SIDEBAR_WIDTH = 250
 ICON_SIZE = (20, 20)
 
-# Zoom
-ZOOM_MIN = 0.01
-ZOOM_MAX = 10.0
-ZOOM_STEP = 1.2
-ZOOM_PRESETS = ["1%", "10%", "25%", "50%", "100%", "150%", "200%", "250%", "300%", "350%", "400%", "450%", "500%", "550%", "600%"]
+WINDOW_LAYOUT = {
+    "window_size": WINDOW_SIZE,
+    "min_width": MIN_WIDTH,
+    "min_height": MIN_HEIGHT,
+    "sidebar_width": SIDEBAR_WIDTH,
+    "icon_size": ICON_SIZE,
+}
 
-# Colores de UI
-BG_COLOR_DARK = "#2b2b2b"
-CANVAS_BG_COLOR = "#1a1a1a"
-HIGHLIGHT_COLOR = "#3a3a3a"
-ACTIVE_TOOL_COLOR = "#1a73e8"
-TEXT_COLOR_DEFAULT = ("gray10", "gray90")
-TOOLTIP_BG_COLOR = "#2b2b2b"
-TOOLTIP_FG_COLOR = "#ffffff"
+ZOOM_CONFIG = {
+    "min": 0.01,
+    "max": 10.0,
+    "step": 1.2,
+    "presets": ["1%", "10%", "25%", "50%", "100%", "150%", "200%", "250%", "300%", "350%", "400%", "450%", "500%", "550%", "600%"],
+}
+
+UI_COLORS = {
+    "bg_dark": "#2b2b2b",
+    "canvas_bg": "#1a1a1a",
+    "highlight": "#3a3a3a",
+    "active_tool": "#1a73e8",
+    "text_default": ("gray10", "gray90"),
+    "tooltip_bg": "#2b2b2b",
+    "tooltip_fg": "#ffffff",
+}
 
 # Colores Favoritos (Presets)
 FAVORITE_COLORS = {
@@ -77,8 +87,24 @@ ICON_SIZE_SMALL = (16, 16)
 INITIAL_LOAD_DELAY_MS = 300
 DEBOUNCE_DELAY_MS = 50
 
-# Vector Rendering
-DEFAULT_VECTOR_COLOR = "#00FF00"
-VECTOR_WIDTH = 3
-GRIP_SIZE = 5
-ARROW_WING_LEN = 25
+VECTOR_STYLE = {
+    "default_color": "#00FF00",
+    "stroke_width": 3,
+    "grip_size": 6,
+    "arrow_wing_len": 25,
+    "draw_min_distance": 8,
+    "selection_tolerance": {
+        "rect": 8,
+        "arrow": 10,
+        "highlighter": 2,
+    },
+}
+
+COLOR_SWATCH_STYLE = {
+    "icon_size": 22,
+    "outer_padding": 1,
+    "outer_ring_active": "#f5f7fa",
+    "outer_ring_inactive": "#2f343b",
+    "inner_ring_active": UI_COLORS["active_tool"],
+    "inner_ring_inactive": "#555b63",
+}

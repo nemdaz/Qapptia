@@ -11,11 +11,12 @@ from PIL import Image
 from core.logger import logger
 from core import config, ipc, utils
 from core.constants import APP_NAME, VERSION
-from module_capture.capture_screen import capture_screen
-from module_capture import mode_screen, mode_area, mode_flow
-from module_capture.mode_flow import flow_manager
-from module_capture.gui import run_gui
-from module_editor.editor import EditorApp
+from module_capture.application.flow_capture_service import flow_capture_service
+from module_capture.entrypoints.area_mode import register_area_hotkey, trigger_area_capture
+from module_capture.entrypoints.config_entry import run_config_window
+from module_capture.entrypoints.flow_mode import register_flow_hotkey
+from module_capture.entrypoints.screen_mode import register_screen_hotkey, trigger_screen_capture
+from module_editor.editor import run_editor
 
 # --- Configuración de consciencia de DPI (Agnóstica al SO) ---
 utils.set_dpi_awareness()
@@ -34,22 +35,22 @@ def create_image():
 
 def on_mouse_event(event):
     """Delega los eventos del ratón al FlowManager."""
-    flow_manager.handle_mouse_event(event)
+    flow_capture_service.handle_mouse_event(event)
 
 def toggle_flow_menu(icon, item=None):
     """Activa/Desactiva el modo flujo."""
-    is_active = flow_manager.toggle()
+    is_active = flow_capture_service.toggle()
     logger.info(f"Modo flujo {'activado' if is_active else 'desactivado'}.")
 
 def capture_full_menu(icon, item=None):
     """Captura pantalla completa desde el menú."""
     config.load_config()
-    mode_screen.trigger_screen_capture()
+    trigger_screen_capture()
 
 def capture_area_menu(icon, item=None):
     """Inicia captura de área desde el menú."""
     config.load_config()
-    mode_area.trigger_area_capture()
+    trigger_area_capture()
 
 def launch_editor_process():
     """Lógica central para abrir el editor con protección de instancias multiples."""
@@ -133,24 +134,23 @@ def main():
     # Despachador para modo portable / PyInstaller
     if len(sys.argv) > 1:
         if sys.argv[1] == "--editor":
-            app = EditorApp()
-            app.mainloop()
+            run_editor()
             return
         elif sys.argv[1] == "--config":
-            run_gui()
+            run_config_window()
             return
 
     global should_exit
     config.load_config()
     # Iniciar atajos de cada modo
-    mode_screen.setup()
-    mode_area.setup()
-    mode_flow.setup()
+    register_screen_hotkey()
+    register_area_hotkey()
+    register_flow_hotkey()
     
     menu = pystray.Menu(
         pystray.MenuItem('Abrir_oculto', open_editor_icon, default=True, visible=False),
         pystray.MenuItem('Capturar pantalla', capture_full_menu),
-        pystray.MenuItem(lambda text: 'Capturar flujo (Detener)' if flow_manager.is_active else 'Capturar flujo (Iniciar)', toggle_flow_menu),
+        pystray.MenuItem(lambda text: 'Capturar flujo (Detener)' if flow_capture_service.is_active else 'Capturar flujo (Iniciar)', toggle_flow_menu),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem('Editor', open_editor_menu),
         pystray.MenuItem('Configuración', open_config),

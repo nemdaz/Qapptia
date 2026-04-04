@@ -248,9 +248,21 @@ def _get_real_cursor_win():
         g32.DeleteDC(hmem)
         u32.ReleaseDC(0, hscr)
         
-        # Convertir a imagen PIL (BGRA -> RGBA)
-        img = Image.frombuffer("RGBA", (cw, ch), buffer, "raw", "BGRA", 0, 1)
-        return img.copy(), hotspot # .copy() libera el buffer interno
+        # Convertir a imagen PIL (BGRA -> RGBA) y corregir alpha premultiplicado.
+        img = Image.frombuffer("RGBA", (cw, ch), buffer, "raw", "BGRA", 0, 1).copy()
+        pixels = img.load()
+        for y in range(ch):
+            for x in range(cw):
+                r, g, b, a = pixels[x, y]
+                if a == 0:
+                    pixels[x, y] = (0, 0, 0, 0)
+                    continue
+                if a < 255:
+                    r = min(255, int((r * 255) / a))
+                    g = min(255, int((g * 255) / a))
+                    b = min(255, int((b * 255) / a))
+                pixels[x, y] = (r, g, b, a)
+        return img, hotspot
     except Exception as e:
         logger.error(f"Error capturando cursor nativo: {e}")
         return None, (0, 0)
@@ -339,41 +351,46 @@ def get_virtual_screen_origin():
         return 0, 0
     return 0, 0
 
-def draw_mouse_overlay(screen_image, mouse_x, mouse_y, highlight=False, cursor_data=None):
+def draw_mouse_overlay(screen_image, mouse_x, mouse_y, highlight=False, cursor_data=None, highlight_style=None):
     """Dibuja el cursor sobre la captura. Permite pasar cursor_data=(img, hotspot) pre-capturado."""
     try:
         scale = get_dpi_scaling()
         mx, my = int(mouse_x), int(mouse_y)
-        
-        # 1. Obtener imagen de cursor
+
         if cursor_data:
             cursor_img, hotspot = cursor_data
         else:
             cursor_img, hotspot = get_current_cursor(scale)
-            
+
         hx, hy = hotspot
-        
-        # 2. Dibujar Halo (Resaltado)
+
         if highlight:
-            overlay = Image.new('RGBA', screen_image.size, (0, 0, 0, 0))
-            d_ctx = ImageDraw.Draw(overlay)
-            radio = int(22 * scale)
-            # Centrar el halo en la posición del mouse (mx, my)
-            halo_box = [mx - radio, my - radio, mx + radio, my + radio]
-            d_ctx.ellipse(halo_box, fill=(255, 220, 0, 120))
-            
+            style = highlight_style or {}
+            radius = int(style.get("radius", 24) * scale)
+            fill = style.get("fill", (255, 220, 0, 92))
+            supersample = max(1, int(style.get("supersample", 4)))
+            halo_size = (radius * 2) + 2
+
+            overlay = Image.new("RGBA", screen_image.size, (0, 0, 0, 0))
+            halo_image = Image.new("RGBA", (halo_size * supersample, halo_size * supersample), (0, 0, 0, 0))
+            halo_draw = ImageDraw.Draw(halo_image)
+            halo_draw.ellipse(
+                (0, 0, (halo_size * supersample) - 1, (halo_size * supersample) - 1),
+                fill=fill,
+            )
+            halo_image = halo_image.resize((halo_size, halo_size), Image.LANCZOS)
+
             screen_image = screen_image.convert("RGBA")
+            overlay.paste(halo_image, (mx - radius, my - radius), halo_image)
             screen_image = Image.alpha_composite(screen_image, overlay)
-            
-        # 3. Pegar el cursor (ajustando por el hotspot real)
+
         screen_image = screen_image.convert("RGBA")
-        # El hotspot debe escalarse también si la imagen del cursor es baja res (32x32)
         screen_image.paste(cursor_img, (mx - int(hx * scale), my - int(hy * scale)), cursor_img)
         screen_image = screen_image.convert("RGB")
-        
+
     except Exception as e:
         logger.error(f"Error en el dibujo del mouse: {e}")
-        
+
     return screen_image
 
 def register_hotkey(hotkey, callback, description=""):
@@ -402,3 +419,4 @@ def register_hotkey(hotkey, callback, description=""):
     except Exception as e:
         logger.error(f"Error al registrar atajo {description} '{hotkey}': {e}")
         return False
+
