@@ -179,19 +179,34 @@ def create_highlighter_icon(color="white"):
     d.polygon([(6, 14), (10, 18), (8, 20), (4, 16)], fill=color)
     return img
 
-def create_fit_icon(color="white"):
+def create_image_fit_icon(color="white"):
     img = Image.new("RGBA", (24, 24), (255, 255, 255, 0))
     d = ImageDraw.Draw(img)
+    w = 2
+
+    d.rectangle([5, 5, 19, 19], outline=color, width=1)
+    d.line([(12, 10), (12, 4)], fill=color, width=w)
+    d.polygon([(12, 2), (9, 6), (15, 6)], fill=color)
+    d.line([(12, 14), (12, 20)], fill=color, width=w)
+    d.polygon([(12, 22), (9, 18), (15, 18)], fill=color)
+    d.line([(10, 12), (4, 12)], fill=color, width=w)
+    d.polygon([(2, 12), (6, 9), (6, 15)], fill=color)
+    d.line([(14, 12), (20, 12)], fill=color, width=w)
+    d.polygon([(22, 12), (18, 9), (18, 15)], fill=color)
     
-    # Cuadrado principal
-    d.rectangle([5, 5, 18, 18], outline=color, width=1)
-    
-    # Triángulo en la esquina superior izquierda (apuntando afuera)
-    d.polygon([(2, 2), (8, 2), (2, 8)], fill=color)
-    
-    # Triángulo en la esquina inferior derecha (apuntando afuera)
-    d.polygon([(21, 21), (15, 21), (21, 15)], fill=color)
-    
+    return img
+
+def create_image_real_size_icon(color="white"):
+    img = Image.new("RGBA", (24, 24), (255, 255, 255, 0))
+    d = ImageDraw.Draw(img)
+    w = 2
+
+    d.line([(4, 9), (4, 4), (9, 4)], fill=color, width=w, joint="curve")
+    d.line([(15, 4), (20, 4), (20, 9)], fill=color, width=w, joint="curve")
+    d.line([(4, 15), (4, 20), (9, 20)], fill=color, width=w, joint="curve")
+    d.line([(15, 20), (20, 20), (20, 15)], fill=color, width=w, joint="curve")
+    d.rectangle([8, 8, 16, 16], outline=color, width=2)
+
     return img
 
 _refresh_img = create_refresh_icon()
@@ -205,5 +220,6 @@ _copy_file_img = create_copy_file_icon()
 _copy_clip_img = create_copy_clipboard_icon()
 _folder_collapsed_img = create_folder_collapsed_icon()
 _highlighter_img = create_highlighter_icon()
-_fit_img = create_fit_icon()
+_image_fit_img = create_image_fit_icon()
+_image_real_size_img = create_image_real_size_icon()
 

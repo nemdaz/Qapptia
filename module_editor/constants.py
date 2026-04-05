@@ -65,7 +65,18 @@ TOOLTIPS = {
     "highlighter": "Resaltador (H)",
     "refresh": "Recargar explorador",
     "color_prefix": "Color: ",
-    "fit": "Ajustar imagen"
+    "image_fit": "Ajustar imagen",
+    "image_real_size": "Ajustar imagen a tamaño real",
+}
+
+TOAST_MESSAGES = {
+    "open_error": "Error al abrir la imagen",
+    "rotate_success": "Rotado {degrees} grados",
+    "save_success": "Cambios guardados y aplicados a la imagen",
+    "save_error": "Error al guardar los cambios",
+    "image_copied": "Imagen copiada",
+    "copy_file_missing": "No hay archivo para copiar",
+    "file_copied": "Archivo copiado",
 }
 
 HIGHLIGHTER_ALPHA = 102

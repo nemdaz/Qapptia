@@ -1,8 +1,9 @@
 import os
 
 from PIL import ImageQt
-from PySide6.QtCore import QMetaObject, QSize, Qt, QTimer, Slot
+from PySide6.QtCore import QMetaObject, QSize, Qt, QTimer, QUrl, Slot
 from PySide6.QtGui import QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap
+from PySide6.QtCore import QMimeData
 from PySide6.QtWidgets import QApplication, QComboBox, QMainWindow, QSplitter, QToolBar, QVBoxLayout, QWidget
 
 from core import ipc
@@ -108,7 +109,8 @@ class MainWindow(QMainWindow):
         self.zoom_combo.setCurrentText("100%")
         self.zoom_combo.activated.connect(self._on_zoom_combo)
         toolbar.addWidget(self.zoom_combo)
-        self._add_action(toolbar, "fit", "fit", self.fit_image)
+        self._add_action(toolbar, "image_fit", "image_fit", self.fit_image)
+        self._add_action(toolbar, "image_real_size", "image_real_size", self.reset_zoom)
 
         toolbar.addSeparator()
         self.act_arrow = self._add_action(toolbar, "arrow", "arrow", lambda: self.set_tool("arrow"), checkable=True)
@@ -195,7 +197,7 @@ class MainWindow(QMainWindow):
             QTimer.singleShot(50, self.canvas.fit_to_scene)
         except Exception as exc:
             logger.error(f"Error show_image: {exc}")
-            show_toast(self, "Error al abrir la imagen", kind="error")
+            show_toast(self, constants.TOAST_MESSAGES["open_error"], kind="error")
 
     def rotate_image(self):
         if not self._controller.current_image_path:
@@ -204,7 +206,7 @@ class MainWindow(QMainWindow):
         display_image = self._controller.rotate_image()
         self.scene.load_image(display_image, self._controller.current_image_path)
         self._refresh_save_action()
-        show_toast(self, f"Rotado {self._controller.current_rotation} grados")
+        show_toast(self, constants.TOAST_MESSAGES["rotate_success"].format(degrees=self._controller.current_rotation))
 
     def save_image(self):
         if not self._controller.has_pending_save:
@@ -216,25 +218,34 @@ class MainWindow(QMainWindow):
                 return
             self.scene.load_image(display_image, self._controller.current_image_path)
             self._refresh_save_action()
-            show_toast(self, "Cambios guardados y aplicados a la imagen", kind="success")
+            show_toast(self, constants.TOAST_MESSAGES["save_success"], kind="success")
         except Exception as exc:
             logger.error(f"Error save_image: {exc}")
-            show_toast(self, "Error al guardar los cambios", kind="error")
+            show_toast(self, constants.TOAST_MESSAGES["save_error"], kind="error")
 
     def copy_to_clipboard(self):
         composite = self.scene.get_composite_image()
         if composite:
             QApplication.clipboard().setPixmap(QPixmap.fromImage(ImageQt.ImageQt(composite.convert("RGB"))))
-            show_toast(self, "Imagen copiada")
+            show_toast(self, constants.TOAST_MESSAGES["image_copied"])
 
     def copy_file_to_clipboard(self):
         image_path = self._controller.copy_file_path()
-        if image_path:
-            QApplication.clipboard().setText(image_path)
-            show_toast(self, "Ruta copiada")
+        if not image_path or not os.path.exists(image_path):
+            show_toast(self, constants.TOAST_MESSAGES["copy_file_missing"], kind="error")
+            return
+
+        mime_data = QMimeData()
+        mime_data.setUrls([QUrl.fromLocalFile(os.path.normpath(image_path))])
+        mime_data.setText(image_path)
+        QApplication.clipboard().setMimeData(mime_data)
+        show_toast(self, constants.TOAST_MESSAGES["file_copied"])
 
     def fit_image(self):
         self.canvas.fit_to_scene()
+
+    def reset_zoom(self):
+        self.canvas.set_zoom_level(1.0)
 
     def _on_zoom_changed(self):
         self.zoom_combo.setEditText(f"{int(round(self.canvas.zoom_level * 100))}%")
