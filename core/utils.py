@@ -4,12 +4,14 @@ import winsound
 import ctypes
 import platform
 import time
-import keyboard
 import subprocess
 from ctypes import wintypes
 from PIL import ImageDraw, Image, ImageFilter
 from core import config
 from core.logger import logger
+from core.platform import get_platform_services
+
+_platform = get_platform_services()
 
 def get_resource_path(relative_path):
     """ Obtiene la ruta absoluta a un recurso, compatible con PyInstaller y desarrollo. """
@@ -21,7 +23,7 @@ def get_resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 def get_save_directory(base_path, now):
-    """Calcula la ruta de guardado final basada en la configuración de subcarpetas."""
+    """Calcula la ruta de guardado final basada en la configuraciÃ³n de subcarpetas."""
     base_path = os.path.expandvars(base_path)
     subfolders = []
     if config.get("subfolder_month"):
@@ -36,13 +38,13 @@ def get_save_directory(base_path, now):
         os.makedirs(full_path, exist_ok=True)
     return full_path
 
-# Caché global para datos de audio (evita latencia de disco)
+# CachÃ© global para datos de audio (evita latencia de disco)
 _AUDIO_CACHE = {}
 
 def play_beep_async():
-    """Reproduce el sonido de obturador profesional con precarga y telemetría."""
+    """Reproduce el sonido de obturador profesional con precarga y telemetrÃ­a."""
     timestamp = time.strftime('%H:%M:%S')
-    logger.trace(f"[AUDIO] Solicitud de reproducción a las {timestamp}")
+    logger.trace(f"[AUDIO] Solicitud de reproducciÃ³n a las {timestamp}")
     global _AUDIO_CACHE
     try:
         if sys.platform == "win32":
@@ -59,7 +61,7 @@ def play_beep_async():
                     winsound.Beep(1500, 150)
                     return
 
-            # Reproducción instantánea desde archivo caché por OS
+            # ReproducciÃ³n instantÃ¡nea desde archivo cachÃ© por OS
             winsound.PlaySound(_AUDIO_CACHE[sound_key], winsound.SND_FILENAME | winsound.SND_ASYNC)
             logger.debug("[AUDIO] Comando PlaySound enviado al OS.")
             
@@ -84,7 +86,7 @@ def parse_filename_format(base_format, now_datetime):
     return now_datetime.strftime(format_str) + ".png"
 
 def get_dpi_scaling():
-    """Despachador de factor de escala DPI según el Sistema Operativo."""
+    """Despachador de factor de escala DPI segÃºn el Sistema Operativo."""
     os_name = platform.system().lower()
     if "windows" in os_name:
         return _get_dpi_win()
@@ -93,7 +95,7 @@ def get_dpi_scaling():
     return 1.0
 
 def _get_dpi_win():
-    """Cálculo de escala DPI para Windows usando GDI32."""
+    """CÃ¡lculo de escala DPI para Windows usando GDI32."""
     try:
         user32 = ctypes.windll.user32
         gdi32 = ctypes.windll.gdi32
@@ -106,15 +108,15 @@ def _get_dpi_win():
         return 1.0
 
 def _get_dpi_linux():
-    """Intento de detección de escala DPI en Linux (Wayland/X11)."""
+    """Intento de detecciÃ³n de escala DPI en Linux (Wayland/X11)."""
     try:
         # Prioridad a variable de entorno de GNOME/GTK
         if 'GDK_SCALE' in os.environ:
             return float(os.environ['GDK_SCALE'])
-        # Fallback a xrandr si está disponible
+        # Fallback a xrandr si estÃ¡ disponible
         res = subprocess.check_output(['xrandr', '--current'], stderr=subprocess.STDOUT).decode()
         if ' connected primary' in res:
-             # Lógica simplificada: comparar resoluciones si es necesario
+             # LÃ³gica simplificada: comparar resoluciones si es necesario
              pass
     except:
         pass
@@ -122,19 +124,19 @@ def _get_dpi_linux():
 
 def _get_fallback_cursor(scale):
     """Genera un cursor de alta calidad con Antialiasing (Super-sampling)."""
-    # Puntos base proporcionales de Windows estándar
+    # Puntos base proporcionales de Windows estÃ¡ndar
     base_points = [(0, 0), (0, 16), (4, 12), (7, 19), (9, 18), (6, 11), (11, 11)]
     
     # Factor de super-muestreo (4x) para suavizar bordes
     ss = 4
     canvas_scale = scale * ss
     
-    # Tamaño del lienzo temporal
+    # TamaÃ±o del lienzo temporal
     w, h = int(16 * canvas_scale), int(24 * canvas_scale)
     temp_img = Image.new('RGBA', (w, h), (0, 0, 0, 0))
     d = ImageDraw.Draw(temp_img)
     
-    # Dibujar polígono escalado en resolución 4x
+    # Dibujar polÃ­gono escalado en resoluciÃ³n 4x
     scaled_points = [(p[0] * canvas_scale, p[1] * canvas_scale) for p in base_points]
     d.polygon(scaled_points, fill="white", outline="black")
     
@@ -212,7 +214,7 @@ def _get_real_cursor_win():
             
         hotspot = (ii.xHotspot, ii.yHotspot)
         
-        # Obtener tamaño real del cursor (High DPI aware)
+        # Obtener tamaÃ±o real del cursor (High DPI aware)
         cw = u32.GetSystemMetrics(13) # SM_CXCURSOR
         ch = u32.GetSystemMetrics(14) # SM_CYCURSOR
         if cw == 0: cw = 32
@@ -228,7 +230,7 @@ def _get_real_cursor_win():
         # DI_NORMAL = 0x0003
         u32.DrawIconEx(hmem, 0, 0, ci.hCursor, cw, ch, 0, 0, 0x0003)
         
-        # Extraer los píxeles del bitmap (DIB)
+        # Extraer los pÃ­xeles del bitmap (DIB)
         bmi = BITMAPINFO()
         bmi.bmiHeader.biSize = ctypes.sizeof(BITMAPINFOHEADER)
         bmi.bmiHeader.biWidth = cw
@@ -279,35 +281,21 @@ def get_current_cursor(scale):
     hotspot = (0, 0)
     os_name = platform.system().lower()
     
-    # 1. Intentar obtener el cursor real del sistema según el SO
+    # 1. Intentar obtener el cursor real del sistema segÃºn el SO
     if "windows" in os_name:
         cursor_img, hotspot = _get_real_cursor_win()
     elif "linux" in os_name:
         cursor_img, hotspot = _get_real_cursor_linux()
         
-    # 2. Si falla el real (o no está soportado), usar Fallback Pro con Antialiasing
+    # 2. Si falla el real (o no estÃ¡ soportado), usar Fallback Pro con Antialiasing
     if cursor_img is None:
         cursor_img, hotspot = _get_fallback_cursor(scale)
         
     return cursor_img, hotspot
 
 def set_dpi_awareness():
-    """Configura la consciencia de DPI de forma agnóstica al SO."""
-    if sys.platform == "win32":
-        try:
-            ctypes.windll.shcore.SetProcessDpiAwareness(2) # PROCESS_PER_MONITOR_DPI_AWARE
-        except:
-            try:
-                ctypes.windll.user32.SetProcessDPIAware()
-            except:
-                pass
-    elif sys.platform == "linux":
-        # En Linux, la escala suele gestionarse vía variables de entorno (GDK_SCALE)
-        # o a nivel de toolkit (Qt/GTK), no requiere llamada global de proceso.
-        pass
-    elif sys.platform == "darwin":
-        # macOS gestiona DPI (Retina) de forma nativa y transparente para el proceso.
-        pass
+    """Configura la consciencia de DPI de forma agnostica al SO."""
+    _platform.dpi.set_process_dpi_awareness()
 
 def get_monitor_at_cursor():
     """Obtiene dimensiones (x, y, w, h) del monitor bajo el cursor."""
@@ -328,7 +316,7 @@ def get_monitor_at_cursor():
         return r.left, r.top, r.right - r.left, r.bottom - r.top
     
     elif sys.platform == "linux":
-        # TODO: Implementar usando xrandr o librerías específicas de X11/Wayland
+        # TODO: Implementar usando xrandr o librerÃ­as especÃ­ficas de X11/Wayland
         return 0, 0, 1920, 1080
     
     elif sys.platform == "darwin":
@@ -394,7 +382,7 @@ def draw_mouse_overlay(screen_image, mouse_x, mouse_y, highlight=False, cursor_d
     return screen_image
 
 def register_hotkey(hotkey, callback, description=""):
-    """Registra un atajo de teclado con validación de estado físico de modificadores."""
+    """Registra un atajo de teclado con validaciÃ³n de estado fÃ­sico de modificadores."""
     if not hotkey: return False
     
     # Desglosamos el atajo para identificar teclas modificadoras (ctrl, shift, alt)
@@ -404,15 +392,15 @@ def register_hotkey(hotkey, callback, description=""):
     def safe_callback():
         """Validador de modificadores para prevenir activaciones accidentales."""
         time.sleep(0.05)
-        if all(keyboard.is_pressed(m) for m in modifiers):
+        if all(_platform.input.is_key_pressed(m) for m in modifiers):
              logger.debug(f"[HOTKEY] Disparando '{description}' ({hotkey})")
              callback()
         else:
              logger.trace(f"[HOTKEY] Ignorada activacion de tecla solitaria: '{hotkey}'")
              
     try:
-        # Usamos suppress=False para no interferir con otras apps (más estable)
-        keyboard.add_hotkey(hotkey, safe_callback, suppress=False)
+        # Usamos suppress=False para no interferir con otras apps (mÃ¡s estable)
+        _platform.input.add_hotkey(hotkey, safe_callback, suppress=False)
         desc_str = f"({description})" if description else ""
         logger.info(f"Atajo {desc_str} '{hotkey}' registrado (Protegido).")
         return True

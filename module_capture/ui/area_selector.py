@@ -1,16 +1,17 @@
 import datetime
 import os
 
-import keyboard
-import mouse
-from PIL import ImageGrab, ImageQt
+from PIL import ImageQt
 from PySide6.QtCore import QEventLoop, QRect, Qt, QTimer
 from PySide6.QtGui import QColor, QKeySequence, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import QApplication, QWidget
 
 from core import config, utils
 from core.logger import logger
+from core.platform import get_platform_services
 from module_capture import constants
+
+_platform = get_platform_services()
 
 
 class AreaSelectorWindow(QWidget):
@@ -29,16 +30,16 @@ class AreaSelectorWindow(QWidget):
         self._monitor_timer.timeout.connect(self._check_monitor_change)
         self._monitor_timer.start(constants.AREA_SELECTOR_STYLE["monitor_poll_interval_ms"])
 
-        self._esc_hook = keyboard.on_press_key("esc", lambda event: QTimer.singleShot(0, self.close), suppress=True)
+        self._esc_hook = _platform.input.on_press_key("esc", lambda event: QTimer.singleShot(0, self.close), suppress=True)
 
     def _load_screen_context(self):
         self._monitor_x, self._monitor_y, self._monitor_width, self._monitor_height = utils.get_monitor_at_cursor()
         self._virtual_x, self._virtual_y = utils.get_virtual_screen_origin()
-        self._full_screenshot = ImageGrab.grab(all_screens=True)
+        self._full_screenshot = _platform.screen.capture_all_screens()
         self._background_pixmap = QPixmap.fromImage(ImageQt.ImageQt(self._full_screenshot))
 
         try:
-            self._mouse_pos = mouse.get_position()
+            self._mouse_pos = _platform.input.get_mouse_position()
             scale = utils.get_dpi_scaling()
             self._cursor_data = utils.get_current_cursor(scale)
         except Exception:
@@ -124,7 +125,7 @@ class AreaSelectorWindow(QWidget):
 
     def closeEvent(self, event):
         try:
-            keyboard.unhook(self._esc_hook)
+            _platform.input.unhook_key_listener(self._esc_hook)
         except Exception:
             pass
         self._monitor_timer.stop()

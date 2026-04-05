@@ -2,12 +2,12 @@ import datetime
 import os
 import time
 
-import mouse
-from PIL import ImageGrab
-
 from core import config, utils
 from core.logger import logger
+from core.platform import get_platform_services
 from module_capture import constants
+
+_platform = get_platform_services()
 
 
 class FullscreenCaptureService:
@@ -44,7 +44,7 @@ class FullscreenCaptureService:
         monitor_x, monitor_y, monitor_width, monitor_height = utils.get_monitor_at_cursor()
         virtual_x, virtual_y = utils.get_virtual_screen_origin()
 
-        full_image = ImageGrab.grab(all_screens=True)
+        full_image = _platform.screen.capture_all_screens()
         crop_x = monitor_x - virtual_x
         crop_y = monitor_y - virtual_y
         image = full_image.crop((crop_x, crop_y, crop_x + monitor_width, crop_y + monitor_height))
@@ -53,7 +53,7 @@ class FullscreenCaptureService:
             return image
 
         try:
-            mouse_x, mouse_y = mouse.get_position()
+            mouse_x, mouse_y = _platform.input.get_mouse_position()
             scale = utils.get_dpi_scaling()
             cursor_data = utils.get_current_cursor(scale)
             relative_x = (mouse_x - monitor_x) * scale

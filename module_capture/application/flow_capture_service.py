@@ -3,14 +3,14 @@ import os
 import threading
 import time
 
-import keyboard
-import mouse
-
 from core import config, utils
 from core.logger import logger
+from core.platform import get_platform_services
 from module_capture import constants
 from module_capture.application.fullscreen_capture_service import fullscreen_capture_service
 from module_capture.domain import flow_constants
+
+_platform = get_platform_services()
 
 
 class FlowCaptureService:
@@ -38,11 +38,11 @@ class FlowCaptureService:
         if not self.is_active or self._is_paused_by_shortcut():
             return
 
-        if isinstance(event, mouse.ButtonEvent):
+        if _platform.input.is_mouse_button_event(event):
             self._handle_click(event)
-        elif isinstance(event, mouse.WheelEvent):
+        elif _platform.input.is_mouse_wheel_event(event):
             self._handle_wheel()
-        elif isinstance(event, mouse.MoveEvent):
+        elif _platform.input.is_mouse_move_event(event):
             self._handle_move(event)
 
     def _start_session(self):
@@ -76,7 +76,7 @@ class FlowCaptureService:
             return False
         try:
             keys = [key.strip() for key in pause_shortcut.split("+") if key.strip()]
-            return all(keyboard.is_pressed(key) for key in keys)
+            return all(_platform.input.is_key_pressed(key) for key in keys)
         except Exception:
             return False
 
@@ -84,7 +84,7 @@ class FlowCaptureService:
         if event.button != "left":
             return
 
-        mouse_x, mouse_y = mouse.get_position()
+        mouse_x, mouse_y = _platform.input.get_mouse_position()
         monitor_x, _, monitor_width, _ = utils.get_monitor_at_cursor()
         relative_x = mouse_x - monitor_x
 
@@ -140,7 +140,7 @@ class FlowCaptureService:
             try:
                 self._last_y = event.y
             except Exception:
-                _, self._last_y = mouse.get_position()
+                _, self._last_y = _platform.input.get_mouse_position()
 
     def _start_velocity_monitor(self):
         if not self._is_manual_scrolling or not self.is_active:

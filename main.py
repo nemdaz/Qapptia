@@ -4,13 +4,12 @@ import time
 import subprocess
 import threading
 import pystray
-import mouse
-import keyboard
 from PIL import Image
 
 from core.logger import logger
 from core import config, ipc, utils
 from core.constants import APP_NAME, VERSION
+from core.platform import get_platform_services
 from module_capture.application.flow_capture_service import flow_capture_service
 from module_capture.entrypoints.area_mode import register_area_hotkey, trigger_area_capture
 from module_capture.entrypoints.config_entry import run_config_window
@@ -23,6 +22,7 @@ should_exit = False
 should_restart = False
 _editor_last_click = 0
 _is_editor_launching = False
+_platform = get_platform_services()
 
 def create_image():
     # Icono simple para la bandeja
@@ -124,7 +124,7 @@ def setup(icon):
 
     icon.visible = True
     # Siempre escuchamos el mouse, FlowManager decide si actuar
-    mouse.hook(on_mouse_event)
+    _platform.input.hook_mouse(on_mouse_event)
 
 def main():
     global should_exit, should_restart
@@ -139,7 +139,7 @@ def main():
 
     # Solo en el proceso principal (tray/captura).
     # En editor/config dejamos que Qt gestione DPI para evitar doble configuracion.
-    utils.set_dpi_awareness()
+    _platform.dpi.set_process_dpi_awareness()
 
     global should_exit
     config.load_config()
@@ -181,7 +181,7 @@ def main():
         
     # Limpieza final
     try:
-        mouse.unhook_all()
+        _platform.input.unhook_all_mouse()
     except: pass
     
     if should_restart:
