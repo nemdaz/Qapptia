@@ -92,6 +92,8 @@ VECTOR_STYLE = {
     "stroke_width": 3,
     "grip_size": 6,
     "arrow_wing_len": 25,
+    "export_scale": 4,
+    "export_max_pixels": 36000000,
     "draw_min_distance": 8,
     "selection_tolerance": {
         "rect": 8,

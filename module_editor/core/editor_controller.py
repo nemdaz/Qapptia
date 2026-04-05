@@ -33,6 +33,10 @@ class EditorController:
     def has_unsaved_rotation(self):
         return self._image_session.rotation != 0
 
+    @property
+    def has_pending_save(self):
+        return self.has_unsaved_rotation or self.document.has_vectors()
+
     def set_active_color(self, color_name):
         self.preferences.active_fav_color = color_name
         state_store.save(self.preferences)
@@ -74,6 +78,21 @@ class EditorController:
         if not self.has_unsaved_rotation:
             return None
         self._image_session.save_rotation()
+        display_image = self._image_session.get_display_image()
+        self.document.load(display_image, self.current_image_path)
+        return display_image
+
+    def save_current_image(self):
+        if not self.current_image_path or not self.has_pending_save:
+            return None
+
+        composite_image = self.document.get_composite_image()
+        if composite_image is None:
+            return None
+
+        self._image_session.save_image(composite_image)
+        self.document.clear_vectors()
+
         display_image = self._image_session.get_display_image()
         self.document.load(display_image, self.current_image_path)
         return display_image

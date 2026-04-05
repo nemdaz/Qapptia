@@ -21,6 +21,10 @@ class VectorStore:
             return None
         return os.path.splitext(image_path)[0] + ".json"
 
+    def exists(self, image_path):
+        path = self.get_json_path(image_path)
+        return bool(path and os.path.exists(path))
+
     def load(self, image_path):
         path = self.get_json_path(image_path)
         if path and os.path.exists(path):
@@ -35,11 +39,23 @@ class VectorStore:
         path = self.get_json_path(image_path)
         if not path:
             return
+        if not vectors:
+            self.delete(image_path)
+            return
         try:
             with open(path, "w", encoding="utf-8") as f:
                 json.dump([vector.to_dict() for vector in vectors], f, indent=4)
         except Exception as exc:
             logger.error(f"Error saving vectors to {path}: {exc}")
+
+    def delete(self, image_path):
+        path = self.get_json_path(image_path)
+        if not path or not os.path.exists(path):
+            return
+        try:
+            os.remove(path)
+        except OSError as exc:
+            logger.error(f"Error deleting vectors from {path}: {exc}")
 
 
 vector_store = VectorStore()

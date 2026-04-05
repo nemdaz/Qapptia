@@ -1,11 +1,28 @@
 from PySide6.QtWidgets import QLabel
 from PySide6.QtCore import QTimer, Qt
 
+
+TOAST_STYLES = {
+    "info": {
+        "background": "#333333",
+        "border": "#6b7280",
+    },
+    "success": {
+        "background": "#1f4d2e",
+        "border": "#4caf50",
+    },
+    "error": {
+        "background": "#5a1f1f",
+        "border": "#ff6b6b",
+    },
+}
+
 class Toast(QLabel):
-    def __init__(self, parent, message, duration=2000):
+    def __init__(self, parent, message, duration=2000, kind="info"):
         super().__init__(message, parent)
+        style = TOAST_STYLES.get(kind, TOAST_STYLES["info"])
         self.setStyleSheet(
-            "background-color: #333333; color: white; border: 1px solid gray50;"
+            f"background-color: {style['background']}; color: white; border: 1px solid {style['border']};"
             "border-radius: 10px; padding: 10px 20px; font-weight: bold; font-size: 13px;"
         )
         self.setAlignment(Qt.AlignCenter)
@@ -20,5 +37,5 @@ class Toast(QLabel):
         self.show()
         QTimer.singleShot(duration, self.hide)
 
-def show_toast(parent, message, duration=2000):
-    Toast(parent, message, duration)
+def show_toast(parent, message, duration=2000, kind="info"):
+    Toast(parent, message, duration, kind)

@@ -74,6 +74,7 @@ class MainWindow(QMainWindow):
     def _create_splitter(self):
         split = QSplitter(Qt.Horizontal)
         self.scene = ImageScene(self._controller.document)
+        self.scene.content_changed.connect(self._refresh_save_action)
         self.scene.set_active_color(self.current_color_hex)
         self.canvas = CanvasView(self.scene)
         self.canvas.set_zoom_callback(self._on_zoom_changed)
@@ -92,7 +93,7 @@ class MainWindow(QMainWindow):
         toolbar.setIconSize(QSize(20, 20))
         toolbar.setMovable(False)
 
-        self.act_save = self._add_action(toolbar, "save", "save", self.save_rotation, enabled=False)
+        self.act_save = self._add_action(toolbar, "save", "save", self.save_image, enabled=False)
         self._add_action(toolbar, "rotate", "rotate", self.rotate_image)
         self._add_action(toolbar, "copy_file", "copy_file", self.copy_file_to_clipboard)
         self._add_action(toolbar, "copy_clipboard", "copy_clip", self.copy_to_clipboard)
@@ -189,12 +190,12 @@ class MainWindow(QMainWindow):
                 return
             self.scene.load_image(display_image, self._controller.current_image_path)
             self.setWindowTitle(f"{constants.WINDOW_TITLE} - {os.path.basename(path)}")
-            self.act_save.setEnabled(False)
+            self._refresh_save_action()
             self.sidebar.select_path(self._controller.current_image_path)
             QTimer.singleShot(50, self.canvas.fit_to_scene)
         except Exception as exc:
             logger.error(f"Error show_image: {exc}")
-            show_toast(self, "Error al abrir la imagen")
+            show_toast(self, "Error al abrir la imagen", kind="error")
 
     def rotate_image(self):
         if not self._controller.current_image_path:
@@ -202,21 +203,23 @@ class MainWindow(QMainWindow):
 
         display_image = self._controller.rotate_image()
         self.scene.load_image(display_image, self._controller.current_image_path)
-        self.act_save.setEnabled(True)
+        self._refresh_save_action()
         show_toast(self, f"Rotado {self._controller.current_rotation} grados")
 
-    def save_rotation(self):
-        if not self._controller.has_unsaved_rotation:
+    def save_image(self):
+        if not self._controller.has_pending_save:
             return
 
         try:
-            display_image = self._controller.save_rotation()
+            display_image = self._controller.save_current_image()
+            if display_image is None:
+                return
             self.scene.load_image(display_image, self._controller.current_image_path)
-            self.act_save.setEnabled(False)
-            show_toast(self, "Imagen guardada")
+            self._refresh_save_action()
+            show_toast(self, "Cambios guardados y aplicados a la imagen", kind="success")
         except Exception as exc:
-            logger.error(f"Error save_rotation: {exc}")
-            show_toast(self, "Error al guardar")
+            logger.error(f"Error save_image: {exc}")
+            show_toast(self, "Error al guardar los cambios", kind="error")
 
     def copy_to_clipboard(self):
         composite = self.scene.get_composite_image()
@@ -249,11 +252,14 @@ class MainWindow(QMainWindow):
             image_path = self._controller.current_image_path
             self.scene.load_image(display_image, image_path)
             self.setWindowTitle(f"{constants.WINDOW_TITLE} - {os.path.basename(image_path)}")
-            self.act_save.setEnabled(False)
+            self._refresh_save_action()
             self.sidebar.select_path(image_path)
             QTimer.singleShot(50, self.canvas.fit_to_scene)
         except Exception as exc:
             logger.error(f"Error restoring last image: {exc}")
+
+    def _refresh_save_action(self):
+        self.act_save.setEnabled(self._controller.has_pending_save)
 
     def _wake_up(self):
         QMetaObject.invokeMethod(self, "_handle_wake_up", Qt.QueuedConnection)

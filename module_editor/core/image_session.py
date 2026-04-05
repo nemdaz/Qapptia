@@ -38,8 +38,24 @@ class ImageSession:
             return False
 
         rotated = self.get_display_image()
-        rotated.save(self.image_path)
-        self._base_image = rotated.copy()
+        self.save_image(rotated)
+        return True
+
+    def save_image(self, image):
+        if not self.image_path or image is None:
+            return False
+
+        output_image = image
+        extension = Image.EXTENSION.get(f'.{self.image_path.rsplit('.', 1)[-1].lower()}')
+        if extension in {"JPEG", "BMP"} and image.mode == "RGBA":
+            output_image = image.convert("RGB")
+
+        output_image.save(self.image_path)
+
+        if self._base_image is not None:
+            self._base_image.close()
+
+        self._base_image = output_image.copy()
         self.rotation = 0
         return True
 

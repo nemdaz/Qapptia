@@ -2,7 +2,7 @@ import math
 
 from PIL import ImageQt
 from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsItem, QGraphicsPixmapItem
-from PySide6.QtCore import Qt, QRectF
+from PySide6.QtCore import Qt, QRectF, Signal
 from PySide6.QtGui import QPixmap, QPen, QColor, QPainter, QPainterPath, QPainterPathStroker
 
 from module_editor import constants
@@ -110,6 +110,8 @@ class VectorItem(QGraphicsItem):
         painter.restore()
 
 class ImageScene(QGraphicsScene):
+    content_changed = Signal()
+
     def __init__(self, document, parent=None):
         super().__init__(parent)
         self._document = document
@@ -251,6 +253,7 @@ class ImageScene(QGraphicsScene):
 
     def _persist_vectors(self):
         self._document.save_vectors()
+        self.content_changed.emit()
 
     def _find_handle_hit(self, pos):
         for item in self.items():
