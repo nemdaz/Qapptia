@@ -1,241 +1,13 @@
 import math
 
 from PIL import ImageQt
-from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsItem, QGraphicsPixmapItem, QGraphicsTextItem
+from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsPixmapItem
 from PySide6.QtCore import Qt, QRectF, Signal, QTimer, QPointF
-from PySide6.QtGui import QPixmap, QPen, QColor, QPainter, QPainterPath, QPainterPathStroker, QTextOption
+from PySide6.QtGui import QPixmap, QColor, QPainter
 
 from module_editor import constants
-from module_editor.core import text_layout as text_support
-from module_editor.core.annotation_renderer import DrawingTool
-
-
-class VectorItem(QGraphicsItem):
-    GRIP_NAMES = {"rect": ["tl", "tr", "bl", "br"], "highlighter": ["tl", "tr", "bl", "br"], "arrow": ["start", "end"], "text": ["tl", "tr", "bl", "br"]}
-
-    def __init__(self, data):
-        super().__init__()
-        self.data = data
-        self.setFlags(QGraphicsItem.ItemIsSelectable)
-
-    def _handle_positions(self):
-        x1, y1, x2, y2 = self.data.coords
-        return {
-            "tl": (x1, y1),
-            "tr": (x2, y1),
-            "bl": (x1, y2),
-            "br": (x2, y2),
-            "start": (x1, y1),
-            "end": (x2, y2),
-        }
-
-    def handle_rect(self, name):
-        positions = self._handle_positions()
-        px, py = positions.get(name, (0, 0))
-        grip_size = constants.VECTOR_STYLE["grip_size"]
-        return QRectF(px - grip_size, py - grip_size, grip_size * 2, grip_size * 2)
-
-    def handle_at(self, scene_pos):
-        for name in self.GRIP_NAMES.get(self.data.shape_type, []):
-            if self.handle_rect(name).contains(scene_pos):
-                return name
-        return None
-
-    def set_coords(self, coords):
-        self.prepareGeometryChange()
-        self.data.coords = list(coords)
-        self.update()
-
-    def boundingRect(self):
-        x1, y1, x2, y2 = self.data.coords
-        stroke_width = constants.VECTOR_STYLE["stroke_width"]
-        grip_size = constants.VECTOR_STYLE["grip_size"]
-        padding = max(stroke_width * 2, grip_size * 2, 10)
-        return QRectF(
-            min(x1, x2) - padding,
-            min(y1, y2) - padding,
-            abs(x2 - x1) + padding * 2,
-            abs(y2 - y1) + padding * 2,
-        )
-
-    def shape(self):
-        x1, y1, x2, y2 = self.data.coords
-        rect = QRectF(min(x1, x2), min(y1, y2), abs(x2 - x1), abs(y2 - y1))
-        stroke_width = constants.VECTOR_STYLE["stroke_width"]
-        tolerance = constants.VECTOR_STYLE["selection_tolerance"]
-
-        if self.data.shape_type == "highlighter":
-            path = QPainterPath()
-            path.addRect(rect.adjusted(-tolerance["highlighter"], -tolerance["highlighter"],
-                                       tolerance["highlighter"], tolerance["highlighter"]))
-            return path
-
-        if self.data.shape_type == "rect":
-            border_path = QPainterPath()
-            border_path.addRect(rect)
-            stroker = QPainterPathStroker()
-            stroker.setWidth(max(stroke_width * 2 + tolerance["rect"], tolerance["rect"]))
-            return stroker.createStroke(border_path)
-
-        if self.data.shape_type == "text":
-            path = QPainterPath()
-            text_tolerance = tolerance["text"]
-            path.addRect(rect.adjusted(-text_tolerance, -text_tolerance, text_tolerance, text_tolerance))
-            return path
-
-        if self.data.shape_type == "arrow":
-            line_path = QPainterPath()
-            line_path.moveTo(x1, y1)
-            line_path.lineTo(x2, y2)
-            stroker = QPainterPathStroker()
-            stroker.setWidth(max(stroke_width * 2 + tolerance["arrow"], tolerance["arrow"]))
-            return stroker.createStroke(line_path)
-
-        fallback = QPainterPath()
-        fallback.addRect(rect)
-        return fallback
-
-    def paint(self, painter, option, widget=None):
-        DrawingTool.render_qt(
-            painter,
-            self.data.shape_type,
-            self.data.coords,
-            self.data.color,
-            constants.VECTOR_STYLE["stroke_width"],
-            payload=self.data.payload,
-        )
-        if self.isSelected():
-            self._paint_grips(painter)
-
-    def _paint_grips(self, painter):
-        grip_pen = QPen(QColor(Qt.black), 1)
-        grip_brush = QColor(Qt.white)
-
-        painter.save()
-        painter.setPen(grip_pen)
-        painter.setBrush(grip_brush)
-        for name in self.GRIP_NAMES.get(self.data.shape_type, []):
-            painter.drawRect(self.handle_rect(name))
-        painter.restore()
-
-
-class InlineTextEditor(QGraphicsTextItem):
-    def __init__(self, parent_item, vector_data, commit_callback):
-        super().__init__(parent_item)
-        self._vector_data = vector_data
-        self._commit_callback = commit_callback
-        self._original_text = vector_data.payload.get("text", "")
-        self._finalized = False
-
-        self.setPlainText(self._original_text)
-        self.setTextInteractionFlags(Qt.TextEditorInteraction)
-        self.setTabChangesFocus(True)
-        self.setZValue(5)
-        self.document().setDocumentMargin(0)
-        text_option = self.document().defaultTextOption()
-        text_option.setWrapMode(QTextOption.WordWrap)
-        self.document().setDefaultTextOption(text_option)
-        self.document().contentsChanged.connect(self._sync_layout)
-        self._sync_layout()
-
-    def _sync_layout(self):
-        parent_item = self.parentItem()
-        if parent_item is None:
-            return
-        font, _, content_rect = text_support.fit_text_qt(self.toPlainText(), parent_item.data.coords)
-        self.setFont(font)
-        self.setDefaultTextColor(QColor(self._vector_data.color))
-        self.setPos(content_rect.topLeft())
-        self.setTextWidth(max(1.0, content_rect.width()))
-
-    def focusOutEvent(self, event):
-        super().focusOutEvent(event)
-        self._finalize(cancelled=False)
-
-    def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Escape:
-            self._finalize(cancelled=True)
-            event.accept()
-            return
-        super().keyPressEvent(event)
-
-    def _finalize(self, cancelled):
-        if self._finalized:
-            return
-        self._finalized = True
-        final_text = self._original_text if cancelled else self.toPlainText()
-        self._commit_callback(final_text, cancelled)
-
-
-class TextVectorItem(VectorItem):
-    def __init__(self, data, commit_callback):
-        super().__init__(data)
-        self._commit_callback = commit_callback
-        self._editor = None
-
-    def paint(self, painter, option, widget=None):
-        if not self.is_editing():
-            DrawingTool.render_qt(
-                painter,
-                self.data.shape_type,
-                self.data.coords,
-                self.data.color,
-                constants.VECTOR_STYLE["stroke_width"],
-                payload=self.data.payload,
-            )
-        if self.isSelected():
-            self._paint_grips(painter)
-        if self.isSelected() or self.is_editing():
-            self._paint_selection_bounds(painter)
-
-    def set_coords(self, coords):
-        super().set_coords(coords)
-        if self._editor is not None:
-            self._editor._sync_layout()
-
-    def set_text_color(self, color):
-        self.data.color = color
-        if self._editor is not None:
-            self._editor.setDefaultTextColor(QColor(color))
-            self._editor._sync_layout()
-        self.update()
-
-    def is_editing(self):
-        return self._editor is not None
-
-    def start_editing(self):
-        if self._editor is not None:
-            return
-        self._editor = InlineTextEditor(self, self.data, self._finish_edit)
-        self.setSelected(True)
-        QTimer.singleShot(0, self._focus_editor)
-
-    def finish_editing(self, cancelled=False):
-        if self._editor is None:
-            return
-        self._editor._finalize(cancelled)
-
-    def _focus_editor(self):
-        if self._editor is None:
-            return
-        self._editor.setFocus(Qt.OtherFocusReason)
-
-    def _finish_edit(self, text, cancelled):
-        if self.scene() is not None and self._editor is not None:
-            self.scene().removeItem(self._editor)
-        self._editor = None
-        self._commit_callback(self, text, cancelled)
-
-    def _paint_selection_bounds(self, painter):
-        x1, y1, x2, y2 = self.data.coords
-        rect = QRectF(min(x1, x2), min(y1, y2), abs(x2 - x1), abs(y2 - y1))
-        painter.save()
-        pen = QPen(QColor(constants.TEXT_STYLE["selection_border"]), constants.TEXT_STYLE["selection_border_width"])
-        pen.setDashPattern(constants.TEXT_STYLE["selection_dash_pattern"])
-        painter.setPen(pen)
-        painter.setBrush(Qt.NoBrush)
-        painter.drawRect(rect)
-        painter.restore()
+from module_editor.ui.toolbar.canvas_item import CanvasItem
+from module_editor.ui.toolbar.text_item import InlineTextEditor, TextCanvasItem
 
 class ImageScene(QGraphicsScene):
     content_changed = Signal()
@@ -304,7 +76,7 @@ class ImageScene(QGraphicsScene):
             return
 
         # 2. Body interaction
-        if hit and isinstance(hit, VectorItem):
+        if hit and isinstance(hit, CanvasItem):
             self.deselect_all()
             hit.setSelected(True)
             hit.update()
@@ -401,14 +173,14 @@ class ImageScene(QGraphicsScene):
                 x1, y1 = self._dragging["origin"]
                 x2, y2 = item.data.coords[2], item.data.coords[3]
                 distance = math.hypot(x2 - x1, y2 - y1)
-                min_distance = constants.TEXT_STYLE["create_min_distance"] if isinstance(item, TextVectorItem) else constants.VECTOR_STYLE["draw_min_distance"]
+                min_distance = constants.TEXT_STYLE["create_min_distance"] if isinstance(item, TextCanvasItem) else constants.VECTOR_STYLE["draw_min_distance"]
                 if distance < min_distance:
                     self._document.delete_vector(item.data.shape_id)
                     self.removeItem(item)
                     self._dragging = None
                     event.accept()
                     return
-                if isinstance(item, TextVectorItem):
+                if isinstance(item, TextCanvasItem):
                     rect = QRectF(min(item.data.coords[0], item.data.coords[2]), min(item.data.coords[1], item.data.coords[3]), abs(item.data.coords[2] - item.data.coords[0]), abs(item.data.coords[3] - item.data.coords[1]))
                     if rect.width() < constants.TEXT_STYLE["min_box_width"] or rect.height() < constants.TEXT_STYLE["min_box_height"]:
                         self._document.delete_vector(item.data.shape_id)
@@ -417,8 +189,8 @@ class ImageScene(QGraphicsScene):
                         event.accept()
                         return
             self._dragging = None
-            if isinstance(dragged_item, TextVectorItem):
-                dragged_item.start_editing()
+            if isinstance(dragged_item, TextCanvasItem):
+                QTimer.singleShot(0, dragged_item.start_editing)
                 event.accept()
                 return
             self._persist_vectors()
@@ -426,7 +198,7 @@ class ImageScene(QGraphicsScene):
 
     def mouseDoubleClickEvent(self, event):
         hit = self.itemAt(event.scenePos(), self.views()[0].transform())
-        if isinstance(hit, TextVectorItem):
+        if isinstance(hit, TextCanvasItem):
             hit.start_editing()
             event.accept()
             return
@@ -437,7 +209,7 @@ class ImageScene(QGraphicsScene):
 
     def delete_selected(self):
         for item in list(self.selectedItems()):
-            if isinstance(item, VectorItem):
+            if isinstance(item, CanvasItem):
                 self._document.delete_vector(item.data.shape_id)
                 self.removeItem(item)
         self._persist_vectors()
@@ -445,8 +217,8 @@ class ImageScene(QGraphicsScene):
     def recolor_selected(self, color):
         changed = False
         for item in list(self.selectedItems()):
-            if isinstance(item, VectorItem):
-                if isinstance(item, TextVectorItem):
+            if isinstance(item, CanvasItem):
+                if isinstance(item, TextCanvasItem):
                     item.set_text_color(color)
                 else:
                     item.data.color = color
@@ -465,7 +237,7 @@ class ImageScene(QGraphicsScene):
 
     def _find_handle_hit(self, pos):
         for item in self.items():
-            if isinstance(item, VectorItem) and item.isSelected():
+            if isinstance(item, CanvasItem) and item.isSelected():
                 grip_name = item.handle_at(pos)
                 if grip_name:
                     return item, grip_name
@@ -473,12 +245,12 @@ class ImageScene(QGraphicsScene):
 
     def _create_item(self, vector):
         if vector.shape_type == "text":
-            return TextVectorItem(vector, self._handle_text_commit)
-        return VectorItem(vector)
+            return TextCanvasItem(vector, self._handle_text_commit)
+        return CanvasItem(vector)
 
     def _find_editing_text_item(self):
         for item in self.items():
-            if isinstance(item, TextVectorItem) and item.is_editing():
+            if isinstance(item, TextCanvasItem) and item.is_editing():
                 return item
         return None
 
@@ -589,7 +361,7 @@ class CanvasView(QGraphicsView):
             return False
 
         item = self.itemAt(view_pos)
-        return not isinstance(item, (VectorItem, InlineTextEditor))
+        return not isinstance(item, (CanvasItem, InlineTextEditor))
 
     def _has_scroll_margin(self):
         h_scroll = self.horizontalScrollBar()

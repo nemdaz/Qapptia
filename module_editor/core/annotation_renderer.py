@@ -18,7 +18,8 @@ class DrawingTool:
         painter.setBrush(Qt.NoBrush)
 
         if v_type == "rect":
-            painter.drawRoundedRect(QRectF(x1, y1, x2 - x1, y2 - y1), 2, 2)
+            rect = QRectF(min(x1, x2), min(y1, y2), abs(x2 - x1), abs(y2 - y1))
+            painter.drawRoundedRect(rect, 2, 2)
         elif v_type == "arrow":
             dx, dy = x2 - x1, y2 - y1
             arrow_wing_len = constants.VECTOR_STYLE["arrow_wing_len"]
