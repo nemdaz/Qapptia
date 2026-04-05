@@ -53,3 +53,43 @@ class ScreenService(ABC):
     @abstractmethod
     def capture_all_screens(self):
         pass
+
+
+class DesktopService(ABC):
+    @abstractmethod
+    def play_beep(self, sound_path):
+        pass
+
+    @abstractmethod
+    def get_dpi_scaling(self):
+        pass
+
+    @abstractmethod
+    def get_monitor_at_cursor(self):
+        pass
+
+    @abstractmethod
+    def get_virtual_screen_origin(self):
+        pass
+
+    @abstractmethod
+    def get_current_cursor(self, scale):
+        pass
+
+
+class TrayService(ABC):
+    @abstractmethod
+    def menu_item(self, title_or_callable, callback, default=False, visible=True):
+        pass
+
+    @abstractmethod
+    def menu_separator(self):
+        pass
+
+    @abstractmethod
+    def menu(self, *items):
+        pass
+
+    @abstractmethod
+    def icon(self, name, image, title, menu):
+        pass

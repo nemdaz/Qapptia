@@ -1,9 +1,28 @@
 import sys
 from dataclasses import dataclass
 
-from core.platform.base import DpiService, InputService, ScreenService
-from core.platform.posix import PosixDpiService, PosixInputService, PosixScreenService
-from core.platform.windows import WindowsDpiService, WindowsInputService, WindowsScreenService
+from core.platform.base import DesktopService, DpiService, InputService, ScreenService, TrayService
+from core.platform.os_linux import (
+    LinuxDesktopService,
+    LinuxDpiService,
+    LinuxInputService,
+    LinuxScreenService,
+    LinuxTrayService,
+)
+from core.platform.os_macos import (
+    MacOsDesktopService,
+    MacOsDpiService,
+    MacOsInputService,
+    MacOsScreenService,
+    MacOsTrayService,
+)
+from core.platform.os_windows import (
+    WindowsDesktopService,
+    WindowsDpiService,
+    WindowsInputService,
+    WindowsScreenService,
+    WindowsTrayService,
+)
 
 
 @dataclass(frozen=True)
@@ -11,6 +30,8 @@ class PlatformServices:
     input: InputService
     dpi: DpiService
     screen: ScreenService
+    desktop: DesktopService
+    tray: TrayService
 
 
 _services_singleton = None
@@ -26,12 +47,37 @@ def get_platform_services():
             input=WindowsInputService(),
             dpi=WindowsDpiService(),
             screen=WindowsScreenService(),
+            desktop=WindowsDesktopService(),
+            tray=WindowsTrayService(),
         )
         return _services_singleton
 
+    if sys.platform == "darwin":
+        _services_singleton = PlatformServices(
+            input=MacOsInputService(),
+            dpi=MacOsDpiService(),
+            screen=MacOsScreenService(),
+            desktop=MacOsDesktopService(),
+            tray=MacOsTrayService(),
+        )
+        return _services_singleton
+
+    if sys.platform.startswith("linux"):
+        _services_singleton = PlatformServices(
+            input=LinuxInputService(),
+            dpi=LinuxDpiService(),
+            screen=LinuxScreenService(),
+            desktop=LinuxDesktopService(),
+            tray=LinuxTrayService(),
+        )
+        return _services_singleton
+
+    # Fallback conservador: tratamos plataformas no contempladas como Linux-like.
     _services_singleton = PlatformServices(
-        input=PosixInputService(),
-        dpi=PosixDpiService(),
-        screen=PosixScreenService(),
+        input=LinuxInputService(),
+        dpi=LinuxDpiService(),
+        screen=LinuxScreenService(),
+        desktop=LinuxDesktopService(),
+        tray=LinuxTrayService(),
     )
     return _services_singleton
