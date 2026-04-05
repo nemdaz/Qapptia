@@ -1,7 +1,7 @@
 import os
 from PIL import ImageQt
 from PySide6.QtWidgets import QTreeView, QVBoxLayout, QWidget, QLabel, QPushButton, QHBoxLayout, QFileSystemModel
-from PySide6.QtCore import QDir, Qt, Signal, QModelIndex, QSize
+from PySide6.QtCore import QDir, Qt, Signal, QModelIndex, QSize, QTimer
 from PySide6.QtGui import QFont, QIcon, QPixmap
 
 from core import config, assets
@@ -97,7 +97,7 @@ class SidebarTree(QWidget):
             self.tree.hideColumn(i)
 
         self._restore_expanded_folders()
-        self.tree.scrollToTop()
+        self._force_scroll_top()
 
     def _on_click(self, index):
         path = self._model.filePath(index)
@@ -107,7 +107,21 @@ class SidebarTree(QWidget):
     def select_path(self, path):
         if self._model and os.path.exists(path):
             idx = self._model.index(path.replace("/", os.sep))
+            if not idx.isValid():
+                return
+            self._expand_parent_chain(idx)
             self.tree.setCurrentIndex(idx)
+            self._force_scroll_top()
+
+    def _force_scroll_top(self):
+        def _set_top():
+            self.tree.scrollToTop()
+            bar = self.tree.verticalScrollBar()
+            bar.setValue(bar.minimum())
+
+        _set_top()
+        QTimer.singleShot(0, _set_top)
+        QTimer.singleShot(120, _set_top)
 
     def _restore_expanded_folders(self):
         if not self._model:

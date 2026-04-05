@@ -1,7 +1,7 @@
 import os
 
 from PIL import ImageQt
-from PySide6.QtCore import QSize, Qt, QTimer
+from PySide6.QtCore import QMetaObject, QSize, Qt, QTimer, Slot
 from PySide6.QtGui import QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap
 from PySide6.QtWidgets import QApplication, QComboBox, QMainWindow, QSplitter, QToolBar, QVBoxLayout, QWidget
 
@@ -47,7 +47,7 @@ class MainWindow(QMainWindow):
         self.current_color_hex = self._controller.current_color_hex
 
         self._setup_ui()
-        ipc.start_ipc_server(self._wake_up)
+        ipc.start_ipc_server(self._wake_up, self._request_close_from_ipc)
         QTimer.singleShot(constants.INITIAL_LOAD_DELAY_MS, self._load_initial_image)
 
     def _load_styles(self):
@@ -256,14 +256,18 @@ class MainWindow(QMainWindow):
             logger.error(f"Error restoring last image: {exc}")
 
     def _wake_up(self):
-        QTimer.singleShot(0, self._handle_wake_up)
+        QMetaObject.invokeMethod(self, "_handle_wake_up", Qt.QueuedConnection)
 
+    @Slot()
     def _handle_wake_up(self):
         self.setWindowState(self.windowState() & ~Qt.WindowMinimized)
         self.show()
         self.raise_()
         self.activateWindow()
         self.sidebar.refresh_model()
+
+    def _request_close_from_ipc(self):
+        QMetaObject.invokeMethod(self, "close", Qt.QueuedConnection)
 
     def closeEvent(self, event):
         self._controller.close()

@@ -1,4 +1,4 @@
-import sys
+﻿import sys
 import os
 import time
 import subprocess
@@ -18,10 +18,6 @@ from module_capture.entrypoints.flow_mode import register_flow_hotkey
 from module_capture.entrypoints.screen_mode import register_screen_hotkey, trigger_screen_capture
 from module_editor.editor import run_editor
 
-# --- Configuración de consciencia de DPI (Agnóstica al SO) ---
-utils.set_dpi_awareness()
-# --------------------------------------------------------
-
 # Estado global
 should_exit = False
 should_restart = False
@@ -34,7 +30,7 @@ def create_image():
     return image
 
 def on_mouse_event(event):
-    """Delega los eventos del ratón al FlowManager."""
+    """Delega los eventos del ratÃ³n al FlowManager."""
     flow_capture_service.handle_mouse_event(event)
 
 def toggle_flow_menu(icon, item=None):
@@ -43,35 +39,35 @@ def toggle_flow_menu(icon, item=None):
     logger.info(f"Modo flujo {'activado' if is_active else 'desactivado'}.")
 
 def capture_full_menu(icon, item=None):
-    """Captura pantalla completa desde el menú."""
+    """Captura pantalla completa desde el menÃº."""
     config.load_config()
     trigger_screen_capture()
 
 def capture_area_menu(icon, item=None):
-    """Inicia captura de área desde el menú."""
+    """Inicia captura de Ã¡rea desde el menÃº."""
     config.load_config()
     trigger_area_capture()
 
 def launch_editor_process():
-    """Lógica central para abrir el editor con protección de instancias multiples."""
+    """LÃ³gica central para abrir el editor con protecciÃ³n de instancias multiples."""
     global _is_editor_launching
     
     # 1. Verificar si ya hay una instancia respondiendo (IPC)
     logger.debug("Verificando instancia del Editor...")
     if ipc.is_editor_running():
-        logger.debug("Editor ya en ejecución. Enviada señal de despertar.")
+        logger.debug("Editor ya en ejecuciÃ³n. Enviada seÃ±al de despertar.")
         return
 
-    # 2. Verificar si ya hay un proceso lanzándose (Protección de carrera)
+    # 2. Verificar si ya hay un proceso lanzÃ¡ndose (ProtecciÃ³n de carrera)
     if _is_editor_launching:
-        logger.debug("El editor ya se está iniciando, por favor espera...")
+        logger.debug("El editor ya se estÃ¡ iniciando, por favor espera...")
         return
 
     # 3. Lanzar nueva instancia
     logger.info("Iniciando nueva instancia del Editor...")
     _is_editor_launching = True
     
-    # Resetear el flag de lanzamiento después de un tiempo prudencial (5s)
+    # Resetear el flag de lanzamiento despuÃ©s de un tiempo prudencial (5s)
     def reset_launching_flag():
         global _is_editor_launching
         _is_editor_launching = False
@@ -96,28 +92,29 @@ def open_editor_icon(icon, item=None):
     launch_editor_process()
 
 def open_editor_menu(icon, item=None):
-    """Maneja el clic explícito en la opción del menú (abre con 1 clic)."""
+    """Maneja el clic explÃ­cito en la opciÃ³n del menÃº (abre con 1 clic)."""
     launch_editor_process()
 
 def open_config(icon, item=None):
-    """Abre la ventana de configuración usando el propio ejecutable o script."""
-    logger.info("Abriendo configuración...")
+    """Abre la ventana de configuraciÃ³n usando el propio ejecutable o script."""
+    logger.info("Abriendo configuraciÃ³n...")
     if getattr(sys, 'frozen', False):
         subprocess.Popen([sys.executable, "--config"])
     else:
         subprocess.Popen([sys.executable, sys.argv[0], "--config"])
 
 def quit_app(icon, item=None):
-    """Cierra la aplicación."""
+    """Cierra la aplicaciÃ³n."""
     global should_exit
     logger.info("Saliendo...")
+    ipc.request_editor_quit()
     icon.stop()
     should_exit = True
 
 def reload_hooks(icon=None, item=None):
-    """Reinicia la aplicación completa para restaurar hooks a bajo nivel."""
+    """Reinicia la aplicaciÃ³n completa para restaurar hooks a bajo nivel."""
     global should_exit, should_restart
-    logger.info("Reiniciando capturador completo (Recuperación de hilos OS)...")
+    logger.info("Reiniciando capturador completo (RecuperaciÃ³n de hilos OS)...")
     should_restart = True
     if icon:
         icon.stop()
@@ -140,6 +137,10 @@ def main():
             run_config_window()
             return
 
+    # Solo en el proceso principal (tray/captura).
+    # En editor/config dejamos que Qt gestione DPI para evitar doble configuracion.
+    utils.set_dpi_awareness()
+
     global should_exit
     config.load_config()
     # Iniciar atajos de cada modo
@@ -153,7 +154,7 @@ def main():
         pystray.MenuItem(lambda text: 'Capturar flujo (Detener)' if flow_capture_service.is_active else 'Capturar flujo (Iniciar)', toggle_flow_menu),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem('Editor', open_editor_menu),
-        pystray.MenuItem('Configuración', open_config),
+        pystray.MenuItem('ConfiguraciÃ³n', open_config),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem('Reiniciar', reload_hooks),
         pystray.MenuItem('Salir', quit_app)
@@ -171,7 +172,7 @@ def main():
         # Watchdog: Si pasa mucho tiempo en un solo 'sleep(1)', el PC fue suspendido
         jump = current_time - last_time
         if jump > 10.0:
-            logger.warning(f"Salto de tiempo detectado ({jump:.1f}s). Probable suspensión del OS. Reiniciando de raíz...")
+            logger.warning(f"Salto de tiempo detectado ({jump:.1f}s). Probable suspensiÃ³n del OS. Reiniciando de raÃ­z...")
             should_restart = True
             icon.stop()
             break
@@ -195,3 +196,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
