@@ -272,6 +272,8 @@ class CanvasView(QGraphicsView):
         self.setResizeAnchor(QGraphicsView.AnchorUnderMouse)
         self.zoom_level = 1.0
         self._on_zoom_cb = None
+        self._pan_active = False
+        self._pan_last_pos = None
 
     def set_zoom_callback(self, cb): self._on_zoom_cb = cb
 
@@ -317,8 +319,49 @@ class CanvasView(QGraphicsView):
         if self._on_zoom_cb:
             self._on_zoom_cb()
 
+    def mouseDoubleClickEvent(self, event):
+        if event.button() == Qt.LeftButton and self._can_start_pan(event.position().toPoint()):
+            self._pan_active = True
+            self._pan_last_pos = event.position().toPoint()
+            self.setCursor(Qt.ClosedHandCursor)
+            event.accept()
+            return
+        super().mouseDoubleClickEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if self._pan_active and self._pan_last_pos is not None:
+            current_pos = event.position().toPoint()
+            delta = current_pos - self._pan_last_pos
+            self._pan_last_pos = current_pos
+            self.horizontalScrollBar().setValue(self.horizontalScrollBar().value() - delta.x())
+            self.verticalScrollBar().setValue(self.verticalScrollBar().value() - delta.y())
+            event.accept()
+            return
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if self._pan_active and event.button() == Qt.LeftButton:
+            self._pan_active = False
+            self._pan_last_pos = None
+            self.unsetCursor()
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
+
     def _current_zoom_level(self):
         return self.transform().m11() or 1.0
+
+    def _can_start_pan(self, view_pos):
+        if not self._has_scroll_margin():
+            return False
+
+        item = self.itemAt(view_pos)
+        return not isinstance(item, VectorItem)
+
+    def _has_scroll_margin(self):
+        h_scroll = self.horizontalScrollBar()
+        v_scroll = self.verticalScrollBar()
+        return h_scroll.maximum() > h_scroll.minimum() or v_scroll.maximum() > v_scroll.minimum()
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Delete:
