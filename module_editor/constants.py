@@ -63,6 +63,7 @@ TOOLTIPS = {
     "arrow": "Dibujar flecha (A)",
     "rect": "Dibujar rectángulo (R)",
     "highlighter": "Resaltador (H)",
+    "text": "Agregar texto (T)",
     "refresh": "Recargar explorador",
     "color_prefix": "Color: ",
     "image_fit": "Ajustar imagen",
@@ -110,7 +111,26 @@ VECTOR_STYLE = {
         "rect": 8,
         "arrow": 10,
         "highlighter": 2,
+        "text": 8,
     },
+}
+
+TEXT_STYLE = {
+    "fallback_family": "Arial",
+    "font_files": {
+        "regular": "AtkinsonHyperlegible-Regular.ttf",
+        "bold": "AtkinsonHyperlegible-Bold.ttf",
+    },
+    "placeholder": "Texto",
+    "font_min_px": 12,
+    "font_max_px": 320,
+    "line_spacing_ratio": 1.18,
+    "selection_border": "#f5f7fa",
+    "selection_border_width": 1,
+    "selection_dash_pattern": [4, 3],
+    "create_min_distance": 18,
+    "min_box_width": 36,
+    "min_box_height": 24,
 }
 
 COLOR_SWATCH_STYLE = {

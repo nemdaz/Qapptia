@@ -3,8 +3,8 @@ import math
 from PIL import Image, ImageDraw
 
 from module_editor import constants
-from module_editor.core.tools import DrawingTool
-from module_editor.core.vector_store import create_vector, vector_store
+from module_editor.core.annotation_renderer import DrawingTool
+from module_editor.core.annotation_store import create_vector, vector_store
 
 
 class EditorDocument:
@@ -19,8 +19,8 @@ class EditorDocument:
         self.image_path = image_path
         self.vectors = self._store.load(image_path)
 
-    def create_vector(self, vector_type, point, color):
-        vector = create_vector(vector_type, point, color)
+    def create_vector(self, vector_type, point, color, payload=None):
+        vector = create_vector(vector_type, point, color, payload=payload)
         self.vectors.append(vector)
         return vector
 
@@ -31,6 +31,13 @@ class EditorDocument:
         for vector in self.vectors:
             if vector.shape_id == shape_id:
                 vector.color = color
+                return True
+        return False
+
+    def update_vector_payload(self, shape_id, payload_updates):
+        for vector in self.vectors:
+            if vector.shape_id == shape_id:
+                vector.payload.update(payload_updates)
                 return True
         return False
 
@@ -62,6 +69,7 @@ class EditorDocument:
                 vector.color,
                 constants.VECTOR_STYLE["stroke_width"],
                 scale=scale,
+                payload=vector.payload,
             )
 
         if scale > 1:

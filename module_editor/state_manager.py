@@ -1,4 +1,4 @@
-from module_editor.core.state_store import state_store
+from module_editor.core.preferences_store import state_store
 
 def get_state_path():
     return state_store.get_state_path()

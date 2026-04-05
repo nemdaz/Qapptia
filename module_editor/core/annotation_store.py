@@ -3,15 +3,16 @@ import os
 from uuid import uuid4
 
 from core.logger import logger
-from module_editor.core.models import VectorShape
+from module_editor.core.annotation_models import VectorShape
 
 
-def create_vector(vector_type, point, color):
+def create_vector(vector_type, point, color, payload=None):
     return VectorShape(
         shape_type=vector_type,
         shape_id=f"{vector_type}_{uuid4().hex}",
         coords=[point.x(), point.y(), point.x(), point.y()],
         color=color,
+        payload=dict(payload or {}),
     )
 
 

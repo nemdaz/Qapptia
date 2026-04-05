@@ -1,4 +1,14 @@
+import os
+
 from PIL import Image, ImageDraw
+
+
+ASSETS_DIR = os.path.join(os.path.dirname(__file__), "assets")
+FONTS_DIR = os.path.join(ASSETS_DIR, "fonts")
+
+
+def get_text_font_path(filename):
+    return os.path.join(FONTS_DIR, filename)
 
 def create_refresh_icon(color="white"):
     img = Image.new("RGBA", (24, 24), (255, 255, 255, 0))
@@ -179,6 +189,15 @@ def create_highlighter_icon(color="white"):
     d.polygon([(6, 14), (10, 18), (8, 20), (4, 16)], fill=color)
     return img
 
+
+def create_text_icon(color="white"):
+    img = Image.new("RGBA", (24, 24), (255, 255, 255, 0))
+    d = ImageDraw.Draw(img)
+    d.rectangle([4, 4, 20, 20], outline=color, width=2)
+    d.line([(8, 8), (16, 8)], fill=color, width=2)
+    d.line([(12, 8), (12, 16)], fill=color, width=2)
+    return img
+
 def create_image_fit_icon(color="white"):
     img = Image.new("RGBA", (24, 24), (255, 255, 255, 0))
     d = ImageDraw.Draw(img)
@@ -220,6 +239,7 @@ _copy_file_img = create_copy_file_icon()
 _copy_clip_img = create_copy_clipboard_icon()
 _folder_collapsed_img = create_folder_collapsed_icon()
 _highlighter_img = create_highlighter_icon()
+_text_img = create_text_icon()
 _image_fit_img = create_image_fit_icon()
 _image_real_size_img = create_image_real_size_icon()
 

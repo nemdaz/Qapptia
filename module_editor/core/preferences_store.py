@@ -3,7 +3,7 @@ import os
 
 from core import config
 from core.logger import logger
-from module_editor.core.models import EditorPreferences
+from module_editor.core.preferences_model import EditorPreferences
 
 STATE_FILE = "editor_state.json"
 

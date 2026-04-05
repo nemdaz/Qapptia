@@ -1,9 +1,9 @@
 import os
 
 from module_editor import constants
-from module_editor.core.editor_document import EditorDocument
+from module_editor.core.annotation_document import EditorDocument
 from module_editor.core.image_session import ImageSession
-from module_editor.core.state_store import state_store
+from module_editor.core.preferences_store import state_store
 
 
 class EditorController:

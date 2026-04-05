@@ -9,7 +9,7 @@ from PySide6.QtWidgets import QApplication, QComboBox, QMainWindow, QSplitter, Q
 from core import ipc
 from core.logger import logger
 from module_editor import constants
-from module_editor.core.editor_controller import EditorController
+from module_editor.core.workflow_controller import EditorController
 from module_editor.ui.canvas_view import CanvasView, ImageScene
 from module_editor.ui.sidebar_tree import SidebarTree
 from module_editor.widgets.notifications import show_toast
@@ -116,6 +116,7 @@ class MainWindow(QMainWindow):
         self.act_arrow = self._add_action(toolbar, "arrow", "arrow", lambda: self.set_tool("arrow"), checkable=True)
         self.act_rect = self._add_action(toolbar, "rect", "rect", lambda: self.set_tool("rect"), checkable=True)
         self.act_high = self._add_action(toolbar, "highlighter", "highlighter", lambda: self.set_tool("highlighter"), checkable=True)
+        self.act_text = self._add_action(toolbar, "text", "text", lambda: self.set_tool("text"), checkable=True)
 
         toolbar.addSeparator()
         self._populate_color_actions(toolbar)
@@ -180,6 +181,7 @@ class MainWindow(QMainWindow):
         self.act_arrow.setChecked(tool == "arrow")
         self.act_rect.setChecked(tool == "rect")
         self.act_high.setChecked(tool == "highlighter")
+        self.act_text.setChecked(tool == "text")
         self.scene.set_draw_mode(tool)
 
     def show_image(self, path):
