@@ -1,9 +1,8 @@
 import os
 
 from PIL import ImageQt
-from PySide6.QtCore import QMetaObject, QSize, Qt, QTimer, QUrl, Slot
+from PySide6.QtCore import QMetaObject, QMimeData, QSize, Qt, QTimer, QUrl, Slot
 from PySide6.QtGui import QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap
-from PySide6.QtCore import QMimeData
 from PySide6.QtWidgets import QApplication, QComboBox, QMainWindow, QSplitter, QToolBar, QVBoxLayout, QWidget
 
 from core import ipc
@@ -35,10 +34,14 @@ class ZoomComboBox(QComboBox):
 
 
 class MainWindow(QMainWindow):
+    _SIDEBAR_MAX_RATIO = 0.5
+
     def __init__(self):
         super().__init__()
         self._controller = EditorController()
         self._color_btns = {}
+        self.splitter = None
+        self.sidebar = None
 
         self.setWindowTitle(constants.WINDOW_TITLE)
         self._load_styles()
@@ -74,6 +77,7 @@ class MainWindow(QMainWindow):
 
     def _create_splitter(self):
         split = QSplitter(Qt.Horizontal)
+        self.splitter = split
         self.scene = ImageScene(self._controller.document)
         self.scene.content_changed.connect(self._refresh_save_action)
         self.scene.set_active_color(self.current_color_hex)
@@ -87,7 +91,31 @@ class MainWindow(QMainWindow):
         split.addWidget(self.sidebar)
         split.setStretchFactor(0, 1)
         split.setSizes([1000, constants.SIDEBAR_WIDTH])
+        split.splitterMoved.connect(self._enforce_sidebar_limit)
+        QTimer.singleShot(0, self._enforce_sidebar_limit)
         return split
+
+    def _sidebar_max_width(self):
+        return max(constants.SIDEBAR_WIDTH, int(self.width() * self._SIDEBAR_MAX_RATIO))
+
+    def _enforce_sidebar_limit(self, *_):
+        if self.splitter is None or self.sidebar is None:
+            return
+
+        max_sidebar = self._sidebar_max_width()
+        self.sidebar.setMaximumWidth(max_sidebar)
+
+        sizes = self.splitter.sizes()
+        if len(sizes) < 2:
+            return
+
+        sidebar_width = sizes[1]
+        if sidebar_width <= max_sidebar:
+            return
+
+        total = max(2, sizes[0] + sizes[1])
+        canvas_width = max(1, total - max_sidebar)
+        self.splitter.setSizes([canvas_width, max_sidebar])
 
     def _create_toolbar(self):
         toolbar = QToolBar()
@@ -291,3 +319,7 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):
         self._controller.close()
         super().closeEvent(event)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._enforce_sidebar_limit()

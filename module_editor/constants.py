@@ -4,19 +4,7 @@ Constantes para el módulo de edición (EditorApp).
 from core.version import APP_NAME
 
 WINDOW_TITLE = f"{APP_NAME} Editor"
-WINDOW_SIZE = "1100x700"
-MIN_WIDTH = 800
-MIN_HEIGHT = 500
 SIDEBAR_WIDTH = 250
-ICON_SIZE = (20, 20)
-
-WINDOW_LAYOUT = {
-    "window_size": WINDOW_SIZE,
-    "min_width": MIN_WIDTH,
-    "min_height": MIN_HEIGHT,
-    "sidebar_width": SIDEBAR_WIDTH,
-    "icon_size": ICON_SIZE,
-}
 
 ZOOM_CONFIG = {
     "min": 0.01,
@@ -82,22 +70,8 @@ TOAST_MESSAGES = {
 
 HIGHLIGHTER_ALPHA = 102
 
-# Fuentes
-FONT_FAMILY = "Arial"
-FONT_BOLD = (FONT_FAMILY, 12, "bold")
-FONT_NORMAL = (FONT_FAMILY, 12, "normal")
-FONT_HEADER = (FONT_FAMILY, 14, "bold")
-
-# Dimensiones Sidebar
-SCROLL_RESERVE_WIDTH = 16
-INDENT_SIZE = 15
-BTN_HEIGHT_SMALL = 24
-BTN_REFRESH_SIZE = 30
-ICON_SIZE_SMALL = (16, 16)
-
 # Tiempos
 INITIAL_LOAD_DELAY_MS = 300
-DEBOUNCE_DELAY_MS = 50
 
 VECTOR_STYLE = {
     "default_color": "#00FF00",

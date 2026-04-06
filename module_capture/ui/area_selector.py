@@ -2,7 +2,7 @@ import datetime
 import os
 
 from PIL import ImageQt
-from PySide6.QtCore import QEventLoop, QRect, Qt, QTimer
+from PySide6.QtCore import QEventLoop, QRect, Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QKeySequence, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import QApplication, QWidget
 
@@ -15,6 +15,8 @@ _platform = get_platform_services()
 
 
 class AreaSelectorWindow(QWidget):
+    _cancel_requested = Signal()
+
     def __init__(self, on_capture_callback=None):
         super().__init__(None)
         self._on_capture_callback = on_capture_callback
@@ -22,6 +24,7 @@ class AreaSelectorWindow(QWidget):
         self._selection_end = None
         self._current_x = 0
         self._current_y = 0
+        self._is_cancelling = False
 
         self._load_screen_context()
         self._configure_window()
@@ -29,8 +32,18 @@ class AreaSelectorWindow(QWidget):
         self._monitor_timer = QTimer(self)
         self._monitor_timer.timeout.connect(self._check_monitor_change)
         self._monitor_timer.start(constants.AREA_SELECTOR_STYLE["monitor_poll_interval_ms"])
+        self._cancel_requested.connect(self._cancel_capture)
 
-        self._esc_hook = _platform.input.on_press_key("esc", lambda event: QTimer.singleShot(0, self.close), suppress=True)
+        self._esc_hook = _platform.input.on_press_key("esc", self._on_esc_key, suppress=True)
+
+    def _on_esc_key(self, _event):
+        self._cancel_requested.emit()
+
+    def _cancel_capture(self):
+        if self._is_cancelling:
+            return
+        self._is_cancelling = True
+        self.close()
 
     def _load_screen_context(self):
         self._monitor_x, self._monitor_y, self._monitor_width, self._monitor_height = utils.get_monitor_at_cursor()
@@ -119,7 +132,7 @@ class AreaSelectorWindow(QWidget):
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape or event.matches(QKeySequence.Cancel):
-            self.close()
+            self._cancel_capture()
             return
         super().keyPressEvent(event)
 
