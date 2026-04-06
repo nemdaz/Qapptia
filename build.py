@@ -4,7 +4,39 @@ import shutil
 import sys
 import zipfile
 import argparse
+from pathlib import Path
 from core.version import VERSION, APP_NAME
+
+BUILD_SPEC_FILE = "app.build.spec"
+
+
+def _clean_build_artifacts(app_name):
+    folders_to_remove = ["build", "dist"]
+    for folder in folders_to_remove:
+        if os.path.exists(folder):
+            print(f"Limpiando carpeta {folder}...")
+            shutil.rmtree(folder, ignore_errors=True)
+
+    # Elimina caches de bytecode del repo para evitar residuos entre builds.
+    for cache_dir in Path(".").rglob("__pycache__"):
+        shutil.rmtree(cache_dir, ignore_errors=True)
+
+    spec_file = f"{app_name}.spec"
+    if os.path.exists(spec_file):
+        print(f"Limpiando archivo {spec_file}...")
+        os.remove(spec_file)
+
+    # Cache global de PyInstaller (Windows y Unix-like).
+    cache_candidates = []
+    local_app_data = os.getenv("LOCALAPPDATA")
+    if local_app_data:
+        cache_candidates.append(Path(local_app_data) / "pyinstaller")
+    cache_candidates.append(Path.home() / ".cache" / "pyinstaller")
+
+    for cache_path in cache_candidates:
+        if cache_path.exists():
+            print(f"Limpiando cache PyInstaller: {cache_path}")
+            shutil.rmtree(cache_path, ignore_errors=True)
 
 def run_build(active_version):
     # Motor de construccion centralizado.
@@ -28,26 +60,23 @@ def run_build(active_version):
         print(f"Error: El archivo {zip_name} ya existe. Sube la version en core/version.py")
         return
 
-    for folder in ["build", "dist"]:
-        if os.path.exists(folder):
-            print(f"Limpiando carpeta {folder}...")
-            shutil.rmtree(folder)
+    _clean_build_artifacts(APP_NAME)
 
-    separator = ";" if os.name == "nt" else ":"
+    if not os.path.exists(BUILD_SPEC_FILE):
+        print(f"Error: No se encontro {BUILD_SPEC_FILE}")
+        return
+
     cmd = [
         "pyinstaller",
-        "--noconsole",
-        f"--name={APP_NAME}",
-        f"--add-data=core{separator}core",
-        f"--add-data=module_capture{separator}module_capture",
-        f"--add-data=module_editor{separator}module_editor",
         "--clean",
-        "main.py",
+        BUILD_SPEC_FILE,
     ]
 
     print("Ejecutando PyInstaller (esto puede tardar un poco)...")
     try:
-        subprocess.run(cmd, check=True)
+        env = os.environ.copy()
+        env["_APP_NAME"] = APP_NAME
+        subprocess.run(cmd, check=True, env=env)
         print("Construccion exitosa del ejecutable")
     except subprocess.CalledProcessError as exc:
         print(f"Error durante la construccion: {exc}")
@@ -63,15 +92,12 @@ def run_build(active_version):
                 rel_path = os.path.relpath(abs_path, os.path.dirname(dist_folder))
                 zipf.write(abs_path, rel_path)
 
-    spec_file = f"{APP_NAME}.spec"
-    if os.path.exists(spec_file):
-        os.remove(spec_file)
-        print(f"Limpieza final: Archivo {spec_file} eliminado.")
-
     print("\n==========================================")
     print("PROCESO FINALIZADO CON EXITO")
     print(f"Version: {clean_active}")
     print(f"ZIP: {os.path.abspath(zip_name)}")
+    zip_size_mb = os.path.getsize(zip_name) / (1024 * 1024)
+    print(f"Peso ZIP: {zip_size_mb:.2f} MB")
     print("==========================================\n")
 
 if __name__ == "__main__":

@@ -6,21 +6,23 @@ logger.remove()
 
 # Detectar entorno: frozen (PyInstaller) = producción
 is_dev = not getattr(sys, 'frozen', False)
+console_sink = sys.stderr or sys.__stderr__
 
-if is_dev:
-    logger.add(
-        sys.stderr,
-        level="DEBUG",
-        format="<green>{time:HH:mm:ss}</green> | <level>{level:<8}</level> | <cyan>{name}</cyan> - {message}",
-        diagnose=True,
-        backtrace=True,
-    )
-else:
-    logger.add(
-        sys.stderr,
-        level="WARNING",
-        format="{time:HH:mm:ss} | {level} | {message}",
-    )
+if console_sink is not None:
+    if is_dev:
+        logger.add(
+            console_sink,
+            level="DEBUG",
+            format="<green>{time:HH:mm:ss}</green> | <level>{level:<8}</level> | <cyan>{name}</cyan> - {message}",
+            diagnose=True,
+            backtrace=True,
+        )
+    else:
+        logger.add(
+            console_sink,
+            level="WARNING",
+            format="{time:HH:mm:ss} | {level} | {message}",
+        )
 
 # Log rotativo en archivo (siempre activo)
 logger.add(
