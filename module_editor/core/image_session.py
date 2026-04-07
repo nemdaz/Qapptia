@@ -46,7 +46,7 @@ class ImageSession:
             return False
 
         output_image = image
-        extension = Image.EXTENSION.get(f'.{self.image_path.rsplit('.', 1)[-1].lower()}')
+        extension = Image.EXTENSION.get(f".{self.image_path.rsplit('.', 1)[-1].lower()}")
         if extension in {"JPEG", "BMP"} and image.mode == "RGBA":
             output_image = image.convert("RGB")
 
