@@ -285,6 +285,9 @@ class CaptureConfigWindow(QDialog):
     def request_wake_up(self):
         QMetaObject.invokeMethod(self, "_handle_wake_up", Qt.QueuedConnection)
 
+    def request_close(self):
+        QMetaObject.invokeMethod(self, "reject", Qt.QueuedConnection)
+
     @Slot()
     def _handle_wake_up(self):
         self.setWindowState(self.windowState() & ~Qt.WindowMinimized)

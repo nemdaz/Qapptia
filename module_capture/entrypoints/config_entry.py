@@ -26,5 +26,5 @@ def run_config_window(on_close_callback=None):
     window = CaptureConfigWindow(on_close_callback=on_close_callback)
     window.setWindowIcon(app_icon)
 
-    ipc.start_server(ipc.CHANNEL_CONFIG, window.request_wake_up)
+    ipc.start_server(ipc.CHANNEL_CONFIG, window.request_wake_up, window.request_close)
     window.exec()

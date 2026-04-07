@@ -148,6 +148,7 @@ def quit_app(icon, item=None):
     global should_exit
     logger.info("Saliendo...")
     ipc.request_quit(ipc.CHANNEL_EDITOR)
+    ipc.request_quit(ipc.CHANNEL_CONFIG)
     icon.stop()
     should_exit = True
 

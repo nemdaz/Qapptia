@@ -283,6 +283,12 @@ class CanvasView(QGraphicsView):
 
     def set_zoom_callback(self, cb): self._on_zoom_cb = cb
 
+    def _set_canvas_cursor(self, cursor_shape):
+        self.viewport().setCursor(cursor_shape)
+
+    def _clear_canvas_cursor(self):
+        self.viewport().unsetCursor()
+
     def set_draw_cursor_active(self, active):
         self._draw_cursor_active = bool(active)
         if self._pan_active:
@@ -306,12 +312,12 @@ class CanvasView(QGraphicsView):
 
         hit = self.itemAt(view_pos)
         if isinstance(hit, InlineTextEditor):
-            self.setCursor(Qt.IBeamCursor)
+            self._set_canvas_cursor(Qt.IBeamCursor)
             return
 
         scene = self.scene()
         if scene is None:
-            self.setCursor(Qt.CrossCursor)
+            self._set_canvas_cursor(Qt.CrossCursor)
             return
 
         scene_pos = self.mapToScene(view_pos)
@@ -321,17 +327,17 @@ class CanvasView(QGraphicsView):
 
         if handle_hit:
             _, grip_name = handle_hit
-            self.setCursor(self._cursor_for_grip(grip_name))
+            self._set_canvas_cursor(self._cursor_for_grip(grip_name))
             return
 
         if isinstance(hit, CanvasItem):
-            self.setCursor(Qt.SizeAllCursor)
+            self._set_canvas_cursor(Qt.SizeAllCursor)
             return
 
         if self._draw_cursor_active:
-            self.setCursor(Qt.CrossCursor)
+            self._set_canvas_cursor(Qt.CrossCursor)
         else:
-            self.unsetCursor()
+            self._clear_canvas_cursor()
 
     def wheelEvent(self, event):
         if event.modifiers() & Qt.ControlModifier:
@@ -379,7 +385,7 @@ class CanvasView(QGraphicsView):
         if event.button() == Qt.LeftButton and self._can_start_pan(event.position().toPoint()):
             self._pan_active = True
             self._pan_last_pos = event.position().toPoint()
-            self.setCursor(Qt.ClosedHandCursor)
+            self._set_canvas_cursor(Qt.ClosedHandCursor)
             event.accept()
             return
         super().mouseDoubleClickEvent(event)
