@@ -30,6 +30,7 @@ class SidebarTree(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self._suppress_selection_signal = False
         self._setup_ui()
 
     def _setup_ui(self):
@@ -70,7 +71,6 @@ class SidebarTree(QWidget):
             "QTreeView { background-color: #1e1e1e; border: 1px solid #3a3a3a; border-top: none; }"
             "QTreeView::item { padding: 3px 4px; }"
         )
-        self.tree.clicked.connect(self._on_click)
         self.tree.expanded.connect(self._on_expanded)
         self.tree.collapsed.connect(self._on_collapsed)
         layout.addWidget(self.tree, 1)
@@ -92,6 +92,7 @@ class SidebarTree(QWidget):
         self.tree.setModel(self._model)
         self.tree.setRootIndex(self._model.index(base_path))
         self.tree.sortByColumn(3, Qt.DescendingOrder)
+        self.tree.selectionModel().currentChanged.connect(self._on_current_changed)
 
         for i in range(1, self._model.columnCount()):
             self.tree.hideColumn(i)
@@ -99,7 +100,10 @@ class SidebarTree(QWidget):
         self._restore_expanded_folders()
         self._force_scroll_top()
 
-    def _on_click(self, index):
+    def _on_current_changed(self, index, _previous):
+        if self._suppress_selection_signal:
+            return
+
         path = self._model.filePath(index)
         if os.path.isfile(path) and os.path.splitext(path)[1].lower() in IMAGE_EXTENSIONS:
             self.image_selected.emit(path.replace("\\", "/"))
@@ -110,7 +114,11 @@ class SidebarTree(QWidget):
             if not idx.isValid():
                 return
             self._expand_parent_chain(idx)
-            self.tree.setCurrentIndex(idx)
+            self._suppress_selection_signal = True
+            try:
+                self.tree.setCurrentIndex(idx)
+            finally:
+                self._suppress_selection_signal = False
             self._force_scroll_top()
 
     def _force_scroll_top(self):
