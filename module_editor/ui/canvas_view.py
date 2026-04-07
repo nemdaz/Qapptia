@@ -3,7 +3,7 @@ import math
 from PIL import ImageQt
 from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsPixmapItem
 from PySide6.QtCore import Qt, QRectF, Signal, QTimer, QPointF
-from PySide6.QtGui import QPixmap, QColor, QPainter
+from PySide6.QtGui import QPixmap, QColor, QPainter, QCursor
 
 from module_editor import constants
 from module_editor.ui.toolbar.canvas_item import CanvasItem
@@ -287,6 +287,47 @@ class CanvasView(QGraphicsView):
         self._draw_cursor_active = bool(active)
         if self._pan_active:
             return
+        self._update_draw_cursor(self.mapFromGlobal(QCursor.pos()))
+
+    def _cursor_for_grip(self, grip_name):
+        if grip_name in ("tl", "br"):
+            return Qt.SizeFDiagCursor
+        if grip_name in ("tr", "bl"):
+            return Qt.SizeBDiagCursor
+        if grip_name == "move":
+            return Qt.SizeAllCursor
+        if grip_name in ("start", "end"):
+            return Qt.SizeFDiagCursor
+        return Qt.CrossCursor
+
+    def _update_draw_cursor(self, view_pos):
+        if self._pan_active:
+            return
+
+        hit = self.itemAt(view_pos)
+        if isinstance(hit, InlineTextEditor):
+            self.setCursor(Qt.IBeamCursor)
+            return
+
+        scene = self.scene()
+        if scene is None:
+            self.setCursor(Qt.CrossCursor)
+            return
+
+        scene_pos = self.mapToScene(view_pos)
+        handle_hit = None
+        if hasattr(scene, "_find_handle_hit"):
+            handle_hit = scene._find_handle_hit(scene_pos)
+
+        if handle_hit:
+            _, grip_name = handle_hit
+            self.setCursor(self._cursor_for_grip(grip_name))
+            return
+
+        if isinstance(hit, CanvasItem):
+            self.setCursor(Qt.SizeAllCursor)
+            return
+
         if self._draw_cursor_active:
             self.setCursor(Qt.CrossCursor)
         else:
@@ -353,18 +394,17 @@ class CanvasView(QGraphicsView):
             event.accept()
             return
         super().mouseMoveEvent(event)
+        self._update_draw_cursor(event.position().toPoint())
 
     def mouseReleaseEvent(self, event):
         if self._pan_active and event.button() == Qt.LeftButton:
             self._pan_active = False
             self._pan_last_pos = None
-            if self._draw_cursor_active:
-                self.setCursor(Qt.CrossCursor)
-            else:
-                self.unsetCursor()
+            self._update_draw_cursor(event.position().toPoint())
             event.accept()
             return
         super().mouseReleaseEvent(event)
+        self._update_draw_cursor(event.position().toPoint())
 
     def _current_zoom_level(self):
         return self.transform().m11() or 1.0

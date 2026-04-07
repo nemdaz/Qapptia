@@ -3,7 +3,7 @@ import os
 import atexit
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import QtMsgType, qInstallMessageHandler
-from core.logger import logger
+from core.logger import logger, build_daily_log_path
 from module_editor.ui.main_window import MainWindow
 
 _crash_log_file = None
@@ -16,14 +16,11 @@ def _configure_crash_logging():
 
     global _crash_log_file, _crash_log_path
 
-    os.makedirs("logs", exist_ok=True)
-    _crash_log_path = os.path.join(
-        "logs",
-        f"editor_{datetime.datetime.now().strftime('%Y-%m-%d')}.log",
-    )
+    now = datetime.datetime.now()
+    _crash_log_path = build_daily_log_path("editor", now)
     _crash_log_file = open(_crash_log_path, "a", encoding="utf-8")
     _crash_log_file.write(
-        f"\n--- Editor session start | pid={os.getpid()} | ts={datetime.datetime.now().isoformat()} ---\n"
+        f"\n--- Editor session start | pid={os.getpid()} | ts={now.isoformat()} ---\n"
     )
     _crash_log_file.flush()
     faulthandler.enable(file=_crash_log_file, all_threads=True)
