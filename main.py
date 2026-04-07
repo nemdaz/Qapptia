@@ -1,8 +1,8 @@
-﻿import sys
-import os
-import time
+﻿import os
 import subprocess
+import sys
 import threading
+import time
 
 from core.logger import logger
 from core import assets, config, ipc, utils
@@ -21,6 +21,8 @@ should_restart = False
 _editor_last_click = 0
 _is_editor_launching = False
 _platform = get_platform_services()
+_tray_icon = None
+_pending_existing_instance_notification = False
 
 
 def _register_capture_hotkeys():
@@ -51,6 +53,20 @@ def _recover_hooks_after_resume(icon=None):
         logger.error("No fue posible restaurar hooks tras reanudacion.")
     return recovered
 
+
+def _notify_existing_background_instance():
+    global _pending_existing_instance_notification
+
+    message = "La aplicación ya está activa en segundo plano."
+    if _tray_icon and hasattr(_tray_icon, "notify"):
+        try:
+            _tray_icon.notify(message, APP_NAME)
+            return
+        except Exception as exc:
+            logger.debug(f"No se pudo notificar instancia existente: {exc}")
+
+    _pending_existing_instance_notification = True
+
 def create_image():
     return assets.create_app_icon_image(64)
 
@@ -76,26 +92,22 @@ def capture_area_menu(icon, item=None):
 def launch_editor_process():
     """Lógica central para abrir el editor con protección de instancias multiples."""
     global _is_editor_launching
-    
-    # 1. Verificar si ya hay una instancia respondiendo (IPC)
-    logger.debug("Verificando instancia del Editor...")
-    if ipc.is_editor_running():
+
+    if ipc.request_wake_up(ipc.CHANNEL_EDITOR):
         logger.debug("Editor ya en ejecución. Enviada señal de despertar.")
         return
 
-    # 2. Verificar si ya hay un proceso lanzándose (Protección de carrera)
     if _is_editor_launching:
         logger.debug("El editor ya se está iniciando, por favor espera...")
         return
 
-    # 3. Lanzar nueva instancia
     logger.info("Iniciando nueva instancia del Editor...")
     _is_editor_launching = True
-    
-    # Resetear el flag de lanzamiento después de un tiempo prudencial (5s)
+
     def reset_launching_flag():
         global _is_editor_launching
         _is_editor_launching = False
+
     threading.Timer(RUNTIME_CONFIG["editor_launch_guard_seconds"], reset_launching_flag).start()
 
     if getattr(sys, 'frozen', False):
@@ -123,6 +135,9 @@ def open_editor_menu(icon, item=None):
 def open_config(icon, item=None):
     """Abre la ventana de configuración usando el propio ejecutable o script."""
     logger.info("Abriendo configuración...")
+    if ipc.request_wake_up(ipc.CHANNEL_CONFIG):
+        logger.debug("Configuración ya en ejecución. Enviada señal de activación.")
+        return
     if getattr(sys, 'frozen', False):
         subprocess.Popen([sys.executable, "--config"])
     else:
@@ -132,7 +147,7 @@ def quit_app(icon, item=None):
     """Cierra la aplicación."""
     global should_exit
     logger.info("Saliendo...")
-    ipc.request_editor_quit()
+    ipc.request_quit(ipc.CHANNEL_EDITOR)
     icon.stop()
     should_exit = True
 
@@ -146,11 +161,16 @@ def reload_hooks(icon=None, item=None):
     should_exit = True
 
 def setup(icon):
+    global _tray_icon, _pending_existing_instance_notification
 
+    _tray_icon = icon
     icon.visible = True
     if hasattr(icon, "notify"):
         try:
             icon.notify("La aplicación está activa en segundo plano.", APP_NAME)
+            if _pending_existing_instance_notification:
+                icon.notify("La aplicación ya está activa en segundo plano.", APP_NAME)
+                _pending_existing_instance_notification = False
         except Exception as exc:
             logger.debug(f"No se pudo mostrar notificación de bandeja: {exc}")
     # Siempre escuchamos el mouse, FlowManager decide si actuar
@@ -166,6 +186,14 @@ def main():
         elif sys.argv[1] == "--config":
             run_config_window()
             return
+
+    app_instance_guard = _platform.process.acquire_single_instance(ipc.CHANNEL_APP)
+    if app_instance_guard is None:
+        if not ipc.request_wake_up(ipc.CHANNEL_APP):
+            _platform.desktop.show_info_message(APP_NAME, "La aplicación ya está activa en segundo plano.")
+        return
+
+    ipc.start_server(ipc.CHANNEL_APP, _notify_existing_background_instance)
 
     # Solo en el proceso principal (tray/captura).
     # En editor/config dejamos que Qt gestione DPI para evitar doble configuracion.

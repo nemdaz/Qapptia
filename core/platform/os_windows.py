@@ -1,13 +1,42 @@
 import ctypes
 from ctypes import wintypes
 import winsound
+import atexit
 
 import keyboard
 import mouse
 import pystray
 from PIL import Image, ImageDraw, ImageGrab
 
-from core.platform.base import DesktopService, DpiService, InputService, ScreenService, TrayService
+from core.platform.base import DesktopService, DpiService, InputService, ProcessService, ScreenService, TrayService
+
+
+class _WindowsInstanceGuard:
+    def __init__(self, key):
+        self.key = key
+        self._mutex_handle = None
+        self._released = False
+
+    def acquire(self):
+        mutex_name = f"Global\\QAScreenshot.{self.key}"
+        handle = ctypes.windll.kernel32.CreateMutexW(None, False, mutex_name)
+        if not handle:
+            return False
+
+        error_code = ctypes.windll.kernel32.GetLastError()
+        if error_code == 183:
+            ctypes.windll.kernel32.CloseHandle(handle)
+            return False
+
+        self._mutex_handle = handle
+        return True
+
+    def release(self):
+        if self._released or self._mutex_handle is None:
+            return
+        self._released = True
+        ctypes.windll.kernel32.CloseHandle(self._mutex_handle)
+        self._mutex_handle = None
 
 
 class WindowsInputService(InputService):
@@ -59,6 +88,15 @@ class WindowsDpiService(DpiService):
             pass
 
 
+class WindowsProcessService(ProcessService):
+    def acquire_single_instance(self, key):
+        guard = _WindowsInstanceGuard(key)
+        if not guard.acquire():
+            return None
+        atexit.register(guard.release)
+        return guard
+
+
 class WindowsScreenService(ScreenService):
     def capture_all_screens(self):
         return ImageGrab.grab(all_screens=True)
@@ -70,6 +108,9 @@ class WindowsDesktopService(DesktopService):
             winsound.PlaySound(sound_path, winsound.SND_FILENAME | winsound.SND_ASYNC)
             return
         winsound.Beep(1500, 150)
+
+    def show_info_message(self, title, message):
+        ctypes.windll.user32.MessageBoxW(None, message, title, 0x00000040)
 
     def get_dpi_scaling(self):
         try:

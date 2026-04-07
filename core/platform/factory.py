@@ -1,11 +1,12 @@
 import sys
 from dataclasses import dataclass
 
-from core.platform.base import DesktopService, DpiService, InputService, ScreenService, TrayService
+from core.platform.base import DesktopService, DpiService, InputService, ProcessService, ScreenService, TrayService
 from core.platform.os_linux import (
     LinuxDesktopService,
     LinuxDpiService,
     LinuxInputService,
+    LinuxProcessService,
     LinuxScreenService,
     LinuxTrayService,
 )
@@ -13,6 +14,7 @@ from core.platform.os_macos import (
     MacOsDesktopService,
     MacOsDpiService,
     MacOsInputService,
+    MacOsProcessService,
     MacOsScreenService,
     MacOsTrayService,
 )
@@ -20,6 +22,7 @@ from core.platform.os_windows import (
     WindowsDesktopService,
     WindowsDpiService,
     WindowsInputService,
+    WindowsProcessService,
     WindowsScreenService,
     WindowsTrayService,
 )
@@ -29,6 +32,7 @@ from core.platform.os_windows import (
 class PlatformServices:
     input: InputService
     dpi: DpiService
+    process: ProcessService
     screen: ScreenService
     desktop: DesktopService
     tray: TrayService
@@ -46,6 +50,7 @@ def get_platform_services():
         _services_singleton = PlatformServices(
             input=WindowsInputService(),
             dpi=WindowsDpiService(),
+            process=WindowsProcessService(),
             screen=WindowsScreenService(),
             desktop=WindowsDesktopService(),
             tray=WindowsTrayService(),
@@ -56,6 +61,7 @@ def get_platform_services():
         _services_singleton = PlatformServices(
             input=MacOsInputService(),
             dpi=MacOsDpiService(),
+            process=MacOsProcessService(),
             screen=MacOsScreenService(),
             desktop=MacOsDesktopService(),
             tray=MacOsTrayService(),
@@ -66,6 +72,7 @@ def get_platform_services():
         _services_singleton = PlatformServices(
             input=LinuxInputService(),
             dpi=LinuxDpiService(),
+            process=LinuxProcessService(),
             screen=LinuxScreenService(),
             desktop=LinuxDesktopService(),
             tray=LinuxTrayService(),
@@ -76,6 +83,7 @@ def get_platform_services():
     _services_singleton = PlatformServices(
         input=LinuxInputService(),
         dpi=LinuxDpiService(),
+        process=LinuxProcessService(),
         screen=LinuxScreenService(),
         desktop=LinuxDesktopService(),
         tray=LinuxTrayService(),

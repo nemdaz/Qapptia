@@ -1,22 +1,26 @@
-import sys
-import os
 import atexit
+import datetime
+import faulthandler
+import os
+import sys
+import traceback
+
 from PIL import ImageQt
+from PySide6.QtCore import QtMsgType, qInstallMessageHandler
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import QtMsgType, qInstallMessageHandler
+
+from core import assets, ipc
 from core.logger import logger, build_daily_log_path
-from core import assets
+from core.platform import get_platform_services
 from module_editor.ui.main_window import MainWindow
 
 _crash_log_file = None
 _crash_log_path = None
+_platform = get_platform_services()
 
 
 def _configure_crash_logging():
-    import datetime
-    import faulthandler
-
     global _crash_log_file, _crash_log_path
 
     now = datetime.datetime.now()
@@ -36,8 +40,6 @@ def _cleanup_crash_logging():
         _crash_log_file.close()
 
 def _install_exception_hook():
-    import traceback
-
     def _handle_exception(exc_type, exc_value, exc_tb):
         if issubclass(exc_type, KeyboardInterrupt):
             return
@@ -65,6 +67,11 @@ def _install_qt_message_handler():
 
 
 def run_editor():
+    editor_instance_guard = _platform.process.acquire_single_instance(ipc.CHANNEL_EDITOR)
+    if editor_instance_guard is None:
+        ipc.request_wake_up(ipc.CHANNEL_EDITOR)
+        return
+
     _configure_crash_logging()
     _install_exception_hook()
     _install_qt_message_handler()

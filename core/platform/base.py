@@ -53,6 +53,12 @@ class DpiService(ABC):
         pass
 
 
+class ProcessService(ABC):
+    @abstractmethod
+    def acquire_single_instance(self, key):
+        pass
+
+
 class ScreenService(ABC):
     @abstractmethod
     def capture_all_screens(self):
@@ -62,6 +68,10 @@ class ScreenService(ABC):
 class DesktopService(ABC):
     @abstractmethod
     def play_beep(self, sound_path):
+        pass
+
+    @abstractmethod
+    def show_info_message(self, title, message):
         pass
 
     @abstractmethod
