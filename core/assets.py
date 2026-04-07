@@ -6,68 +6,97 @@ from PIL import Image, ImageDraw, ImageFont
 ASSETS_DIR = os.path.join(os.path.dirname(__file__), "assets")
 FONTS_DIR = os.path.join(ASSETS_DIR, "fonts")
 
+APP_ICON_MASTER_SIZE = 256
+APP_WINDOW_ICON_SIZES = (16, 20, 24, 32, 40, 48, 64, 128, 256)
+APP_WINDOW_DOWNSCALED_MAX_SIZE = 24
+
 
 def get_text_font_path(filename):
     return os.path.join(FONTS_DIR, filename)
+
+
+def _load_app_icon_font(pixel_size):
+    try:
+        from module_editor import constants as editor_constants
+
+        font_path = get_text_font_path(editor_constants.TEXT_STYLE["font_files"]["bold"])
+        return ImageFont.truetype(font_path, pixel_size)
+    except Exception:
+        pass
+
+    try:
+        return ImageFont.truetype("arial.ttf", pixel_size)
+    except Exception:
+        return ImageFont.load_default()
+
+
+def _create_master_app_icon():
+    return create_app_icon_image(APP_ICON_MASTER_SIZE)
 
 
 def create_app_icon_image(size=64):
     img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
-    pad = max(2, size // 10)
-    radius = max(4, size // 6)
+    pad = max(1, size // 16)
+    radius = max(4, size // 5)
     draw.rounded_rectangle(
         [pad, pad, size - pad, size - pad],
         radius=radius,
         fill="#1f2933",
         outline="#f5f7fa",
-        width=max(2, size // 16),
+        width=max(1, size // 18),
     )
 
-    font_px = int(size * 0.56)
-    font = None
-    try:
-        from module_editor import constants as editor_constants
-
-        font_path = get_text_font_path(editor_constants.TEXT_STYLE["font_files"]["bold"])
-        font = ImageFont.truetype(font_path, font_px)
-    except Exception:
-        font = None
-
-    if font is None:
-        try:
-            font = ImageFont.truetype("arial.ttf", font_px)
-        except Exception:
-            font = ImageFont.load_default()
+    font_px = int(size * 0.62)
+    font = _load_app_icon_font(font_px)
 
     text = "Q"
     box = draw.textbbox((0, 0), text, font=font)
     text_w = box[2] - box[0]
     text_h = box[3] - box[1]
     text_x = (size - text_w) // 2 - box[0]
-    text_y = (size - text_h) // 2 - box[1] - max(0, size // 40)
+    text_y = (size - text_h) // 2 - box[1] - max(0, size // 60)
     draw.text((text_x, text_y), text, font=font, fill="#ffffff")
 
     return img
+
+
+def create_app_window_icon():
+    from PIL import ImageQt
+    from PySide6.QtGui import QIcon, QPixmap
+
+    icon = QIcon()
+    master_icon = _create_master_app_icon()
+    for size in APP_WINDOW_ICON_SIZES:
+        if size <= APP_WINDOW_DOWNSCALED_MAX_SIZE:
+            source = master_icon.resize((size, size), Image.LANCZOS)
+        else:
+            source = create_app_icon_image(size)
+        icon.addPixmap(QPixmap.fromImage(ImageQt.ImageQt(source)))
+    return icon
+
+
+def create_app_tray_icon_image(size=32):
+    master_icon = _create_master_app_icon()
+    inset = max(6, APP_ICON_MASTER_SIZE // 24)
+    enlarged_icon = master_icon.crop((inset, inset, APP_ICON_MASTER_SIZE - inset, APP_ICON_MASTER_SIZE - inset))
+    return enlarged_icon.resize((size, size), Image.LANCZOS)
+
 
 def create_refresh_icon(color="white"):
     img = Image.new("RGBA", (24, 24), (255, 255, 255, 0))
     d = ImageDraw.Draw(img)
     w = 2
-    
-    # Cabeza de flecha
+
     d.line([(21, 3), (21, 8)], fill=color, width=w, joint="curve")
     d.line([(21, 8), (16, 8)], fill=color, width=w, joint="curve")
-    
-    # Unión al arco
     d.line([(21, 8), (18, 5.3)], fill=color, width=w, joint="curve")
-    
-    # Arco abierto
     d.arc([3, 3, 21, 21], start=25, end=315, fill=color, width=w)
-    
+
     return img
-    
+
+
 def create_rotate_icon(color="white"):
     img = Image.new("RGBA", (24, 24), (255, 255, 255, 0))
     d = ImageDraw.Draw(img)

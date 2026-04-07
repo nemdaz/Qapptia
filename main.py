@@ -68,7 +68,7 @@ def _notify_existing_background_instance():
     _pending_existing_instance_notification = True
 
 def create_image():
-    return assets.create_app_icon_image(64)
+    return assets.create_app_tray_icon_image(32)
 
 def on_mouse_event(event):
     """Delega los eventos del ratón al FlowManager."""

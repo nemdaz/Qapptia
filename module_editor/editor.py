@@ -5,9 +5,7 @@ import os
 import sys
 import traceback
 
-from PIL import ImageQt
 from PySide6.QtCore import QtMsgType, qInstallMessageHandler
-from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import QApplication
 
 from core import assets, ipc
@@ -79,7 +77,7 @@ def run_editor():
 
     app = QApplication.instance() or QApplication(sys.argv)
     app.setStyle("Fusion")
-    app_icon = QIcon(QPixmap.fromImage(ImageQt.ImageQt(assets.create_app_icon_image(64))))
+    app_icon = assets.create_app_window_icon()
     app.setWindowIcon(app_icon)
     
     window = MainWindow()
