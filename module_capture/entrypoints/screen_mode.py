@@ -5,7 +5,7 @@ from module_capture.application.fullscreen_capture_service import fullscreen_cap
 
 def register_screen_hotkey():
     hotkey = config.get("shortcut_screen")
-    utils.register_hotkey(hotkey, trigger_screen_capture, constants.HOTKEY_DESCRIPTIONS["screen"])
+    return utils.register_hotkey(hotkey, trigger_screen_capture, constants.HOTKEY_DESCRIPTIONS["screen"])
 
 
 def trigger_screen_capture():

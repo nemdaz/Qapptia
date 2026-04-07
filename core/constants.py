@@ -20,3 +20,14 @@ DEFAULT_CONFIG = {
     "shortcut_flow_pause": "ctrl+shift",
     "enable_scroll_capture": True
 }
+
+
+RUNTIME_CONFIG = {
+    "main_loop_sleep_seconds": 1.0,
+    "suspend_jump_threshold_seconds": 10.0,
+    "hook_recovery_max_attempts": 2,
+    "hook_recovery_retry_delay_seconds": 0.25,
+    "restart_grace_period_seconds": 0.5,
+    "editor_double_click_seconds": 0.4,
+    "editor_launch_guard_seconds": 5.0,
+}

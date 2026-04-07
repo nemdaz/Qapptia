@@ -6,7 +6,7 @@ import threading
 
 from core.logger import logger
 from core import assets, config, ipc, utils
-from core.constants import APP_NAME, VERSION
+from core.constants import APP_NAME, VERSION, RUNTIME_CONFIG
 from core.platform import get_platform_services
 from module_capture.application.flow_capture_service import flow_capture_service
 from module_capture.entrypoints.area_mode import register_area_hotkey, trigger_area_capture
@@ -21,6 +21,35 @@ should_restart = False
 _editor_last_click = 0
 _is_editor_launching = False
 _platform = get_platform_services()
+
+
+def _register_capture_hotkeys():
+    config.load_config()
+    screen_ok = register_screen_hotkey()
+    area_ok = register_area_hotkey()
+    flow_ok = register_flow_hotkey()
+    return bool(screen_ok and area_ok and flow_ok)
+
+
+def _recover_hooks_after_resume(icon=None):
+    logger.info("Reintentando registro de hooks tras reanudacion del sistema...")
+    recovered = utils.recover_capture_hooks(
+        input_service=_platform.input,
+        register_hotkeys_callback=_register_capture_hotkeys,
+        mouse_callback=on_mouse_event,
+        max_attempts=RUNTIME_CONFIG["hook_recovery_max_attempts"],
+        retry_delay_seconds=RUNTIME_CONFIG["hook_recovery_retry_delay_seconds"],
+    )
+    if recovered:
+        logger.info("Hooks restaurados correctamente tras reanudacion.")
+        if icon and hasattr(icon, "notify"):
+            try:
+                icon.notify("Atajos restaurados tras reanudacion.", APP_NAME)
+            except Exception:
+                pass
+    else:
+        logger.error("No fue posible restaurar hooks tras reanudacion.")
+    return recovered
 
 def create_image():
     return assets.create_app_icon_image(64)
@@ -67,7 +96,7 @@ def launch_editor_process():
     def reset_launching_flag():
         global _is_editor_launching
         _is_editor_launching = False
-    threading.Timer(5.0, reset_launching_flag).start()
+    threading.Timer(RUNTIME_CONFIG["editor_launch_guard_seconds"], reset_launching_flag).start()
 
     if getattr(sys, 'frozen', False):
         subprocess.Popen([sys.executable, "--editor"])
@@ -79,7 +108,7 @@ def open_editor_icon(icon, item=None):
     global _editor_last_click
     
     current_time = time.time()
-    if current_time - _editor_last_click > 0.4:
+    if current_time - _editor_last_click > RUNTIME_CONFIG["editor_double_click_seconds"]:
         _editor_last_click = current_time
         logger.debug("Clic detectado en el icono, esperando segundo clic para abrir editor...")
         return
@@ -143,11 +172,8 @@ def main():
     _platform.dpi.set_process_dpi_awareness()
 
     global should_exit
-    config.load_config()
-    # Iniciar atajos de cada modo
-    register_screen_hotkey()
-    register_area_hotkey()
-    register_flow_hotkey()
+    if not _register_capture_hotkeys():
+        logger.warning("Uno o mas atajos no pudieron registrarse en el arranque.")
     
     menu = _platform.tray.menu(
         _platform.tray.menu_item('Abrir_oculto', open_editor_icon, default=True, visible=False),
@@ -167,16 +193,18 @@ def main():
     
     last_time = time.time()
     while not should_exit:
-        time.sleep(1)
+        time.sleep(RUNTIME_CONFIG["main_loop_sleep_seconds"])
         current_time = time.time()
         
         # Watchdog: Si pasa mucho tiempo en un solo 'sleep(1)', el PC fue suspendido
         jump = current_time - last_time
-        if jump > 10.0:
-            logger.warning(f"Salto de tiempo detectado ({jump:.1f}s). Probable suspensión del OS. Reiniciando de raíz...")
-            should_restart = True
-            icon.stop()
-            break
+        if jump > RUNTIME_CONFIG["suspend_jump_threshold_seconds"]:
+            logger.warning(f"Salto de tiempo detectado ({jump:.1f}s). Probable suspensión del OS.")
+            if not _recover_hooks_after_resume(icon):
+                logger.warning("Fallo al recuperar hooks tras reanudacion. Reiniciando de raiz...")
+                should_restart = True
+                icon.stop()
+                break
             
         last_time = current_time
         
@@ -187,7 +215,7 @@ def main():
     
     if should_restart:
         logger.info("Ejecutando reinicio maestro de proceso...")
-        time.sleep(0.5) # Dar tiempo a Windows para limpiar el icono de la bandeja
+        time.sleep(RUNTIME_CONFIG["restart_grace_period_seconds"]) # Dar tiempo al OS para limpiar el icono de la bandeja
         if getattr(sys, 'frozen', False):
             os.execv(sys.executable, sys.argv)
         else:

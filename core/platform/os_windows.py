@@ -35,6 +35,9 @@ class WindowsInputService(InputService):
     def add_hotkey(self, hotkey, callback, suppress=False):
         return keyboard.add_hotkey(hotkey, callback, suppress=suppress)
 
+    def unhook_all_hotkeys(self):
+        keyboard.unhook_all_hotkeys()
+
     def on_press_key(self, key, callback, suppress=False):
         return keyboard.on_press_key(key, callback, suppress=suppress)
 
