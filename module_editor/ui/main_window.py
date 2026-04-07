@@ -211,6 +211,7 @@ class MainWindow(QMainWindow):
         self.act_high.setChecked(tool == "highlighter")
         self.act_text.setChecked(tool == "text")
         self.scene.set_draw_mode(tool)
+        self.canvas.set_draw_cursor_active(bool(tool))
 
     def show_image(self, path):
         if not os.path.exists(path):
@@ -224,7 +225,7 @@ class MainWindow(QMainWindow):
             self.setWindowTitle(f"{constants.WINDOW_TITLE} - {os.path.basename(path)}")
             self._refresh_save_action()
             self.sidebar.select_path(self._controller.current_image_path)
-            QTimer.singleShot(50, self.canvas.fit_to_scene)
+            QTimer.singleShot(0, self.reset_zoom)
         except Exception as exc:
             logger.error(f"Error show_image: {exc}")
             show_toast(self, constants.TOAST_MESSAGES["open_error"], kind="error")
@@ -295,7 +296,7 @@ class MainWindow(QMainWindow):
             self.setWindowTitle(f"{constants.WINDOW_TITLE} - {os.path.basename(image_path)}")
             self._refresh_save_action()
             self.sidebar.select_path(image_path)
-            QTimer.singleShot(50, self.canvas.fit_to_scene)
+            QTimer.singleShot(0, self.reset_zoom)
         except Exception as exc:
             logger.error(f"Error restoring last image: {exc}")
 

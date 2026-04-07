@@ -279,8 +279,18 @@ class CanvasView(QGraphicsView):
         self._on_zoom_cb = None
         self._pan_active = False
         self._pan_last_pos = None
+        self._draw_cursor_active = False
 
     def set_zoom_callback(self, cb): self._on_zoom_cb = cb
+
+    def set_draw_cursor_active(self, active):
+        self._draw_cursor_active = bool(active)
+        if self._pan_active:
+            return
+        if self._draw_cursor_active:
+            self.setCursor(Qt.CrossCursor)
+        else:
+            self.unsetCursor()
 
     def wheelEvent(self, event):
         if event.modifiers() & Qt.ControlModifier:
@@ -348,7 +358,10 @@ class CanvasView(QGraphicsView):
         if self._pan_active and event.button() == Qt.LeftButton:
             self._pan_active = False
             self._pan_last_pos = None
-            self.unsetCursor()
+            if self._draw_cursor_active:
+                self.setCursor(Qt.CrossCursor)
+            else:
+                self.unsetCursor()
             event.accept()
             return
         super().mouseReleaseEvent(event)
