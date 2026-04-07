@@ -1,6 +1,6 @@
 import os
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 
 ASSETS_DIR = os.path.join(os.path.dirname(__file__), "assets")
@@ -9,6 +9,47 @@ FONTS_DIR = os.path.join(ASSETS_DIR, "fonts")
 
 def get_text_font_path(filename):
     return os.path.join(FONTS_DIR, filename)
+
+
+def create_app_icon_image(size=64):
+    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+
+    pad = max(2, size // 10)
+    radius = max(4, size // 6)
+    draw.rounded_rectangle(
+        [pad, pad, size - pad, size - pad],
+        radius=radius,
+        fill="#1f2933",
+        outline="#f5f7fa",
+        width=max(2, size // 16),
+    )
+
+    font_px = int(size * 0.56)
+    font = None
+    try:
+        from module_editor import constants as editor_constants
+
+        font_path = get_text_font_path(editor_constants.TEXT_STYLE["font_files"]["bold"])
+        font = ImageFont.truetype(font_path, font_px)
+    except Exception:
+        font = None
+
+    if font is None:
+        try:
+            font = ImageFont.truetype("arial.ttf", font_px)
+        except Exception:
+            font = ImageFont.load_default()
+
+    text = "Q"
+    box = draw.textbbox((0, 0), text, font=font)
+    text_w = box[2] - box[0]
+    text_h = box[3] - box[1]
+    text_x = (size - text_w) // 2 - box[0]
+    text_y = (size - text_h) // 2 - box[1] - max(0, size // 40)
+    draw.text((text_x, text_y), text, font=font, fill="#ffffff")
+
+    return img
 
 def create_refresh_icon(color="white"):
     img = Image.new("RGBA", (24, 24), (255, 255, 255, 0))

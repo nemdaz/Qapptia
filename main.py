@@ -3,10 +3,9 @@ import os
 import time
 import subprocess
 import threading
-from PIL import Image
 
 from core.logger import logger
-from core import config, ipc, utils
+from core import assets, config, ipc, utils
 from core.constants import APP_NAME, VERSION
 from core.platform import get_platform_services
 from module_capture.application.flow_capture_service import flow_capture_service
@@ -24,9 +23,7 @@ _is_editor_launching = False
 _platform = get_platform_services()
 
 def create_image():
-    # Icono simple para la bandeja
-    image = Image.new('RGB', (64, 64), color=(0, 128, 255))
-    return image
+    return assets.create_app_icon_image(64)
 
 def on_mouse_event(event):
     """Delega los eventos del ratón al FlowManager."""
@@ -122,6 +119,11 @@ def reload_hooks(icon=None, item=None):
 def setup(icon):
 
     icon.visible = True
+    if hasattr(icon, "notify"):
+        try:
+            icon.notify("La aplicación está activa en segundo plano.", APP_NAME)
+        except Exception as exc:
+            logger.debug(f"No se pudo mostrar notificación de bandeja: {exc}")
     # Siempre escuchamos el mouse, FlowManager decide si actuar
     _platform.input.hook_mouse(on_mouse_event)
 

@@ -1,9 +1,12 @@
 import sys
 import os
 import atexit
+from PIL import ImageQt
+from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import QtMsgType, qInstallMessageHandler
 from core.logger import logger, build_daily_log_path
+from core import assets
 from module_editor.ui.main_window import MainWindow
 
 _crash_log_file = None
@@ -69,8 +72,11 @@ def run_editor():
 
     app = QApplication.instance() or QApplication(sys.argv)
     app.setStyle("Fusion")
+    app_icon = QIcon(QPixmap.fromImage(ImageQt.ImageQt(assets.create_app_icon_image(64))))
+    app.setWindowIcon(app_icon)
     
     window = MainWindow()
+    window.setWindowIcon(app_icon)
     window.show()
     
     logger.info(f"Editor iniciado (pid={os.getpid()})")
