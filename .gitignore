@@ -13,6 +13,7 @@ build/
 dist/
 releases/
 *.spec
+!app.build.spec
 *.zip
 !release_assets/*.zip
 
@@ -25,3 +26,4 @@ releases/
 ehthumbs.db
 Thumbs.db
 config.json
+logs/

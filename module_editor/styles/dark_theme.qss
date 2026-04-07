@@ -1,0 +1,21 @@
+QMainWindow { background-color: #2b2b2b; }
+QToolBar { background-color: #2b2b2b; border: none; spacing: 5px; padding: 5px; }
+QToolBar::separator { width: 2px; background: #3a3a3a; margin: 5px 5px; }
+QComboBox { background-color: #3a3a3a; color: white; border: 1px solid #555; border-radius: 4px; padding: 3px 28px 3px 8px; }
+QComboBox::drop-down { background: transparent; border: none; subcontrol-origin: padding; subcontrol-position: top right; width: 22px; }
+QComboBox::down-arrow { image: none; width: 0; height: 0; }
+QComboBox QAbstractItemView { background-color: #3a3a3a; color: white; selection-background-color: #1a73e8; }
+QTreeView::item:selected { background-color: #1a73e8; }
+QTreeView::item:hover { background-color: #3a3a3a; }
+QScrollBar:vertical { background: #1a1a1a; width: 8px; }
+QScrollBar::handle:vertical { background: #555; border-radius: 4px; min-height: 20px; }
+QScrollBar::handle:vertical:hover { background: #777; }
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+QScrollBar:horizontal { background: #1a1a1a; height: 8px; }
+QScrollBar::handle:horizontal { background: #555; border-radius: 4px; min-width: 20px; }
+QScrollBar::handle:horizontal:hover { background: #777; }
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal { width: 0; }
+QLabel { color: white; }
+QStatusBar { background: #2b2b2b; color: #aaa; border-top: 1px solid #3a3a3a; }
+QSplitter::handle { background: #4a4a4a; width: 4px; margin: 0 1px; }
+QSplitter::handle:hover { background: #1a73e8; }

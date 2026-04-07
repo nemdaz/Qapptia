@@ -1,5 +1,55 @@
-import customtkinter as ctk
-from PIL import Image, ImageDraw
+import os
+
+from PIL import Image, ImageDraw, ImageFont
+
+
+ASSETS_DIR = os.path.join(os.path.dirname(__file__), "assets")
+FONTS_DIR = os.path.join(ASSETS_DIR, "fonts")
+
+
+def get_text_font_path(filename):
+    return os.path.join(FONTS_DIR, filename)
+
+
+def create_app_icon_image(size=64):
+    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+
+    pad = max(2, size // 10)
+    radius = max(4, size // 6)
+    draw.rounded_rectangle(
+        [pad, pad, size - pad, size - pad],
+        radius=radius,
+        fill="#1f2933",
+        outline="#f5f7fa",
+        width=max(2, size // 16),
+    )
+
+    font_px = int(size * 0.56)
+    font = None
+    try:
+        from module_editor import constants as editor_constants
+
+        font_path = get_text_font_path(editor_constants.TEXT_STYLE["font_files"]["bold"])
+        font = ImageFont.truetype(font_path, font_px)
+    except Exception:
+        font = None
+
+    if font is None:
+        try:
+            font = ImageFont.truetype("arial.ttf", font_px)
+        except Exception:
+            font = ImageFont.load_default()
+
+    text = "Q"
+    box = draw.textbbox((0, 0), text, font=font)
+    text_w = box[2] - box[0]
+    text_h = box[3] - box[1]
+    text_x = (size - text_w) // 2 - box[0]
+    text_y = (size - text_h) // 2 - box[1] - max(0, size // 40)
+    draw.text((text_x, text_y), text, font=font, fill="#ffffff")
+
+    return img
 
 def create_refresh_icon(color="white"):
     img = Image.new("RGBA", (24, 24), (255, 255, 255, 0))
@@ -180,6 +230,45 @@ def create_highlighter_icon(color="white"):
     d.polygon([(6, 14), (10, 18), (8, 20), (4, 16)], fill=color)
     return img
 
+
+def create_text_icon(color="white"):
+    img = Image.new("RGBA", (24, 24), (255, 255, 255, 0))
+    d = ImageDraw.Draw(img)
+    d.rectangle([4, 4, 20, 20], outline=color, width=2)
+    d.line([(8, 8), (16, 8)], fill=color, width=2)
+    d.line([(12, 8), (12, 16)], fill=color, width=2)
+    return img
+
+def create_image_fit_icon(color="white"):
+    img = Image.new("RGBA", (24, 24), (255, 255, 255, 0))
+    d = ImageDraw.Draw(img)
+    w = 2
+
+    d.rectangle([5, 5, 19, 19], outline=color, width=1)
+    d.line([(12, 10), (12, 4)], fill=color, width=w)
+    d.polygon([(12, 2), (9, 6), (15, 6)], fill=color)
+    d.line([(12, 14), (12, 20)], fill=color, width=w)
+    d.polygon([(12, 22), (9, 18), (15, 18)], fill=color)
+    d.line([(10, 12), (4, 12)], fill=color, width=w)
+    d.polygon([(2, 12), (6, 9), (6, 15)], fill=color)
+    d.line([(14, 12), (20, 12)], fill=color, width=w)
+    d.polygon([(22, 12), (18, 9), (18, 15)], fill=color)
+    
+    return img
+
+def create_image_real_size_icon(color="white"):
+    img = Image.new("RGBA", (24, 24), (255, 255, 255, 0))
+    d = ImageDraw.Draw(img)
+    w = 2
+
+    d.line([(4, 9), (4, 4), (9, 4)], fill=color, width=w, joint="curve")
+    d.line([(15, 4), (20, 4), (20, 9)], fill=color, width=w, joint="curve")
+    d.line([(4, 15), (4, 20), (9, 20)], fill=color, width=w, joint="curve")
+    d.line([(15, 20), (20, 20), (20, 15)], fill=color, width=w, joint="curve")
+    d.rectangle([8, 8, 16, 16], outline=color, width=2)
+
+    return img
+
 _refresh_img = create_refresh_icon()
 _rotate_img = create_rotate_icon()
 _save_img = create_save_icon()
@@ -191,39 +280,7 @@ _copy_file_img = create_copy_file_icon()
 _copy_clip_img = create_copy_clipboard_icon()
 _folder_collapsed_img = create_folder_collapsed_icon()
 _highlighter_img = create_highlighter_icon()
+_text_img = create_text_icon()
+_image_fit_img = create_image_fit_icon()
+_image_real_size_img = create_image_real_size_icon()
 
-_icon_cache = {}
-
-def get_icon(name, size=(20, 20)):
-    cache_key = (name, size)
-    if cache_key in _icon_cache:
-        return _icon_cache[cache_key]
-        
-    img = None
-    if name == "refresh":
-        img = ctk.CTkImage(light_image=_refresh_img, dark_image=_refresh_img, size=size)
-    elif name == "rotate":
-        img = ctk.CTkImage(light_image=_rotate_img, dark_image=_rotate_img, size=size)
-    elif name == "save":
-        img = ctk.CTkImage(light_image=_save_img, dark_image=_save_img, size=size)
-    elif name == "image_file":
-        img = ctk.CTkImage(light_image=_image_file_img, dark_image=_image_file_img, size=size)
-    elif name == "folder":
-        img = ctk.CTkImage(light_image=_folder_img, dark_image=_folder_img, size=size)
-    elif name == "arrow":
-        img = ctk.CTkImage(light_image=_arrow_img, dark_image=_arrow_img, size=size)
-    elif name == "rect":
-        img = ctk.CTkImage(light_image=_rect_img, dark_image=_rect_img, size=size)
-    elif name == "copy_file":
-        img = ctk.CTkImage(light_image=_copy_file_img, dark_image=_copy_file_img, size=size)
-    elif name == "copy_clip":
-        img = ctk.CTkImage(light_image=_copy_clip_img, dark_image=_copy_clip_img, size=size)
-    elif name == "folder_collapsed":
-        img = ctk.CTkImage(light_image=_folder_collapsed_img, dark_image=_folder_collapsed_img, size=size)
-    elif name == "highlighter":
-        img = ctk.CTkImage(light_image=_highlighter_img, dark_image=_highlighter_img, size=size)
-        
-    if img:
-        _icon_cache[cache_key] = img
-        
-    return img

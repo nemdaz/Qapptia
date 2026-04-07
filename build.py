@@ -4,98 +4,111 @@ import shutil
 import sys
 import zipfile
 import argparse
+from pathlib import Path
 from core.version import VERSION, APP_NAME
 
+BUILD_SPEC_FILE = "app.build.spec"
+
+
+def _clean_build_artifacts(app_name):
+    folders_to_remove = ["build", "dist"]
+    for folder in folders_to_remove:
+        if os.path.exists(folder):
+            print(f"Limpiando carpeta {folder}...")
+            shutil.rmtree(folder, ignore_errors=True)
+
+    # Elimina caches de bytecode del repo para evitar residuos entre builds.
+    for cache_dir in Path(".").rglob("__pycache__"):
+        shutil.rmtree(cache_dir, ignore_errors=True)
+
+    spec_file = f"{app_name}.spec"
+    if os.path.exists(spec_file):
+        print(f"Limpiando archivo {spec_file}...")
+        os.remove(spec_file)
+
+    # Cache global de PyInstaller (Windows y Unix-like).
+    cache_candidates = []
+    local_app_data = os.getenv("LOCALAPPDATA")
+    if local_app_data:
+        cache_candidates.append(Path(local_app_data) / "pyinstaller")
+    cache_candidates.append(Path.home() / ".cache" / "pyinstaller")
+
+    for cache_path in cache_candidates:
+        if cache_path.exists():
+            print(f"Limpiando cache PyInstaller: {cache_path}")
+            shutil.rmtree(cache_path, ignore_errors=True)
+
 def run_build(active_version):
-    # Motor de construcción centralizado.
-    print(f"Iniciando construcción de {active_version}...")
-    
-    # 1. Validación de Consistencia
+    # Motor de construccion centralizado.
+    print(f"Iniciando construccion de {active_version}...")
+
     clean_active = active_version.lstrip('v')
     clean_config = VERSION.lstrip('v')
-    
+
     if clean_active != clean_config:
-        print(f"\nERROR DE CONSISTENCIA:")
-        print(f"Versión solicitada: {active_version}")
-        print(f"Versión en código (config): {VERSION}")
-        print("ERROR: El tag de Git NO coincide con la versión en core/version.py")
+        print("\nERROR DE CONSISTENCIA:")
+        print(f"Version solicitada: {active_version}")
+        print(f"Version en codigo (config): {VERSION}")
+        print("ERROR: El tag de Git NO coincide con la version en core/version.py")
         sys.exit(1)
 
-    # Verificar si el ZIP ya existe
     release_dir = "releases"
     os.makedirs(release_dir, exist_ok=True)
     zip_name = os.path.join(release_dir, f"{APP_NAME}-v{clean_active}-Win64.zip")
-    
+
     if os.path.exists(zip_name):
-        print(f"Error: El archivo {zip_name} ya existe. Sube la versión en core/version.py")
-        return
-    
-    # 2. Limpieza previa
-    for folder in ['build', 'dist']:
-        if os.path.exists(folder):
-            print(f"Limpiando carpeta {folder}...")
-            shutil.rmtree(folder)
-            
-    # 3. Localizar customtkinter
-    try:
-        import customtkinter
-        ctk_path = os.path.dirname(customtkinter.__file__)
-    except ImportError:
-        print("Error: CustomTkinter no está instalado.")
+        print(f"Error: El archivo {zip_name} ya existe. Sube la version en core/version.py")
         return
 
-    # 4. Comando PyInstaller
-    separator = ";" if os.name == 'nt' else ":"
+    _clean_build_artifacts(APP_NAME)
+
+    if not os.path.exists(BUILD_SPEC_FILE):
+        print(f"Error: No se encontro {BUILD_SPEC_FILE}")
+        return
+
     cmd = [
-        "pyinstaller", "--noconsole", f"--name={APP_NAME}",
-        f"--add-data=core{separator}core",
-        f"--add-data=module_capture{separator}module_capture",
-        f"--add-data=module_editor{separator}module_editor",
-        f"--add-data={ctk_path}{separator}customtkinter",
-        "--clean", "main.py"
+        "pyinstaller",
+        "--clean",
+        BUILD_SPEC_FILE,
     ]
-    
+
     print("Ejecutando PyInstaller (esto puede tardar un poco)...")
     try:
-        subprocess.run(cmd, check=True)
-        print("¡Construcción exitosa del ejecutable!")
-    except subprocess.CalledProcessError as e:
-        print(f"Error durante la construcción: {e}")
+        env = os.environ.copy()
+        env["_APP_NAME"] = APP_NAME
+        subprocess.run(cmd, check=True, env=env)
+        print("Construccion exitosa del ejecutable")
+    except subprocess.CalledProcessError as exc:
+        print(f"Error durante la construccion: {exc}")
         return
 
-    # 5. Crear archivo ZIP
     dist_folder = os.path.join("dist", APP_NAME)
     print(f"Creando paquete comprimido: {zip_name}...")
-    
-    with zipfile.ZipFile(zip_name, 'w', zipfile.ZIP_DEFLATED) as zipf:
+
+    with zipfile.ZipFile(zip_name, "w", zipfile.ZIP_DEFLATED) as zipf:
         for root, dirs, files in os.walk(dist_folder):
             for file in files:
                 abs_path = os.path.join(root, file)
                 rel_path = os.path.relpath(abs_path, os.path.dirname(dist_folder))
                 zipf.write(abs_path, rel_path)
 
-    # 6. Autolimpieza de archivos temporales de PyInstaller
-    spec_file = f"{APP_NAME}.spec"
-    if os.path.exists(spec_file):
-        os.remove(spec_file)
-        print(f"Limpieza final: Archivo {spec_file} eliminado.")
-
-    print(f"\n==========================================")
-    print(f"PROCESO FINALIZADO CON ÉXITO")
-    print(f"Versión: {clean_active}")
+    print("\n==========================================")
+    print("PROCESO FINALIZADO CON EXITO")
+    print(f"Version: {clean_active}")
     print(f"ZIP: {os.path.abspath(zip_name)}")
-    print(f"==========================================\n")
+    zip_size_mb = os.path.getsize(zip_name) / (1024 * 1024)
+    print(f"Peso ZIP: {zip_size_mb:.2f} MB")
+    print("==========================================\n")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=f"Motor de Construcción {APP_NAME}")
-    parser.add_argument("--version", required=True, help="Versión oficial a construir (ej: v1.0.0)")
+    parser = argparse.ArgumentParser(description=f"Motor de Construccion {APP_NAME}")
+    parser.add_argument("--version", required=True, help="Version oficial a construir (ej: v1.0.0)")
     args = parser.parse_args()
-    
-    # Asegurar PyInstaller
+
     try:
         import PyInstaller
     except ImportError:
         print("Instalando PyInstaller...")
         subprocess.run([sys.executable, "-m", "pip", "install", "pyinstaller"], check=True)
-        
+
     run_build(args.version)
