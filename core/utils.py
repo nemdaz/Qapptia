@@ -198,6 +198,13 @@ def reset_input_hooks(input_service):
     except Exception as exc:
         logger.debug(f"No se pudieron limpiar hooks de mouse previos: {exc}")
 
+    try:
+        restart_hook_backends = getattr(input_service, "restart_hook_backends", None)
+        if callable(restart_hook_backends):
+            restart_hook_backends()
+    except Exception as exc:
+        logger.debug(f"No se pudieron reiniciar los backends de hooks: {exc}")
+
 
 def recover_capture_hooks(
     input_service,

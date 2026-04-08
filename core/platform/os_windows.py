@@ -73,6 +73,19 @@ class WindowsInputService(InputService):
     def unhook_key_listener(self, hook):
         keyboard.unhook(hook)
 
+    def restart_hook_backends(self):
+        self._restart_listener_backend(keyboard)
+        self._restart_listener_backend(mouse)
+
+    def _restart_listener_backend(self, module):
+        listener = getattr(module, "_listener", None)
+        if listener is None:
+            return
+
+        # Fuerza la reconstrucción del hook tras reanudar.
+        listener.listening = False
+        listener.start_if_necessary()
+
 
 class WindowsDpiService(DpiService):
     def set_process_dpi_awareness(self):
