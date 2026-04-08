@@ -89,8 +89,8 @@ AREA_SELECTOR_STYLE = {
 }
 
 CURSOR_HIGHLIGHT_STYLE = {
-    "radius": 24,
-    "fill": (255, 220, 0, 128),
+    "radius": 22,
+    "fill": (255, 255, 30, 200),
     "supersample": 4,
 }
 

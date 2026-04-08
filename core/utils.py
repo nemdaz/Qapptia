@@ -2,7 +2,9 @@ import os
 import sys
 import time
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageQt
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor, QImage, QPainter
 
 from core import config
 from core.logger import logger
@@ -106,6 +108,22 @@ def get_virtual_screen_origin():
     return _platform.desktop.get_virtual_screen_origin()
 
 
+def _build_mouse_halo_image(radius, fill):
+    """Construye la imagen RGBA del halo del cursor usando el motor de pintura de Qt."""
+    halo_size = (radius * 2) + 2
+    qimage = QImage(halo_size, halo_size, QImage.Format_ARGB32_Premultiplied)
+    qimage.fill(Qt.GlobalColor.transparent)
+
+    painter = QPainter(qimage)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+    painter.setPen(Qt.PenStyle.NoPen)
+    painter.setBrush(QColor(*fill))
+    painter.drawEllipse(0, 0, halo_size - 1, halo_size - 1)
+    painter.end()
+
+    return ImageQt.fromqimage(qimage).convert("RGBA")
+
+
 def draw_mouse_overlay(screen_image, mouse_x, mouse_y, highlight=False, cursor_data=None, highlight_style=None):
     """Dibuja cursor sobre captura, con halo opcional."""
     try:
@@ -123,20 +141,13 @@ def draw_mouse_overlay(screen_image, mouse_x, mouse_y, highlight=False, cursor_d
             style = highlight_style or {}
             radius = int(style.get("radius", 24) * scale)
             fill = style.get("fill", (255, 220, 0, 92))
-            supersample = max(1, int(style.get("supersample", 4)))
-            halo_size = (radius * 2) + 2
 
             overlay = Image.new("RGBA", screen_image.size, (0, 0, 0, 0))
-            halo_image = Image.new("RGBA", (halo_size * supersample, halo_size * supersample), (0, 0, 0, 0))
-            halo_draw = ImageDraw.Draw(halo_image)
-            halo_draw.ellipse(
-                (0, 0, (halo_size * supersample) - 1, (halo_size * supersample) - 1),
-                fill=fill,
-            )
-            halo_image = halo_image.resize((halo_size, halo_size), Image.LANCZOS)
+            halo_image = _build_mouse_halo_image(radius, fill)
 
             screen_image = screen_image.convert("RGBA")
             overlay.paste(halo_image, (mx - radius, my - radius), halo_image)
+
             screen_image = Image.alpha_composite(screen_image, overlay)
 
         screen_image = screen_image.convert("RGBA")
