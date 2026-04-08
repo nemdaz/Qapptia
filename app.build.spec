@@ -6,6 +6,7 @@ from pathlib import Path
 
 # El nombre lo inyecta build.py para evitar imports del proyecto dentro del spec.
 APP_NAME = os.environ.get('_APP_NAME', 'QACappta')
+APP_ICON_ICO = os.environ.get('_APP_ICON_ICO')
 
 
 a = Analysis(
@@ -61,6 +62,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=APP_ICON_ICO,
 )
 
 coll = COLLECT(
