@@ -167,15 +167,26 @@ class WindowsDesktopService(DesktopService):
             return cursor_img, hotspot
         return self._get_fallback_cursor(scale)
 
+    def _has_visible_cursor_pixels(self, image):
+        alpha = image.getchannel("A")
+        return alpha.getbbox() is not None
+
     def _get_fallback_cursor(self, scale):
         base_points = [(0, 0), (0, 16), (4, 12), (7, 19), (9, 18), (6, 11), (11, 11)]
-        ss = 4
+        ss = 6
         canvas_scale = scale * ss
         w, h = int(16 * canvas_scale), int(24 * canvas_scale)
         temp_img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
         draw = ImageDraw.Draw(temp_img)
+
         scaled_points = [(p[0] * canvas_scale, p[1] * canvas_scale) for p in base_points]
-        draw.polygon(scaled_points, fill="white", outline="black")
+        draw.polygon(
+            scaled_points,
+            fill=(255, 255, 255, 255),
+            outline=(0, 0, 0, 255),
+            width=max(2, int(canvas_scale * 0.22)),
+        )
+
         final_w, final_h = int(w / ss), int(h / ss)
         return temp_img.resize((final_w, final_h), Image.LANCZOS), (0, 0)
 
@@ -315,6 +326,8 @@ class WindowsDesktopService(DesktopService):
                         g = min(255, int((g * 255) / a))
                         b = min(255, int((b * 255) / a))
                     pixels[x, y] = (r, g, b, a)
+            if not self._has_visible_cursor_pixels(img):
+                return None, (0, 0)
             return img, hotspot
         except Exception:
             return None, (0, 0)
