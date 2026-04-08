@@ -6,7 +6,7 @@ from module_capture.ui.area_selector import run_area_selector
 
 def register_area_hotkey():
     hotkey = config.get("shortcut_area")
-    utils.register_hotkey(hotkey, trigger_area_capture, constants.HOTKEY_DESCRIPTIONS["area"])
+    return utils.register_hotkey(hotkey, trigger_area_capture, constants.HOTKEY_DESCRIPTIONS["area"])
 
 
 def trigger_area_capture(callback=None):

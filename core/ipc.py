@@ -1,121 +1,172 @@
+import atexit
+import json
+import os
+import secrets
 import socket
+import tempfile
 import threading
+import time
 
-# Protocolo IPC versionado para evitar falsos positivos con procesos ajenos.
+
 IPC_HOST = "127.0.0.1"
-IPC_PORT_START = 49999
-IPC_PORT_COUNT = 8
-IPC_TIMEOUT_SECONDS = 0.2
+IPC_TIMEOUT_SECONDS = 0.25
+IPC_CONNECT_RETRIES = 5
+IPC_RETRY_DELAY_SECONDS = 0.1
+IPC_STATE_DIR = os.path.join(tempfile.gettempdir(), "qascreenshot_ipc")
 
-PROTOCOL_PREFIX = b"QASCREENSHOT_IPC_V1:"
-WAKE_UP_SIGNAL = b"WAKE_UP"
-QUIT_SIGNAL = b"QUIT"
-ACK_PREFIX = b"ACK:"
+CHANNEL_APP = "app"
+CHANNEL_EDITOR = "editor"
+CHANNEL_CONFIG = "config"
 
-_last_known_port = None
-_port_lock = threading.Lock()
-
-
-def _build_message(signal):
-    return PROTOCOL_PREFIX + signal
+PROTOCOL_PREFIX = "QASCREENSHOT_IPC_V2"
+ACK_SIGNAL = "ACK"
+WAKE_UP_SIGNAL = "WAKE_UP"
+QUIT_SIGNAL = "QUIT"
 
 
-def _build_ack(signal):
-    return PROTOCOL_PREFIX + ACK_PREFIX + signal
+def _state_file_path(channel):
+    os.makedirs(IPC_STATE_DIR, exist_ok=True)
+    return os.path.join(IPC_STATE_DIR, f"{channel}.json")
 
 
-def _candidate_ports():
-    with _port_lock:
-        last_known_port = _last_known_port
-
-    ports = []
-    if last_known_port is not None:
-        ports.append(last_known_port)
-
-    for offset in range(IPC_PORT_COUNT):
-        port = IPC_PORT_START + offset
-        if port not in ports:
-            ports.append(port)
-    return ports
+def _build_message(token, signal):
+    return f"{PROTOCOL_PREFIX}:{token}:{signal}".encode("ascii")
 
 
-def _store_last_port(port):
-    global _last_known_port
-    with _port_lock:
-        _last_known_port = port
+def _build_ack(token, signal):
+    return f"{PROTOCOL_PREFIX}:{token}:{ACK_SIGNAL}:{signal}".encode("ascii")
 
 
-def _send_signal(signal):
-    message = _build_message(signal)
-    expected_ack = _build_ack(signal)
+def _load_channel_state(channel):
+    state_path = _state_file_path(channel)
+    try:
+        with open(state_path, "r", encoding="utf-8") as state_file:
+            return json.load(state_file)
+    except FileNotFoundError:
+        return None
+    except (OSError, ValueError, json.JSONDecodeError):
+        _delete_channel_state(channel)
+        return None
 
-    for port in _candidate_ports():
+
+def _write_channel_state(channel, port, token):
+    state_path = _state_file_path(channel)
+    tmp_path = f"{state_path}.tmp"
+    payload = {
+        "pid": os.getpid(),
+        "port": int(port),
+        "token": token,
+    }
+    with open(tmp_path, "w", encoding="utf-8") as state_file:
+        json.dump(payload, state_file)
+    os.replace(tmp_path, state_path)
+
+
+def _delete_channel_state(channel, token=None):
+    state_path = _state_file_path(channel)
+    if token is not None:
+        state = _load_channel_state(channel)
+        if not state or state.get("token") != token:
+            return
+
+    try:
+        os.unlink(state_path)
+    except FileNotFoundError:
+        pass
+    except OSError:
+        pass
+
+
+def _send_signal(channel, signal):
+    for attempt in range(IPC_CONNECT_RETRIES):
+        state = _load_channel_state(channel)
+        if not state:
+            return False
+
+        port = state.get("port")
+        token = state.get("token")
+        if not isinstance(port, int) or not token:
+            _delete_channel_state(channel)
+            return False
+
         try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.settimeout(IPC_TIMEOUT_SECONDS)
-                s.connect((IPC_HOST, port))
-                s.sendall(message)
-                response = s.recv(128)
-                if response == expected_ack:
-                    _store_last_port(port)
+            with socket.create_connection((IPC_HOST, port), timeout=IPC_TIMEOUT_SECONDS) as conn:
+                conn.settimeout(IPC_TIMEOUT_SECONDS)
+                conn.sendall(_build_message(token, signal))
+                response = conn.recv(128)
+                if response == _build_ack(token, signal):
                     return True
         except (ConnectionRefusedError, socket.timeout, OSError):
-            continue
+            if attempt < IPC_CONNECT_RETRIES - 1:
+                time.sleep(IPC_RETRY_DELAY_SECONDS)
+                continue
+
+        _delete_channel_state(channel, token=token)
+        return False
 
     return False
 
 
-def _bind_first_available_port():
-    for offset in range(IPC_PORT_COUNT):
-        port = IPC_PORT_START + offset
-        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            server_socket.bind((IPC_HOST, port))
-            server_socket.listen(1)
-            return server_socket, port
-        except OSError:
-            server_socket.close()
-
-    return None, None
+def _bind_server_socket():
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_socket.bind((IPC_HOST, 0))
+    server_socket.listen(1)
+    return server_socket
 
 
-def _maybe_ack(conn, signal, received_data, callback):
-    message = _build_message(signal)
-    if received_data != message:
+def _maybe_ack(conn, token, signal, received_data, callback):
+    if received_data != _build_message(token, signal):
         return False
     if callback:
         callback()
-    conn.sendall(_build_ack(signal))
+    conn.sendall(_build_ack(token, signal))
     return True
 
 
-def is_editor_running():
-    """Verifica si ya hay una instancia del editor escuchando en IPC."""
-    return _send_signal(WAKE_UP_SIGNAL)
+def request_wake_up(channel):
+    """Solicita activar una instancia existente del canal indicado."""
+    return _send_signal(channel, WAKE_UP_SIGNAL)
 
 
-def request_editor_quit():
-    """Solicita a la instancia del editor que cierre su ventana principal."""
-    return _send_signal(QUIT_SIGNAL)
+def request_quit(channel):
+    """Solicita a la instancia existente del canal indicado que termine."""
+    return _send_signal(channel, QUIT_SIGNAL)
 
 
-def start_ipc_server(on_wake_up_callback, on_quit_callback=None):
-    """Inicia un hilo servidor que escucha senales de despertar y cierre."""
-    server_socket, bound_port = _bind_first_available_port()
-    if server_socket is None:
-        return None
+def start_server(channel, on_wake_up_callback, on_quit_callback=None):
+    """Inicia un servidor IPC para el canal indicado usando un puerto local dinámico."""
+    server_socket = _bind_server_socket()
+    bound_port = server_socket.getsockname()[1]
+    token = secrets.token_hex(16)
+    _write_channel_state(channel, bound_port, token)
 
-    _store_last_port(bound_port)
+    def _cleanup():
+        _delete_channel_state(channel, token=token)
+        try:
+            server_socket.close()
+        except OSError:
+            pass
+
+    atexit.register(_cleanup)
 
     def server_thread():
         with server_socket:
             while True:
-                conn, _addr = server_socket.accept()
+                try:
+                    conn, _addr = server_socket.accept()
+                except OSError:
+                    break
+
                 with conn:
-                    data = conn.recv(1024)
-                    if _maybe_ack(conn, WAKE_UP_SIGNAL, data, on_wake_up_callback):
+                    try:
+                        data = conn.recv(1024)
+                    except OSError:
                         continue
-                    _maybe_ack(conn, QUIT_SIGNAL, data, on_quit_callback)
+
+                    if _maybe_ack(conn, token, WAKE_UP_SIGNAL, data, on_wake_up_callback):
+                        continue
+                    _maybe_ack(conn, token, QUIT_SIGNAL, data, on_quit_callback)
 
     thread = threading.Thread(target=server_thread, daemon=True)
     thread.start()

@@ -90,7 +90,7 @@ def fit_text_pil(text, coords, scale=1, bold=False):
     content_height = max(1, height - (padding * 2))
 
     pixel_size = _find_best_pil_font_size(normalized_text, content_width, content_height, bold)
-    font = load_pil_font(pixel_size * scale, bold=bold)
+    font = load_pil_font(pixel_size, bold=bold)
     lines = wrap_text_pil(normalized_text, font, content_width)
     return font, lines, padding
 

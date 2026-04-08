@@ -1,6 +1,6 @@
 import os
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QMetaObject, Qt, Slot
 from PySide6.QtWidgets import QCheckBox, QDialog, QFileDialog, QFormLayout, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QSlider, QSpinBox, QTabWidget, QVBoxLayout, QWidget
 
 from module_capture import constants
@@ -281,3 +281,16 @@ class CaptureConfigWindow(QDialog):
         container = QWidget()
         container.setLayout(layout)
         return container
+
+    def request_wake_up(self):
+        QMetaObject.invokeMethod(self, "_handle_wake_up", Qt.QueuedConnection)
+
+    def request_close(self):
+        QMetaObject.invokeMethod(self, "reject", Qt.QueuedConnection)
+
+    @Slot()
+    def _handle_wake_up(self):
+        self.setWindowState(self.windowState() & ~Qt.WindowMinimized)
+        self.show()
+        self.raise_()
+        self.activateWindow()

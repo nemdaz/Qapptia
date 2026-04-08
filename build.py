@@ -5,9 +5,12 @@ import sys
 import zipfile
 import argparse
 from pathlib import Path
+
+from build_icon import generate_windows_app_icon
 from core.version import VERSION, APP_NAME
 
 BUILD_SPEC_FILE = "app.build.spec"
+BUILD_ICON_FILE = Path("build") / "app-icon.ico"
 
 
 def _clean_build_artifacts(app_name):
@@ -62,6 +65,8 @@ def run_build(active_version):
 
     _clean_build_artifacts(APP_NAME)
 
+    build_icon_path = generate_windows_app_icon(BUILD_ICON_FILE)
+
     if not os.path.exists(BUILD_SPEC_FILE):
         print(f"Error: No se encontro {BUILD_SPEC_FILE}")
         return
@@ -76,6 +81,7 @@ def run_build(active_version):
     try:
         env = os.environ.copy()
         env["_APP_NAME"] = APP_NAME
+        env["_APP_ICON_ICO"] = str(build_icon_path.resolve())
         subprocess.run(cmd, check=True, env=env)
         print("Construccion exitosa del ejecutable")
     except subprocess.CalledProcessError as exc:

@@ -51,7 +51,7 @@ class MainWindow(QMainWindow):
         self.current_color_hex = self._controller.current_color_hex
 
         self._setup_ui()
-        ipc.start_ipc_server(self._wake_up, self._request_close_from_ipc)
+        ipc.start_server(ipc.CHANNEL_EDITOR, self._wake_up, self._request_close_from_ipc)
         QTimer.singleShot(constants.INITIAL_LOAD_DELAY_MS, self._load_initial_image)
 
     def _load_styles(self):
