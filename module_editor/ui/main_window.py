@@ -2,10 +2,10 @@ import os
 
 from PIL import ImageQt
 from PySide6.QtCore import QMetaObject, QMimeData, QSize, Qt, QTimer, QUrl, Slot
-from PySide6.QtGui import QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap
+from PySide6.QtGui import QColor, QIcon, QKeySequence, QPainter, QPainterPath, QPen, QPixmap
 from PySide6.QtWidgets import QApplication, QComboBox, QMainWindow, QSplitter, QToolBar, QVBoxLayout, QWidget
 
-from core import ipc
+from core import config, ipc
 from core.logger import logger
 from module_editor import constants
 from module_editor.core.workflow_controller import EditorController
@@ -124,7 +124,8 @@ class MainWindow(QMainWindow):
         self.act_save = self._add_action(toolbar, "save", "save", self.save_image, enabled=False)
         self._add_action(toolbar, "rotate", "rotate", self.rotate_image)
         self._add_action(toolbar, "copy_file", "copy_file", self.copy_file_to_clipboard)
-        self._add_action(toolbar, "copy_clipboard", "copy_clip", self.copy_to_clipboard)
+        self.act_copy_clipboard = self._add_action(toolbar, "copy_clipboard", "copy_clip", self.copy_to_clipboard)
+        self._configure_copy_shortcut()
 
         toolbar.addSeparator()
         self.zoom_combo = ZoomComboBox()
@@ -167,6 +168,21 @@ class MainWindow(QMainWindow):
         action.setEnabled(enabled)
         action.setCheckable(checkable)
         return action
+
+    def _configure_copy_shortcut(self):
+        from core.constants import INTERNAL_CONFIG
+        from module_editor.constants import TOOLTIPS
+        shortcut = INTERNAL_CONFIG["shortcut_copy_clipboard"].lower()
+        key_sequence = QKeySequence.fromString(shortcut, QKeySequence.PortableText)
+        self.act_copy_clipboard.setShortcut(key_sequence)
+        self.act_copy_clipboard.setShortcutContext(Qt.WindowShortcut)
+        self.act_copy_clipboard.setToolTip(self._build_tooltip_with_shortcut(TOOLTIPS["copy_clip"], key_sequence))
+
+    def _build_tooltip_with_shortcut(self, base_tooltip, key_sequence):
+        shortcut_text = key_sequence.toString(QKeySequence.NativeText)
+        if not shortcut_text:
+            return base_tooltip
+        return f"{base_tooltip} ({shortcut_text})"
 
     def _make_color_icon(self, hex_color, active=False):
         swatch = constants.COLOR_SWATCH_STYLE

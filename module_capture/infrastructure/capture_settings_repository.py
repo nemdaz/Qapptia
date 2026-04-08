@@ -16,10 +16,10 @@ class CaptureSettingsRepository:
             show_mouse=bool(config.get("show_mouse")),
             highlight_mouse=bool(config.get("highlight_mouse")),
             manual_timer=int(config.get("manual_timer")),
-            shortcut_screen=(config.get("shortcut_screen") or constants.CAPTURE_DEFAULTS["shortcuts"]["screen"]).lower(),
-            shortcut_area=(config.get("shortcut_area") or constants.CAPTURE_DEFAULTS["shortcuts"]["area"]).lower(),
-            shortcut_flow=(config.get("shortcut_flow") or constants.CAPTURE_DEFAULTS["shortcuts"]["flow"]).lower(),
-            shortcut_flow_pause=(config.get("shortcut_flow_pause") or constants.CAPTURE_DEFAULTS["shortcuts"]["flow_pause"]).lower(),
+            shortcut_screen=(config.get("shortcut_screen") or constants.CAPTURE_DEFAULTS["shortcuts"]["shortcut_screen"]).lower(),
+            shortcut_area=(config.get("shortcut_area") or constants.CAPTURE_DEFAULTS["shortcuts"]["shortcut_area"]).lower(),
+            shortcut_flow=(config.get("shortcut_flow") or constants.CAPTURE_DEFAULTS["shortcuts"]["shortcut_flow"]).lower(),
+            shortcut_flow_pause=(config.get("shortcut_flow_pause") or constants.CAPTURE_DEFAULTS["shortcuts"]["shortcut_flow_pause"]).lower(),
             enable_scroll_capture=bool(config.get("enable_scroll_capture")),
         )
 

@@ -264,10 +264,10 @@ class CaptureConfigWindow(QDialog):
         self._settings.show_mouse = self.show_mouse_check.isChecked()
         self._settings.highlight_mouse = self.highlight_mouse_check.isChecked() and self.show_mouse_check.isChecked()
         self._settings.manual_timer = int(self.timer_spin.value())
-        self._settings.shortcut_screen = self.shortcut_screen_edit.shortcut_value() or constants.CAPTURE_DEFAULTS["shortcuts"]["screen"]
-        self._settings.shortcut_area = self.shortcut_area_edit.shortcut_value() or constants.CAPTURE_DEFAULTS["shortcuts"]["area"]
-        self._settings.shortcut_flow = self.shortcut_flow_edit.shortcut_value() or constants.CAPTURE_DEFAULTS["shortcuts"]["flow"]
-        self._settings.shortcut_flow_pause = self.shortcut_pause_edit.shortcut_value() or constants.CAPTURE_DEFAULTS["shortcuts"]["flow_pause"]
+        self._settings.shortcut_screen = self.shortcut_screen_edit.shortcut_value() or constants.CAPTURE_DEFAULTS["shortcuts"]["shortcut_screen"]
+        self._settings.shortcut_area = self.shortcut_area_edit.shortcut_value() or constants.CAPTURE_DEFAULTS["shortcuts"]["shortcut_area"]
+        self._settings.shortcut_flow = self.shortcut_flow_edit.shortcut_value() or constants.CAPTURE_DEFAULTS["shortcuts"]["shortcut_flow"]
+        self._settings.shortcut_flow_pause = self.shortcut_pause_edit.shortcut_value() or constants.CAPTURE_DEFAULTS["shortcuts"]["shortcut_flow_pause"]
         self._settings.enable_scroll_capture = self.scroll_check.isChecked()
 
         capture_settings_service.save(self._settings)

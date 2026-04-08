@@ -1,9 +1,16 @@
 import os
 from core.version import VERSION, APP_NAME
 
+
 # El nombre de la aplicación se centraliza en core.version
 CONFIG_FILE = "config.json"
 
+# Hotkeys internos (no configurables por usuario)
+INTERNAL_CONFIG = {
+    "shortcut_copy_clipboard": "ctrl+c"
+}
+
+# Hotkeys configurables por usuario y otros valores por defecto
 DEFAULT_CONFIG = {
     "save_path": os.path.expandvars(os.path.join("%USERPROFILE%", APP_NAME)),
     "filename_format": "Screenshot_YYYYMMDD_HHmmSS",

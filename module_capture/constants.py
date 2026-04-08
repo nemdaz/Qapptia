@@ -22,7 +22,7 @@ WINDOW_TEXT = {
         "cursor": "Cursor",
         "screen_mode": "Modo Pantalla",
         "area_mode": "Modo Area",
-        "flow_mode": "Modo Flujo",
+        "flow_mode": "Modo Flujo"
     },
     "checkboxes": {
         "subfolder_month": "Por mes (YYYY-MM)",
@@ -64,12 +64,6 @@ WINDOW_LAYOUT = {
 
 CAPTURE_DEFAULTS = {
     "filename_format": "Screenshot_YYYYMMDD_HHmmSS",
-    "shortcuts": {
-        "screen": "ctrl+shift+q",
-        "area": "ctrl+shift+a",
-        "flow": "ctrl+shift+f",
-        "flow_pause": "ctrl+shift",
-    },
     "image_quality": {
         "min": 10,
         "max": 100,
