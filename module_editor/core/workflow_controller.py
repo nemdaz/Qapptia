@@ -104,9 +104,12 @@ class EditorController:
     def clear_active_tool(self):
         self.active_tool = None
 
+    def is_editing_selection(self, has_selected_vectors):
+        return has_selected_vectors and self.active_tool is None
+
     def select_color(self, color_name, has_selected_vectors):
         color_hex = self.color_hex(color_name)
-        if has_selected_vectors:
+        if self.is_editing_selection(has_selected_vectors):
             return self._build_toolbar_state(None, color_name=color_name, color_hex=color_hex)
 
         self.remember_color(color_name)
