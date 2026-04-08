@@ -41,6 +41,7 @@ FAVORITE_COLOR_NAMES = {
     "orange": "Naranja"
 }
 DEFAULT_FAV_COLOR = "green"
+VECTOR_COLOR_TOOLS = ("arrow", "rect", "highlighter", "text")
 
 # Tooltips y Textos UI
 TOOLTIPS = {

@@ -47,9 +47,6 @@ class MainWindow(QMainWindow):
         self._load_styles()
         self._resize_to_screen()
 
-        self.current_color_name = self._controller.current_color_name
-        self.current_color_hex = self._controller.current_color_hex
-
         self._setup_ui()
         ipc.start_server(ipc.CHANNEL_EDITOR, self._wake_up, self._request_close_from_ipc)
         QTimer.singleShot(constants.INITIAL_LOAD_DELAY_MS, self._load_initial_image)
@@ -74,13 +71,15 @@ class MainWindow(QMainWindow):
         layout.addWidget(self._create_toolbar())
         layout.addWidget(self._create_splitter(), 1)
         self.statusBar().showMessage("Listo")
+        self._apply_toolbar_state(self._controller.current_toolbar_state())
 
     def _create_splitter(self):
         split = QSplitter(Qt.Horizontal)
         self.splitter = split
         self.scene = ImageScene(self._controller.document)
         self.scene.content_changed.connect(self._refresh_save_action)
-        self.scene.set_active_color(self.current_color_hex)
+        self.scene.selection_context_changed.connect(self._handle_scene_selection_context)
+        self.scene.set_active_color(self._controller.current_color_hex)
         self.canvas = CanvasView(self.scene)
         self.canvas.set_zoom_callback(self._on_zoom_changed)
         split.addWidget(self.canvas)
@@ -152,9 +151,9 @@ class MainWindow(QMainWindow):
 
     def _populate_color_actions(self, toolbar):
         for name, hex_val in constants.FAVORITE_COLORS.items():
-            action = toolbar.addAction(self._make_color_icon(hex_val, name == self.current_color_name), "")
+            action = toolbar.addAction(self._make_color_icon(hex_val, name == self._controller.current_color_name), "")
             action.setToolTip(f"{constants.TOOLTIPS['color_prefix']}{constants.FAVORITE_COLOR_NAMES.get(name, name)}")
-            action.triggered.connect(lambda chk=False, n=name, h=hex_val: self.set_active_color(n, h))
+            action.triggered.connect(lambda chk=False, n=name: self.set_active_color(n))
             self._color_btns[name] = action
 
     def _add_action(self, toolbar, icon_name, tooltip_key, callback, enabled=True, checkable=False):
@@ -192,26 +191,30 @@ class MainWindow(QMainWindow):
         painter.end()
         return QIcon(pix)
 
-    def set_active_color(self, name, hex_val):
-        self.current_color_name = name
-        self.current_color_hex = hex_val
-        self._controller.set_active_color(name)
+    def _apply_toolbar_state(self, state):
+        for swatch_name, action in self._color_btns.items():
+            action.setIcon(self._make_color_icon(constants.FAVORITE_COLORS[swatch_name], swatch_name == state.color_name))
+        self.act_arrow.setChecked(state.active_tool == "arrow")
+        self.act_rect.setChecked(state.active_tool == "rect")
+        self.act_high.setChecked(state.active_tool == "highlighter")
+        self.act_text.setChecked(state.active_tool == "text")
+        self.scene.set_active_color(state.color_hex)
+        self.scene.set_draw_mode(state.draw_mode)
+        self.canvas.set_draw_cursor_active(state.draw_cursor_active)
 
-        for color_name, action in self._color_btns.items():
-            action.setIcon(self._make_color_icon(constants.FAVORITE_COLORS[color_name], color_name == name))
-
-        self.scene.set_active_color(hex_val)
-        self.scene.recolor_selected(hex_val)
+    def set_active_color(self, name):
+        state = self._controller.select_color(name, self.scene.has_selected_vectors())
+        if self.scene.has_selected_vectors():
+            self.scene.recolor_selected(state.color_hex)
+        self._apply_toolbar_state(state)
 
     def set_tool(self, tool):
-        active_tool = self._controller.set_active_tool(tool)
-        tool = active_tool
-        self.act_arrow.setChecked(tool == "arrow")
-        self.act_rect.setChecked(tool == "rect")
-        self.act_high.setChecked(tool == "highlighter")
-        self.act_text.setChecked(tool == "text")
-        self.scene.set_draw_mode(tool)
-        self.canvas.set_draw_cursor_active(bool(tool))
+        if self.scene.has_selected_vectors():
+            self.scene.deselect_all()
+        self._apply_toolbar_state(self._controller.select_tool(tool))
+
+    def _handle_scene_selection_context(self, payload):
+        self._apply_toolbar_state(self._controller.handle_selection_context(payload.get("context"), payload.get("color")))
 
     def show_image(self, path):
         if not os.path.exists(path):

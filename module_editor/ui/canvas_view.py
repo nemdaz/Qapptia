@@ -11,6 +11,7 @@ from module_editor.ui.toolbar.text_item import InlineTextEditor, TextCanvasItem
 
 class ImageScene(QGraphicsScene):
     content_changed = Signal()
+    selection_context_changed = Signal(object)
 
     def __init__(self, document, parent=None):
         super().__init__(parent)
@@ -46,6 +47,18 @@ class ImageScene(QGraphicsScene):
     def set_active_color(self, color):
         self._active_color = color
 
+    def has_selected_vectors(self):
+        return any(isinstance(item, CanvasItem) for item in self.selectedItems())
+
+    def selected_vector_color(self):
+        for item in self.selectedItems():
+            if isinstance(item, CanvasItem):
+                return item.data.color
+        return None
+
+    def _emit_selection_context(self, context, color=None):
+        self.selection_context_changed.emit({"context": context, "color": color})
+
     def deselect_all(self):
         for item in list(self.selectedItems()):
             item.setSelected(False)
@@ -71,6 +84,7 @@ class ImageScene(QGraphicsScene):
             self.deselect_all()
             item.setSelected(True)
             item.update()
+            self._emit_selection_context("editing", item.data.color)
             self._dragging = {"item": item, "grip": grip_name, "last": pos}
             event.accept()
             return
@@ -80,6 +94,7 @@ class ImageScene(QGraphicsScene):
             self.deselect_all()
             hit.setSelected(True)
             hit.update()
+            self._emit_selection_context("editing", hit.data.color)
             self._dragging = {"item": hit, "grip": "move", "last": pos}
             event.accept()
             return
@@ -97,6 +112,7 @@ class ImageScene(QGraphicsScene):
             self.addItem(item)
             item.setSelected(True)
             item.update()
+            self._emit_selection_context("drawing", item.data.color)
             self._dragging = {
                 "item": item,
                 "grip": "br" if self._draw_mode != "arrow" else "end",
@@ -108,6 +124,7 @@ class ImageScene(QGraphicsScene):
             return
 
         self.deselect_all()
+        self._emit_selection_context("none")
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
@@ -129,6 +146,7 @@ class ImageScene(QGraphicsScene):
                 self.addItem(item)
                 item.setSelected(True)
                 item.set_coords([origin[0], origin[1], pos.x(), pos.y()])
+                self._emit_selection_context("drawing", item.data.color)
                 self._dragging["item"] = item
                 self._dragging["pending_text"] = False
                 self._dragging["last"] = pos
@@ -177,6 +195,7 @@ class ImageScene(QGraphicsScene):
                 if distance < min_distance:
                     self._document.delete_vector(item.data.shape_id)
                     self.removeItem(item)
+                    self._emit_selection_context("none")
                     self._dragging = None
                     event.accept()
                     return
@@ -185,6 +204,7 @@ class ImageScene(QGraphicsScene):
                     if rect.width() < constants.TEXT_STYLE["min_box_width"] or rect.height() < constants.TEXT_STYLE["min_box_height"]:
                         self._document.delete_vector(item.data.shape_id)
                         self.removeItem(item)
+                        self._emit_selection_context("none")
                         self._dragging = None
                         event.accept()
                         return
@@ -213,20 +233,25 @@ class ImageScene(QGraphicsScene):
                 self._document.delete_vector(item.data.shape_id)
                 self.removeItem(item)
         self._persist_vectors()
+        self._emit_selection_context("none")
 
     def recolor_selected(self, color):
+        selected_items = [item for item in self.selectedItems() if isinstance(item, CanvasItem)]
+        selected_types = {item.data.shape_type for item in selected_items}
+        if not selected_items:
+            return set()
+
         changed = False
-        for item in list(self.selectedItems()):
-            if isinstance(item, CanvasItem):
-                if isinstance(item, TextCanvasItem):
-                    item.set_text_color(color)
-                else:
-                    item.data.color = color
-                    item.update()
-                changed = self._document.update_vector_color(item.data.shape_id, color) or changed
+        for item in selected_items:
+            if isinstance(item, TextCanvasItem):
+                item.set_text_color(color)
+            else:
+                item.data.color = color
+                item.update()
+            changed = self._document.update_vector_color(item.data.shape_id, color) or changed
         if changed:
             self._persist_vectors()
-        return changed
+        return selected_types
 
     def get_composite_image(self):
         return self._document.get_composite_image()
@@ -261,6 +286,7 @@ class ImageScene(QGraphicsScene):
             self._document.delete_vector(item.data.shape_id)
             self.removeItem(item)
             self._persist_vectors()
+            self._emit_selection_context("none")
             return
 
         item.data.payload["text"] = final_text
