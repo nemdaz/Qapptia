@@ -218,7 +218,7 @@ class AreaSelectorWindow(QWidget):
             save_directory = utils.get_save_directory(config.get("save_path"), now)
             filename = utils.parse_filename_format(config.get("filename_format"), now).replace(".png", "_area.png")
             output_path = os.path.join(save_directory, filename)
-            image.save(output_path, "PNG", quality=config.get("image_quality"))
+            image.save(output_path, "PNG")
 
             if self._on_capture_callback:
                 self._on_capture_callback(output_path)

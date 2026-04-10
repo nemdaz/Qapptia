@@ -9,7 +9,6 @@ class CaptureSettingsRepository:
         return CaptureSettings(
             save_path=config.get("save_path"),
             filename_format=config.get("filename_format"),
-            image_quality=int(config.get("image_quality")),
             subfolder_month=bool(config.get("subfolder_month")),
             subfolder_day=bool(config.get("subfolder_day")),
             subfolder_hour=bool(config.get("subfolder_hour")),

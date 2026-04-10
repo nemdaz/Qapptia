@@ -14,7 +14,6 @@ INTERNAL_CONFIG = {
 DEFAULT_CONFIG = {
     "save_path": os.path.expandvars(os.path.join("%USERPROFILE%", APP_NAME)),
     "filename_format": "Screenshot_YYYYMMDD_HHmmSS",
-    "image_quality": 100,
     "subfolder_month": True,
     "subfolder_day": True,
     "subfolder_hour": False,

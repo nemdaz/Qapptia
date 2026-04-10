@@ -5,7 +5,6 @@ from dataclasses import dataclass
 class CaptureSettings:
     save_path: str
     filename_format: str
-    image_quality: int
     subfolder_month: bool
     subfolder_day: bool
     subfolder_hour: bool
@@ -22,7 +21,6 @@ class CaptureSettings:
         return {
             "save_path": self.save_path,
             "filename_format": self.filename_format,
-            "image_quality": self.image_quality,
             "subfolder_month": self.subfolder_month,
             "subfolder_day": self.subfolder_day,
             "subfolder_hour": self.subfolder_hour,

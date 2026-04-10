@@ -19,7 +19,7 @@ class FullscreenCaptureService:
             output_path = os.path.join(target_directory, filename)
 
             screen_image = self._capture_active_monitor()
-            screen_image.save(output_path, "PNG", quality=config.get("image_quality"))
+            screen_image.save(output_path, "PNG")
 
             if play_sound:
                 utils.play_beep_async()

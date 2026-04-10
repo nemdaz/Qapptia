@@ -12,7 +12,6 @@ WINDOW_TEXT = {
     "labels": {
         "save_path": "Ruta de guardado:",
         "filename_format": "Formato de nombre:",
-        "image_quality": "Calidad JPG/PNG:",
         "shortcut": "Atajo:",
         "timer": "Timer:",
         "pause": "Pausa:",
@@ -64,10 +63,6 @@ WINDOW_LAYOUT = {
 
 CAPTURE_DEFAULTS = {
     "filename_format": "Screenshot_YYYYMMDD_HHmmSS",
-    "image_quality": {
-        "min": 10,
-        "max": 100,
-    },
     "manual_timer": {
         "min": 0,
         "max": 999,
