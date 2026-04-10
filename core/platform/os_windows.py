@@ -41,6 +41,9 @@ class _WindowsInstanceGuard:
 
 
 class WindowsInputService(InputService):
+    def requires_process_restart_after_resume(self):
+        return True
+
     def hook_mouse(self, callback):
         return mouse.hook(callback)
 

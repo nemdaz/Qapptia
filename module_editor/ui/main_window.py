@@ -246,7 +246,7 @@ class MainWindow(QMainWindow):
             self.sidebar.select_path(self._controller.current_image_path)
             QTimer.singleShot(0, self.reset_zoom)
         except Exception as exc:
-            logger.error(f"Error show_image: {exc}")
+            logger.error(f"Error show_image para '{path}': {exc}")
             show_toast(self, constants.TOAST_MESSAGES["open_error"], kind="error")
 
     def rotate_image(self):

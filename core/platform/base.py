@@ -3,6 +3,10 @@ from abc import ABC, abstractmethod
 
 class InputService(ABC):
     @abstractmethod
+    def requires_process_restart_after_resume(self):
+        pass
+
+    @abstractmethod
     def hook_mouse(self, callback):
         pass
 

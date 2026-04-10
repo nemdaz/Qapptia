@@ -34,7 +34,11 @@ def _register_capture_hotkeys():
 
 
 def _restore_global_input_after_resume(icon=None):
-    logger.info("Reintentando restaurar los hooks globales de entrada tras reanudacion del sistema...")
+    if _platform.input.requires_process_restart_after_resume():
+        logger.info("El SO requiere reiniciar el proceso para recuperar los hooks globales tras reanudacion.")
+    else:
+        logger.info("Reintentando restaurar los hooks globales de entrada tras reanudacion del sistema...")
+
     recovered = _platform.input.restore_global_hooks_after_resume(
         register_hotkeys_callback=_register_capture_hotkeys,
         mouse_callback=on_mouse_event,
@@ -49,7 +53,10 @@ def _restore_global_input_after_resume(icon=None):
             except Exception:
                 pass
     else:
-        logger.error("No fue posible restaurar los hooks globales de entrada tras reanudacion.")
+        if _platform.input.requires_process_restart_after_resume():
+            logger.warning("Los hooks globales requieren reinicio completo del proceso tras reanudacion en este SO.")
+        else:
+            logger.error("No fue posible restaurar los hooks globales de entrada tras reanudacion.")
     return recovered
 
 
@@ -195,9 +202,8 @@ def main():
 
     ipc.start_server(ipc.CHANNEL_APP, _notify_existing_background_instance)
 
-    # Solo en el proceso principal (tray/captura).
-    # En editor/config dejamos que Qt gestione DPI para evitar doble configuracion.
-    _platform.dpi.set_process_dpi_awareness()
+    # El proceso principal también termina creando QApplication para el selector de área.
+    # Dejamos que Qt gestione el contexto DPI para evitar colisiones con Windows.
 
     global should_exit
     if not _register_capture_hotkeys():
@@ -229,7 +235,10 @@ def main():
         if jump > RUNTIME_CONFIG["suspend_jump_threshold_seconds"]:
             logger.warning(f"Salto de tiempo detectado ({jump:.1f}s). Probable suspensión del OS.")
             if not _restore_global_input_after_resume(icon):
-                logger.warning("No fue posible reactivar los hooks globales de entrada tras reanudacion. Reiniciando el capturador...")
+                if _platform.input.requires_process_restart_after_resume():
+                    logger.warning("Reiniciando el capturador para recuperar los hooks globales tras reanudacion...")
+                else:
+                    logger.warning("No fue posible reactivar los hooks globales de entrada tras reanudacion. Reiniciando el capturador...")
                 should_restart = True
                 icon.stop()
                 break

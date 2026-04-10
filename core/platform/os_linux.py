@@ -10,7 +10,8 @@ from core.platform.unix_helper import (
 
 
 class LinuxInputService(UnixInputMixin, InputService):
-    pass
+    def requires_process_restart_after_resume(self):
+        return False
 
 
 class LinuxDpiService(UnixDpiMixin, DpiService):

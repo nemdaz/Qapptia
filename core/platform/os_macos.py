@@ -10,7 +10,8 @@ from core.platform.unix_helper import (
 
 
 class MacOsInputService(UnixInputMixin, InputService):
-    pass
+    def requires_process_restart_after_resume(self):
+        return False
 
 
 class MacOsDpiService(UnixDpiMixin, DpiService):

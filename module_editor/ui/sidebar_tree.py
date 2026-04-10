@@ -128,7 +128,7 @@ class SidebarTree(QWidget):
         if os.path.isfile(path) and os.path.splitext(path)[1].lower() in IMAGE_EXTENSIONS:
             self.image_selected.emit(path.replace("\\", "/"))
 
-    def select_path(self, path):
+    def select_path(self, path, scroll_to_top=False):
         if self._model and os.path.exists(path):
             idx = self._model.index(path.replace("/", os.sep))
             if not idx.isValid():
@@ -139,7 +139,10 @@ class SidebarTree(QWidget):
                 self.tree.setCurrentIndex(idx)
             finally:
                 self._suppress_selection_signal = False
-            self._force_scroll_top()
+            if scroll_to_top:
+                self._force_scroll_top()
+            else:
+                self.tree.scrollTo(idx, QTreeView.EnsureVisible)
 
     def _force_scroll_top(self):
         def _set_top():
@@ -159,8 +162,10 @@ class SidebarTree(QWidget):
 
     def _apply_tree_state(self):
         self._restore_expanded_folders()
-        if self._pending_preferred_path and os.path.exists(self._pending_preferred_path):
-            self.select_path(self._pending_preferred_path)
+        preferred_path = self._pending_preferred_path
+        self._pending_preferred_path = None
+        if preferred_path and os.path.exists(preferred_path):
+            self.select_path(preferred_path)
         else:
             self._force_scroll_top()
 
