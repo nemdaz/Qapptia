@@ -79,13 +79,4 @@ def get_platform_services():
         )
         return _services_singleton
 
-    # Fallback conservador: tratamos plataformas no contempladas como Linux-like.
-    _services_singleton = PlatformServices(
-        input=LinuxInputService(),
-        dpi=LinuxDpiService(),
-        process=LinuxProcessService(),
-        screen=LinuxScreenService(),
-        desktop=LinuxDesktopService(),
-        tray=LinuxTrayService(),
-    )
-    return _services_singleton
+    raise RuntimeError(f"Unsupported platform for platform services: {sys.platform}")
