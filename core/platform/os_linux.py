@@ -1,32 +1,33 @@
-from core.platform.unix_common import (
-    UnixDesktopService,
-    UnixDpiService,
-    UnixInputService,
-    UnixProcessService,
-    UnixScreenService,
-    UnixTrayService,
+from core.platform.base import DesktopService, DpiService, InputService, ProcessService, ScreenService, TrayService
+from core.platform.unix_helper import (
+    UnixDesktopMixin,
+    UnixDpiMixin,
+    UnixInputMixin,
+    UnixProcessMixin,
+    UnixScreenMixin,
+    UnixTrayMixin,
 )
 
 
-class LinuxInputService(UnixInputService):
+class LinuxInputService(UnixInputMixin, InputService):
     pass
 
 
-class LinuxDpiService(UnixDpiService):
+class LinuxDpiService(UnixDpiMixin, DpiService):
     pass
 
 
-class LinuxProcessService(UnixProcessService):
+class LinuxProcessService(UnixProcessMixin, ProcessService):
     pass
 
 
-class LinuxScreenService(UnixScreenService):
+class LinuxScreenService(UnixScreenMixin, ScreenService):
     pass
 
 
-class LinuxDesktopService(UnixDesktopService):
+class LinuxDesktopService(UnixDesktopMixin, DesktopService):
     pass
 
 
-class LinuxTrayService(UnixTrayService):
+class LinuxTrayService(UnixTrayMixin, TrayService):
     pass

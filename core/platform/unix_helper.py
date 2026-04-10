@@ -10,7 +10,7 @@ from PySide6.QtCore import QRect
 from PySide6.QtGui import QCursor
 from PySide6.QtWidgets import QApplication
 
-from core.platform.base import DesktopService, DpiService, InputService, ProcessService, ScreenService, TrayService
+from core.input_runtime import restore_global_input_hooks_in_process
 
 
 _qt_application_holder = None
@@ -120,7 +120,7 @@ def _is_process_running(pid):
     return True
 
 
-class UnixInputService(InputService):
+class UnixInputMixin:
     def hook_mouse(self, callback):
         return mouse.hook(callback)
 
@@ -157,13 +157,22 @@ class UnixInputService(InputService):
     def unhook_key_listener(self, hook):
         keyboard.unhook(hook)
 
+    def restore_global_hooks_after_resume(self, register_hotkeys_callback, mouse_callback, max_attempts=2, retry_delay_seconds=0.25):
+        return restore_global_input_hooks_in_process(
+            input_service=self,
+            register_hotkeys_callback=register_hotkeys_callback,
+            mouse_callback=mouse_callback,
+            max_attempts=max_attempts,
+            retry_delay_seconds=retry_delay_seconds,
+        )
 
-class UnixDpiService(DpiService):
+
+class UnixDpiMixin:
     def set_process_dpi_awareness(self):
         return None
 
 
-class UnixProcessService(ProcessService):
+class UnixProcessMixin:
     def acquire_single_instance(self, key):
         guard = _UnixInstanceGuard(key)
         if not guard.acquire():
@@ -172,12 +181,12 @@ class UnixProcessService(ProcessService):
         return guard
 
 
-class UnixScreenService(ScreenService):
+class UnixScreenMixin:
     def capture_all_screens(self):
         return ImageGrab.grab(all_screens=True)
 
 
-class UnixDesktopService(DesktopService):
+class UnixDesktopMixin:
     def play_beep(self, _sound_path):
         print("\a", end="", flush=True)
 
@@ -223,7 +232,7 @@ class UnixDesktopService(DesktopService):
         return temp_img.resize((final_width, final_height), Image.LANCZOS)
 
 
-class UnixTrayService(TrayService):
+class UnixTrayMixin:
     def menu_item(self, title_or_callable, callback, default=False, visible=True):
         return pystray.MenuItem(title_or_callable, callback, default=default, visible=visible)
 

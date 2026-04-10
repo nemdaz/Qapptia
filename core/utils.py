@@ -8,6 +8,7 @@ from PySide6.QtGui import QColor, QImage, QPainter
 
 from core import config
 from core.constants import DEFAULT_CONFIG
+from core.input_runtime import remember_hotkey_registration
 from core.logger import logger
 from core.platform import get_platform_services
 
@@ -15,7 +16,6 @@ _platform = get_platform_services()
 
 # Cache global para datos de audio (evita latencia de disco)
 _AUDIO_CACHE = {}
-_REGISTERED_HOTKEYS = []
 
 
 def get_resource_path(relative_path):
@@ -179,74 +179,10 @@ def register_hotkey(hotkey, callback, description=""):
 
     try:
         hotkey_handle = _platform.input.add_hotkey(hotkey, safe_callback, suppress=False)
-        _REGISTERED_HOTKEYS.append((hotkey, hotkey_handle, description))
+        remember_hotkey_registration(hotkey, hotkey_handle, description)
         desc_str = f"({description})" if description else ""
         logger.info(f"Atajo {desc_str} '{hotkey}' registrado (Protegido).")
         return True
     except Exception as exc:
         logger.error(f"Error al registrar atajo {description} '{hotkey}': {exc}")
         return False
-
-
-def _clear_registered_hotkeys(input_service):
-    while _REGISTERED_HOTKEYS:
-        hotkey, hotkey_handle, description = _REGISTERED_HOTKEYS.pop()
-        try:
-            input_service.remove_hotkey(hotkey_handle)
-            desc_str = f" ({description})" if description else ""
-            logger.debug(f"Hotkey limpiado: '{hotkey}'{desc_str}")
-        except Exception as exc:
-            logger.debug(f"No se pudo limpiar hotkey '{hotkey}': {exc}")
-
-
-def reset_input_hooks(input_service):
-    """Limpia hooks de teclado y mouse de manera segura."""
-    _clear_registered_hotkeys(input_service)
-
-    try:
-        if hasattr(input_service, "unhook_all_hotkeys"):
-            input_service.unhook_all_hotkeys()
-    except Exception as exc:
-        logger.debug(f"No se pudieron limpiar hotkeys previos: {exc}")
-
-    try:
-        input_service.unhook_all_mouse()
-    except Exception as exc:
-        logger.debug(f"No se pudieron limpiar hooks de mouse previos: {exc}")
-
-    try:
-        restart_hook_backends = getattr(input_service, "restart_hook_backends", None)
-        if callable(restart_hook_backends):
-            restart_hook_backends()
-    except Exception as exc:
-        logger.debug(f"No se pudieron reiniciar los backends de hooks: {exc}")
-
-
-def recover_capture_hooks(
-    input_service,
-    register_hotkeys_callback,
-    mouse_callback,
-    max_attempts=2,
-    retry_delay_seconds=0.25,
-):
-    """Intenta restaurar hooks globales de captura tras suspensión."""
-    for attempt in range(1, max_attempts + 1):
-        reset_input_hooks(input_service)
-
-        hotkeys_ok = bool(register_hotkeys_callback())
-        mouse_ok = True
-        try:
-            input_service.hook_mouse(mouse_callback)
-        except Exception as exc:
-            mouse_ok = False
-            logger.error(f"No se pudo reenganchar hook de mouse: {exc}")
-
-        if hotkeys_ok and mouse_ok:
-            if attempt > 1:
-                logger.info(f"Hooks restaurados en intento {attempt}/{max_attempts}.")
-            return True
-
-        if attempt < max_attempts:
-            time.sleep(max(0.0, retry_delay_seconds))
-
-    return False

@@ -50,6 +50,10 @@ class InputService(ABC):
     def unhook_key_listener(self, hook):
         pass
 
+    @abstractmethod
+    def restore_global_hooks_after_resume(self, register_hotkeys_callback, mouse_callback, max_attempts=2, retry_delay_seconds=0.25):
+        pass
+
 
 class DpiService(ABC):
     @abstractmethod

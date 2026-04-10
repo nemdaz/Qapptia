@@ -8,6 +8,7 @@ import mouse
 import pystray
 from PIL import Image, ImageDraw, ImageGrab
 
+from core.input_runtime import reset_global_input_hooks
 from core.platform.base import DesktopService, DpiService, InputService, ProcessService, ScreenService, TrayService
 
 
@@ -76,18 +77,9 @@ class WindowsInputService(InputService):
     def unhook_key_listener(self, hook):
         keyboard.unhook(hook)
 
-    def restart_hook_backends(self):
-        self._restart_listener_backend(keyboard)
-        self._restart_listener_backend(mouse)
-
-    def _restart_listener_backend(self, module):
-        listener = getattr(module, "_listener", None)
-        if listener is None:
-            return
-
-        # Fuerza la reconstrucción del hook tras reanudar.
-        listener.listening = False
-        listener.start_if_necessary()
+    def restore_global_hooks_after_resume(self, register_hotkeys_callback, mouse_callback, max_attempts=2, retry_delay_seconds=0.25):
+        reset_global_input_hooks(self)
+        return False
 
 
 class WindowsDpiService(DpiService):
