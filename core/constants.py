@@ -13,7 +13,7 @@ INTERNAL_CONFIG = {
 # Hotkeys configurables por usuario y otros valores por defecto
 DEFAULT_CONFIG = {
     "save_path": os.path.expandvars(os.path.join("%USERPROFILE%", APP_NAME)),
-    "filename_format": "Screenshot_YYYYMMDD_HHmmSS",
+    "filename_format": "QACappta_YYYYMMDD_HHmmSS",
     "subfolder_month": True,
     "subfolder_day": True,
     "subfolder_hour": False,

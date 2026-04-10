@@ -1,4 +1,7 @@
+import json
+
 from core import config
+from core.logger import logger
 from module_capture import constants
 from module_capture.domain.capture_settings import CaptureSettings
 
@@ -23,7 +26,10 @@ class CaptureSettingsRepository:
         )
 
     def save_settings(self, settings):
-        for key, value in settings.to_config_payload().items():
-            config.set(key, value)
+        payload = settings.to_config_payload()
+        logger.info("Guardando configuracion desde UI...")
+        logger.debug(f"Payload de configuracion: {json.dumps(payload, ensure_ascii=False, indent=2)}")
+        config.replace(payload)
+        logger.info("Configuracion guardada correctamente en config.json")
 
 capture_settings_repository = CaptureSettingsRepository()

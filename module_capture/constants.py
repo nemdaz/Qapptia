@@ -1,3 +1,9 @@
+from core.constants import DEFAULT_CONFIG
+
+
+DEFAULT_FILENAME_FORMAT = DEFAULT_CONFIG["filename_format"]
+
+
 WINDOW_TEXT = {
     "title": "Configuracion de Capturador",
     "tabs": {
@@ -32,7 +38,7 @@ WINDOW_TEXT = {
         "enable_scroll_capture": "Habilitar Captura de Scroll Inteligente",
     },
     "placeholders": {
-        "filename_format": "Screenshot_YYYYMMDD_HHmmSS",
+        "filename_format": DEFAULT_FILENAME_FORMAT,
         "shortcut": "Presiona teclas...",
     },
     "format_help": {
@@ -62,7 +68,7 @@ WINDOW_LAYOUT = {
 }
 
 CAPTURE_DEFAULTS = {
-    "filename_format": "Screenshot_YYYYMMDD_HHmmSS",
+    "filename_format": DEFAULT_FILENAME_FORMAT,
     "manual_timer": {
         "min": 0,
         "max": 999,

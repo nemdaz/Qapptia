@@ -7,6 +7,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QImage, QPainter
 
 from core import config
+from core.constants import DEFAULT_CONFIG
 from core.logger import logger
 from core.platform import get_platform_services
 
@@ -70,7 +71,7 @@ def play_beep_async():
 def parse_filename_format(base_format, now_datetime):
     """Devuelve el nombre final usando tokens amigables."""
     if not base_format:
-        base_format = "Screenshot_YYYYMMDD_HHmmSS"
+        base_format = DEFAULT_CONFIG["filename_format"]
 
     format_str = (
         base_format.replace("YYYY", "%Y")
