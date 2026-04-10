@@ -1,6 +1,6 @@
 import os
 
-from PySide6.QtCore import QMetaObject, Qt, Slot
+from PySide6.QtCore import QEvent, QMetaObject, Qt, Slot
 from PySide6.QtWidgets import QCheckBox, QDialog, QFileDialog, QFormLayout, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QSpinBox, QTabWidget, QVBoxLayout, QWidget
 
 from module_capture import constants
@@ -162,10 +162,21 @@ class CaptureConfigWindow(QDialog):
 
     def _build_capture_tab(self):
         layout = QVBoxLayout(self.capture_tab)
-        layout.addWidget(self._build_screen_group())
-        layout.addWidget(self._build_area_group())
-        layout.addWidget(self._build_flow_group())
+        screen_group = self._build_screen_group()
+        area_group = self._build_area_group()
+        flow_group = self._build_flow_group()
+        layout.addWidget(screen_group)
+        layout.addWidget(area_group)
+        layout.addWidget(flow_group)
         layout.addStretch(1)
+        self._register_capture_focus_clear_targets(
+            self.capture_tab,
+            screen_group,
+            area_group,
+            flow_group,
+            self.timer_spin,
+            self.scroll_check,
+        )
 
     def _build_screen_group(self):
         group = QGroupBox(constants.WINDOW_TEXT["groups"]["screen_mode"])
@@ -263,6 +274,18 @@ class CaptureConfigWindow(QDialog):
         container = QWidget()
         container.setLayout(layout)
         return container
+
+    def eventFilter(self, watched, event):
+        if event.type() == QEvent.MouseButtonPress and event.button() == Qt.LeftButton:
+            focused_widget = self.focusWidget()
+            if isinstance(focused_widget, ShortcutLineEdit) and watched is not focused_widget:
+                focused_widget.clearFocus()
+
+        return super().eventFilter(watched, event)
+
+    def _register_capture_focus_clear_targets(self, *widgets):
+        for widget in widgets:
+            widget.installEventFilter(self)
 
     def request_wake_up(self):
         QMetaObject.invokeMethod(self, "_handle_wake_up", Qt.QueuedConnection)
