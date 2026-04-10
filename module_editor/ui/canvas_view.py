@@ -5,6 +5,7 @@ from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsPixmapItem
 from PySide6.QtCore import Qt, QRectF, Signal, QTimer, QPointF
 from PySide6.QtGui import QPixmap, QColor, QPainter, QCursor
 
+from core.constants import INTERNAL_CONFIG
 from module_editor import constants
 from module_editor.ui.toolbar.canvas_item import CanvasItem
 from module_editor.ui.toolbar.text_item import InlineTextEditor, TextCanvasItem
@@ -30,6 +31,22 @@ class ImageScene(QGraphicsScene):
             "origin": (pos.x(), pos.y()),
             "pending_text": True,
         }
+
+    def _create_text_item(self, start_pos, end_pos=None):
+        payload = {"text": ""}
+        vector = self._document.create_vector("text", start_pos, self._active_color, payload=payload)
+        item = self._create_item(vector)
+        self.addItem(item)
+        item.setSelected(True)
+
+        if end_pos is None:
+            end_pos = QPointF(
+                start_pos.x() + INTERNAL_CONFIG["editor_tool_text_default_width"],
+                start_pos.y() + INTERNAL_CONFIG["editor_tool_text_default_height"],
+            )
+
+        item.set_coords([start_pos.x(), start_pos.y(), end_pos.x(), end_pos.y()])
+        return item
 
     def load_image(self, pil_image, path):
         self._document.load(pil_image, path)
@@ -139,13 +156,8 @@ class ImageScene(QGraphicsScene):
                     return
 
                 origin = self._dragging["origin"]
-                payload = {"text": ""}
                 origin_pointf = QPointF(origin[0], origin[1])
-                vector = self._document.create_vector("text", origin_pointf, self._active_color, payload=payload)
-                item = self._create_item(vector)
-                self.addItem(item)
-                item.setSelected(True)
-                item.set_coords([origin[0], origin[1], pos.x(), pos.y()])
+                item = self._create_text_item(origin_pointf, pos)
                 self._emit_selection_context("drawing", item.data.color)
                 self._dragging["item"] = item
                 self._dragging["pending_text"] = False
@@ -181,7 +193,12 @@ class ImageScene(QGraphicsScene):
     def mouseReleaseEvent(self, event):
         if self._dragging:
             if self._dragging.get("pending_text") and self._dragging.get("item") is None:
+                origin = self._dragging["origin"]
+                origin_pointf = QPointF(origin[0], origin[1])
+                item = self._create_text_item(origin_pointf)
+                self._emit_selection_context("drawing", item.data.color)
                 self._dragging = None
+                QTimer.singleShot(0, item.start_editing)
                 event.accept()
                 return
 

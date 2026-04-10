@@ -7,7 +7,9 @@ CONFIG_FILE = "config.json"
 
 # Hotkeys internos (no configurables por usuario)
 INTERNAL_CONFIG = {
-    "shortcut_copy_clipboard": "ctrl+c"
+    "shortcut_copy_clipboard": "ctrl+c",
+    "editor_tool_text_default_width": 240,
+    "editor_tool_text_default_height": 28,
 }
 
 # Hotkeys configurables por usuario y otros valores por defecto
