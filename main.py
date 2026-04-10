@@ -236,11 +236,12 @@ def main():
                 break
             
         last_time = current_time
-        
+
     # Limpieza final
     try:
         _platform.input.unhook_all_mouse()
-    except: pass
+    except Exception:
+        pass
     
     if should_restart:
         logger.info("Ejecutando reinicio maestro de proceso...")
@@ -250,8 +251,8 @@ def main():
         else:
             os.execv(sys.executable, [sys.executable] + sys.argv)
     else:
-        os._exit(0)
+        return 0
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main() or 0)
 
