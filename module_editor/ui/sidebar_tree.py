@@ -1,4 +1,5 @@
 import os
+
 from PIL import ImageQt
 from PySide6.QtWidgets import QTreeView, QVBoxLayout, QWidget, QLabel, QPushButton, QHBoxLayout, QFileSystemModel
 from PySide6.QtCore import QDir, Qt, Signal, QModelIndex, QSize, QTimer
@@ -31,6 +32,11 @@ class SidebarTree(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._suppress_selection_signal = False
+        self._pending_preferred_path = None
+        self._restore_timer = QTimer(self)
+        self._restore_timer.setSingleShot(True)
+        self._restore_timer.setInterval(120)
+        self._restore_timer.timeout.connect(self._apply_tree_state)
         self._setup_ui()
 
     def _setup_ui(self):
@@ -79,12 +85,13 @@ class SidebarTree(QWidget):
         self.refresh_model()
 
     def refresh_model(self, preferred_path=None):
-        current_selection = preferred_path or self.current_selected_path()
+        self._pending_preferred_path = preferred_path or self.current_selected_path()
         base_path = os.path.expandvars(config.get("save_path"))
         if not os.path.isdir(base_path):
             return
 
         self._model = ImageFilterModel()
+        self._model.directoryLoaded.connect(self._on_directory_loaded)
         self._model.setRootPath(base_path)
         self._model.setFilter(QDir.AllDirs | QDir.Files | QDir.NoDotAndDotDot)
         self._model.setNameFilters(["*.png", "*.jpg", "*.jpeg"])
@@ -98,10 +105,7 @@ class SidebarTree(QWidget):
         for i in range(1, self._model.columnCount()):
             self.tree.hideColumn(i)
 
-        self._restore_expanded_folders()
-        if current_selection and os.path.exists(current_selection):
-            self.select_path(current_selection)
-        self._force_scroll_top()
+        self._schedule_tree_state_restore()
 
     def current_selected_path(self):
         if not self._model:
@@ -146,6 +150,19 @@ class SidebarTree(QWidget):
         _set_top()
         QTimer.singleShot(0, _set_top)
         QTimer.singleShot(120, _set_top)
+
+    def _schedule_tree_state_restore(self):
+        self._restore_timer.start()
+
+    def _on_directory_loaded(self, _path):
+        self._schedule_tree_state_restore()
+
+    def _apply_tree_state(self):
+        self._restore_expanded_folders()
+        if self._pending_preferred_path and os.path.exists(self._pending_preferred_path):
+            self.select_path(self._pending_preferred_path)
+        else:
+            self._force_scroll_top()
 
     def _restore_expanded_folders(self):
         if not self._model:
