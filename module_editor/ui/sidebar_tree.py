@@ -78,7 +78,8 @@ class SidebarTree(QWidget):
         self._model = None
         self.refresh_model()
 
-    def refresh_model(self):
+    def refresh_model(self, preferred_path=None):
+        current_selection = preferred_path or self.current_selected_path()
         base_path = os.path.expandvars(config.get("save_path"))
         if not os.path.isdir(base_path):
             return
@@ -98,7 +99,22 @@ class SidebarTree(QWidget):
             self.tree.hideColumn(i)
 
         self._restore_expanded_folders()
+        if current_selection and os.path.exists(current_selection):
+            self.select_path(current_selection)
         self._force_scroll_top()
+
+    def current_selected_path(self):
+        if not self._model:
+            return None
+
+        index = self.tree.currentIndex()
+        if not index.isValid():
+            return None
+
+        path = self._model.filePath(index)
+        if os.path.isfile(path):
+            return path.replace("\\", "/")
+        return None
 
     def _on_current_changed(self, index, _previous):
         if self._suppress_selection_signal:

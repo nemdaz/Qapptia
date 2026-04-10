@@ -331,7 +331,8 @@ class MainWindow(QMainWindow):
         self.show()
         self.raise_()
         self.activateWindow()
-        self.sidebar.refresh_model()
+        preferred_path = self._controller.current_image_path or self._controller.load_initial_image_path()
+        self.sidebar.refresh_model(preferred_path=preferred_path)
 
     def _request_close_from_ipc(self):
         QMetaObject.invokeMethod(self, "close", Qt.QueuedConnection)
