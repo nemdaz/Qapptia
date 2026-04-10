@@ -54,6 +54,15 @@ class InlineTextEditor(QGraphicsTextItem):
         self.setPos(content_rect.topLeft())
         self.setTextWidth(max(1.0, content_rect.width()))
 
+    def paint(self, painter, option, widget=None):
+        DrawingTool.draw_qt_text_shadows(
+            painter,
+            self._content_text(),
+            self.font(),
+            self.textWidth(),
+        )
+        super().paint(painter, option, widget)
+
     def _content_text(self):
         text = self.toPlainText()
         return "" if text == self._EMPTY_PLACEHOLDER else text
