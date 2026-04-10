@@ -35,6 +35,10 @@ class InputService(ABC):
         pass
 
     @abstractmethod
+    def remove_hotkey(self, hotkey_handle):
+        pass
+
+    @abstractmethod
     def unhook_all_hotkeys(self):
         pass
 

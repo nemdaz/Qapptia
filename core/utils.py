@@ -15,6 +15,7 @@ _platform = get_platform_services()
 
 # Cache global para datos de audio (evita latencia de disco)
 _AUDIO_CACHE = {}
+_REGISTERED_HOTKEYS = []
 
 
 def get_resource_path(relative_path):
@@ -177,7 +178,8 @@ def register_hotkey(hotkey, callback, description=""):
             logger.trace(f"[HOTKEY] Ignorada activacion de tecla solitaria: '{hotkey}'")
 
     try:
-        _platform.input.add_hotkey(hotkey, safe_callback, suppress=False)
+        hotkey_handle = _platform.input.add_hotkey(hotkey, safe_callback, suppress=False)
+        _REGISTERED_HOTKEYS.append((hotkey, hotkey_handle, description))
         desc_str = f"({description})" if description else ""
         logger.info(f"Atajo {desc_str} '{hotkey}' registrado (Protegido).")
         return True
@@ -186,8 +188,21 @@ def register_hotkey(hotkey, callback, description=""):
         return False
 
 
+def _clear_registered_hotkeys(input_service):
+    while _REGISTERED_HOTKEYS:
+        hotkey, hotkey_handle, description = _REGISTERED_HOTKEYS.pop()
+        try:
+            input_service.remove_hotkey(hotkey_handle)
+            desc_str = f" ({description})" if description else ""
+            logger.debug(f"Hotkey limpiado: '{hotkey}'{desc_str}")
+        except Exception as exc:
+            logger.debug(f"No se pudo limpiar hotkey '{hotkey}': {exc}")
+
+
 def reset_input_hooks(input_service):
     """Limpia hooks de teclado y mouse de manera segura."""
+    _clear_registered_hotkeys(input_service)
+
     try:
         if hasattr(input_service, "unhook_all_hotkeys"):
             input_service.unhook_all_hotkeys()

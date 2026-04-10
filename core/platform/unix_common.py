@@ -145,6 +145,9 @@ class UnixInputService(InputService):
     def add_hotkey(self, hotkey, callback, suppress=False):
         return keyboard.add_hotkey(hotkey, callback, suppress=suppress)
 
+    def remove_hotkey(self, hotkey_handle):
+        keyboard.remove_hotkey(hotkey_handle)
+
     def unhook_all_hotkeys(self):
         keyboard.unhook_all_hotkeys()
 
