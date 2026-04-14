@@ -32,6 +32,7 @@ class SidebarTree(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._suppress_selection_signal = False
+        self._is_restoring_tree_state = False
         self._pending_preferred_path = None
         self._restore_timer = QTimer(self)
         self._restore_timer.setSingleShot(True)
@@ -86,11 +87,13 @@ class SidebarTree(QWidget):
 
     def refresh_model(self, preferred_path=None):
         self._pending_preferred_path = preferred_path or self.current_selected_path()
+        self._is_restoring_tree_state = True
         base_path = os.path.expandvars(config.get("save_path"))
         if not os.path.isdir(base_path):
+            self._is_restoring_tree_state = False
             return
 
-        self._model = ImageFilterModel()
+        self._model = ImageFilterModel(self)
         self._model.directoryLoaded.connect(self._on_directory_loaded)
         self._model.setRootPath(base_path)
         self._model.setFilter(QDir.AllDirs | QDir.Files | QDir.NoDotAndDotDot)
@@ -120,6 +123,11 @@ class SidebarTree(QWidget):
             return path.replace("\\", "/")
         return None
 
+    def _normalize_compare_path(self, path):
+        if not path:
+            return None
+        return os.path.normcase(os.path.normpath(path))
+
     def _on_current_changed(self, index, _previous):
         if self._suppress_selection_signal:
             return
@@ -128,9 +136,15 @@ class SidebarTree(QWidget):
         if os.path.isfile(path) and os.path.splitext(path)[1].lower() in IMAGE_EXTENSIONS:
             self.image_selected.emit(path.replace("\\", "/"))
 
-    def select_path(self, path, scroll_to_top=False):
+    def select_path(self, path):
         if self._model and os.path.exists(path):
-            idx = self._model.index(path.replace("/", os.sep))
+            current_path = self.current_selected_path()
+            if (
+                self._normalize_compare_path(current_path) == self._normalize_compare_path(path)
+            ):
+                return
+
+            idx = self._model.index(os.path.normpath(path))
             if not idx.isValid():
                 return
             self._expand_parent_chain(idx)
@@ -139,35 +153,26 @@ class SidebarTree(QWidget):
                 self.tree.setCurrentIndex(idx)
             finally:
                 self._suppress_selection_signal = False
-            if scroll_to_top:
-                self._force_scroll_top()
-            else:
-                self.tree.scrollTo(idx, QTreeView.EnsureVisible)
-
-    def _force_scroll_top(self):
-        def _set_top():
-            self.tree.scrollToTop()
-            bar = self.tree.verticalScrollBar()
-            bar.setValue(bar.minimum())
-
-        _set_top()
-        QTimer.singleShot(0, _set_top)
-        QTimer.singleShot(120, _set_top)
+            self.tree.scrollTo(idx, QTreeView.EnsureVisible)
 
     def _schedule_tree_state_restore(self):
+        if not self._is_restoring_tree_state:
+            return
         self._restore_timer.start()
 
     def _on_directory_loaded(self, _path):
         self._schedule_tree_state_restore()
 
     def _apply_tree_state(self):
+        if not self._is_restoring_tree_state:
+            return
+
         self._restore_expanded_folders()
         preferred_path = self._pending_preferred_path
         self._pending_preferred_path = None
+        self._is_restoring_tree_state = False
         if preferred_path and os.path.exists(preferred_path):
             self.select_path(preferred_path)
-        else:
-            self._force_scroll_top()
 
     def _restore_expanded_folders(self):
         if not self._model:

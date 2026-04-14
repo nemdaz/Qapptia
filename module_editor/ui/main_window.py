@@ -85,7 +85,7 @@ class MainWindow(QMainWindow):
         split.addWidget(self.canvas)
 
         self.sidebar = SidebarTree()
-        self.sidebar.image_selected.connect(self.show_image)
+        self.sidebar.image_selected.connect(lambda path: self.show_image(path, sync_sidebar=False))
         self.sidebar.setMinimumWidth(constants.SIDEBAR_WIDTH)
         split.addWidget(self.sidebar)
         split.setStretchFactor(0, 1)
@@ -232,7 +232,7 @@ class MainWindow(QMainWindow):
     def _handle_scene_selection_context(self, payload):
         self._apply_toolbar_state(self._controller.handle_selection_context(payload.get("context"), payload.get("color")))
 
-    def show_image(self, path):
+    def show_image(self, path, sync_sidebar=True):
         if not os.path.exists(path):
             return
 
@@ -243,7 +243,8 @@ class MainWindow(QMainWindow):
             self.scene.load_image(display_image, self._controller.current_image_path)
             self.setWindowTitle(f"{constants.WINDOW_TITLE} - {os.path.basename(path)}")
             self._refresh_save_action()
-            self.sidebar.select_path(self._controller.current_image_path)
+            if sync_sidebar:
+                self.sidebar.select_path(self._controller.current_image_path)
             QTimer.singleShot(0, self.reset_zoom)
         except Exception as exc:
             logger.error(f"Error show_image para '{path}': {exc}")
