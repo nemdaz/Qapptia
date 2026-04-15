@@ -61,6 +61,15 @@ def fit_text_qt(text, coords, bold=False):
     return font, document.toPlainText().split("\n"), rect
 
 
+def fit_text_font_px(text, coords, bold=False):
+    normalized_text = normalize_text(text)
+    padding = get_text_padding(coords)
+    rect = get_content_rect(coords, padding)
+    if rect.width() <= 0 or rect.height() <= 0:
+        return constants.TEXT_STYLE["font_min_px"]
+    return _find_best_qt_font_size(normalized_text, rect, bold)
+
+
 def create_qt_text_document(text, font, width, color=None):
     document = QTextDocument()
     document.setDocumentMargin(0)

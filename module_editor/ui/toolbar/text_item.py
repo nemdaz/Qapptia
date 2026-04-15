@@ -1,3 +1,5 @@
+import math
+
 from PySide6.QtCore import Qt, QRectF, QTimer
 from PySide6.QtGui import QPen, QColor, QTextCursor, QTextOption
 from PySide6.QtWidgets import QGraphicsItem, QGraphicsTextItem
@@ -16,6 +18,7 @@ class InlineTextEditor(QGraphicsTextItem):
         self._vector_data = vector_data
         self._commit_callback = commit_callback
         self._original_text = vector_data.payload.get("text", "")
+        self._font_px = int(vector_data.payload["font_px"])
         self._finalized = False
 
         self.setPlainText(self._original_text or self._EMPTY_PLACEHOLDER)
@@ -27,32 +30,45 @@ class InlineTextEditor(QGraphicsTextItem):
         text_option = self.document().defaultTextOption()
         text_option.setWrapMode(QTextOption.WordWrap)
         self.document().setDefaultTextOption(text_option)
-        self.document().contentsChanged.connect(self._sync_layout)
-        self._sync_layout()
+        self.document().contentsChanged.connect(self._sync_height_to_content)
+        self._sync_layout(sync_height=True)
 
-    def _sync_layout(self):
+    @property
+    def font_px(self):
+        return self._font_px
+
+    def set_font_px(self, font_px):
+        self._font_px = int(font_px)
+        self._sync_layout(sync_height=True)
+
+    def _sync_layout(self, sync_height):
         parent_item = self.parentItem()
         if parent_item is None:
             return
 
-        content_text = self._content_text()
-        if content_text:
-            font, _, content_rect = text_support.fit_text_qt(content_text, parent_item.data.coords)
-        else:
-            content_rect = text_support.get_content_rect(
-                parent_item.data.coords,
-                text_support.get_text_padding(parent_item.data.coords),
-            )
-            empty_font_px = max(
-                constants.TEXT_STYLE["font_min_px"],
-                min(constants.TEXT_STYLE["font_max_px"], int(max(1.0, content_rect.height() * 0.72))),
-            )
-            font = text_support.build_qt_font(empty_font_px)
+        content_rect = text_support.get_content_rect(
+            parent_item.data.coords,
+            text_support.get_text_padding(parent_item.data.coords),
+        )
+        font = text_support.build_qt_font(self._font_px)
 
         self.setFont(font)
         self.setDefaultTextColor(QColor(self._vector_data.color))
         self.setPos(content_rect.topLeft())
         self.setTextWidth(max(1.0, content_rect.width()))
+        if sync_height:
+            self._sync_height_to_content()
+
+    def _sync_height_to_content(self):
+        parent_item = self.parentItem()
+        if parent_item is None:
+            return
+
+        required_height = max(
+            constants.TEXT_STYLE["min_box_height"],
+            math.ceil(float(self.document().size().height())),
+        )
+        parent_item.ensure_text_height(required_height)
 
     def paint(self, painter, option, widget=None):
         DrawingTool.draw_qt_text_shadows(
@@ -101,6 +117,7 @@ class TextCanvasItem(CanvasItem):
         super().__init__(data)
         self._commit_callback = commit_callback
         self._editor = None
+        self._editing_start_coords = None
 
     def paint(self, painter, option, widget=None):
         if not self.is_editing():
@@ -120,13 +137,30 @@ class TextCanvasItem(CanvasItem):
     def set_coords(self, coords):
         super().set_coords(coords)
         if self._editor is not None:
-            self._editor._sync_layout()
+            self._editor._sync_layout(sync_height=False)
+
+    def ensure_text_height(self, required_height):
+        x1, y1, x2, y2 = self.data.coords
+        current_height = abs(y2 - y1)
+        target_height = max(float(required_height), current_height)
+        if target_height <= current_height + 0.5:
+            return
+
+        new_y2 = y1 + target_height if y2 >= y1 else y1 - target_height
+        self.set_coords([x1, y1, x2, new_y2])
+
+    def recompute_font_px_to_fit(self):
+        sample_text = self.data.payload["text"] or constants.TEXT_STYLE["placeholder"]
+        self.data.payload["font_px"] = text_support.fit_text_font_px(sample_text, self.data.coords)
+        if self._editor is not None:
+            self._editor.set_font_px(self.data.payload["font_px"])
+        self.update()
 
     def set_text_color(self, color):
         self.data.color = color
         if self._editor is not None:
             self._editor.setDefaultTextColor(QColor(color))
-            self._editor._sync_layout()
+            self._editor._sync_layout(sync_height=False)
         self.update()
 
     def is_editing(self):
@@ -135,6 +169,7 @@ class TextCanvasItem(CanvasItem):
     def start_editing(self):
         if self._editor is not None:
             return
+        self._editing_start_coords = list(self.data.coords)
         self._editor = InlineTextEditor(self, self.data, self._finish_edit)
         self.setSelected(True)
         QTimer.singleShot(0, self._focus_editor)
@@ -155,10 +190,16 @@ class TextCanvasItem(CanvasItem):
         self._editor.setTextCursor(cursor)
 
     def _finish_edit(self, text, cancelled):
+        final_font_px = self._editor.font_px if self._editor is not None else self.data.payload["font_px"]
+
+        if cancelled and self._editing_start_coords is not None:
+            self.set_coords(self._editing_start_coords)
+
         if self.scene() is not None and self._editor is not None:
             self.scene().removeItem(self._editor)
         self._editor = None
-        self._commit_callback(self, text, cancelled)
+        self._editing_start_coords = None
+        self._commit_callback(self, text, cancelled, final_font_px)
 
     def _paint_selection_bounds(self, painter):
         x1, y1, x2, y2 = self.data.coords

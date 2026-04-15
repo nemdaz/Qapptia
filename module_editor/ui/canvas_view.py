@@ -33,7 +33,7 @@ class ImageScene(QGraphicsScene):
         }
 
     def _create_text_item(self, start_pos, end_pos=None):
-        payload = {"text": ""}
+        payload = {"text": "", "font_px": constants.TEXT_STYLE["font_min_px"]}
         vector = self._document.create_vector("text", start_pos, self._active_color, payload=payload)
         item = self._create_item(vector)
         self.addItem(item)
@@ -46,6 +46,7 @@ class ImageScene(QGraphicsScene):
             )
 
         item.set_coords([start_pos.x(), start_pos.y(), end_pos.x(), end_pos.y()])
+        item.recompute_font_px_to_fit()
         return item
 
     def load_image(self, pil_image, path):
@@ -186,6 +187,8 @@ class ImageScene(QGraphicsScene):
                 coords[0] += delta.x(); coords[3] += delta.y()
 
             item.set_coords(coords)
+            if isinstance(item, TextCanvasItem) and grip != "move":
+                item.recompute_font_px_to_fit()
             event.accept()
         else:
             super().mouseMoveEvent(event)
@@ -287,6 +290,8 @@ class ImageScene(QGraphicsScene):
 
     def _create_item(self, vector):
         if vector.shape_type == "text":
+            if "text" not in vector.payload or "font_px" not in vector.payload:
+                raise ValueError(f"Invalid text payload for vector '{vector.shape_id}': required keys text,font_px")
             return TextCanvasItem(vector, self._handle_text_commit)
         return CanvasItem(vector)
 
@@ -296,7 +301,7 @@ class ImageScene(QGraphicsScene):
                 return item
         return None
 
-    def _handle_text_commit(self, item, text, cancelled):
+    def _handle_text_commit(self, item, text, cancelled, font_px):
         previous_text = item.data.payload.get("text", "")
         final_text = previous_text if cancelled else text.replace("\r\n", "\n")
         if not final_text.strip():
@@ -307,7 +312,8 @@ class ImageScene(QGraphicsScene):
             return
 
         item.data.payload["text"] = final_text
-        self._document.update_vector_payload(item.data.shape_id, {"text": final_text})
+        item.data.payload["font_px"] = int(font_px)
+        self._document.update_vector_payload(item.data.shape_id, {"text": final_text, "font_px": int(font_px)})
         item.update()
         self._persist_vectors()
 

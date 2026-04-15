@@ -64,9 +64,10 @@ class DrawingTool:
             painter.setBrush(QBrush(q_color))
             painter.drawRect(QRectF(min(x1, x2), min(y1, y2), abs(x2 - x1), abs(y2 - y1)))
         elif v_type == "text":
-            text = (payload or {}).get("text", "")
-            normalized_text = text_support.normalize_text(text)
-            font, _, content_rect = text_support.fit_text_qt(text, coords)
+            text_payload = payload or {}
+            normalized_text = text_support.normalize_text(text_payload["text"])
+            font = text_support.build_qt_font(text_payload["font_px"])
+            content_rect = text_support.get_content_rect(coords, text_support.get_text_padding(coords))
             document = text_support.create_qt_text_document(normalized_text, font, content_rect.width(), color=color)
 
             painter.save()
@@ -100,8 +101,14 @@ class DrawingTool:
             draw.rectangle([min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2)],
                            fill=(r, g, b, constants.HIGHLIGHTER_ALPHA))
         elif v_type == "text":
-            text = (payload or {}).get("text", "")
-            font, lines, padding = text_support.fit_text_pil(text, coords, scale=scale)
+            text_payload = payload or {}
+            normalized_text = text_support.normalize_text(text_payload["text"])
+            font = text_support.load_pil_font(text_payload["font_px"])
+            scaled_coords = [value * scale for value in coords]
+            padding = text_support.get_text_padding(coords) * scale
+            x1, y1, x2, y2 = scaled_coords
+            content_width = max(1, abs(x2 - x1) - (padding * 2))
+            lines = text_support.wrap_text_pil(normalized_text, font, content_width)
             line_spacing = text_support.get_pil_line_spacing(font)
             text_x = min(x1, x2) + padding
             text_y = min(y1, y2) + padding
