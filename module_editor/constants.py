@@ -99,6 +99,7 @@ TEXT_STYLE = {
         "bold": "AtkinsonHyperlegible-Bold.ttf",
     },
     "placeholder": "Texto",
+    "font_default_px": 20,
     "font_min_px": 12,
     "font_max_px": 320,
     "line_spacing_ratio": 1.18,

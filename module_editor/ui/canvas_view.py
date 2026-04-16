@@ -33,7 +33,7 @@ class ImageScene(QGraphicsScene):
         }
 
     def _create_text_item(self, start_pos, end_pos=None):
-        payload = {"text": "", "text_size": constants.TEXT_STYLE["font_min_px"]}
+        payload = {"text": "", "text_size": constants.TEXT_STYLE["font_default_px"]}
         vector = self._document.create_vector("text", start_pos, self._active_color, payload=payload)
         item = self._create_item(vector)
         self.addItem(item)
@@ -46,7 +46,6 @@ class ImageScene(QGraphicsScene):
             )
 
         item.set_coords([start_pos.x(), start_pos.y(), end_pos.x(), end_pos.y()])
-        item.recompute_text_size_to_fit()
         return item
 
     def load_image(self, pil_image, path):
@@ -87,15 +86,36 @@ class ImageScene(QGraphicsScene):
         handle_hit = self._find_handle_hit(pos)
         hit = self.itemAt(pos, self.views()[0].transform())
         editing_item = self._find_editing_text_item()
+        closed_editing_on_press = False
+
+        size_control_item = self._find_text_item_for_size_control(pos)
+        if size_control_item is not None:
+            if not size_control_item.isSelected():
+                self.deselect_all()
+                size_control_item.setSelected(True)
+                size_control_item.update()
+            self._emit_selection_context("editing", size_control_item.data.color)
+            super().mousePressEvent(event)
+            return
 
         if isinstance(hit, InlineTextEditor):
             super().mousePressEvent(event)
             return
 
+        if editing_item is not None and editing_item.is_point_on_size_control(pos):
+            super().mousePressEvent(event)
+            return
+
         if editing_item is not None and hit is not editing_item:
             editing_item.finish_editing()
+            closed_editing_on_press = True
             hit = self.itemAt(pos, self.views()[0].transform())
             handle_hit = self._find_handle_hit(pos)
+
+        if closed_editing_on_press and not isinstance(hit, CanvasItem):
+            self._emit_selection_context("none")
+            event.accept()
+            return
 
         if handle_hit:
             item, grip_name = handle_hit
@@ -298,13 +318,19 @@ class ImageScene(QGraphicsScene):
             if "text" not in vector.payload:
                 raise ValueError(f"Invalid text payload for vector '{vector.shape_id}': required key text")
             if "text_size" not in vector.payload:
-                vector.payload["text_size"] = constants.TEXT_STYLE["font_min_px"]
-            return TextCanvasItem(vector, self._handle_text_commit)
+                vector.payload["text_size"] = constants.TEXT_STYLE["font_default_px"]
+            return TextCanvasItem(vector, self._handle_text_commit, self._handle_text_size_change)
         return CanvasItem(vector)
 
     def _find_editing_text_item(self):
         for item in self.items():
             if isinstance(item, TextCanvasItem) and item.is_editing():
+                return item
+        return None
+
+    def _find_text_item_for_size_control(self, scene_pos):
+        for item in self.items():
+            if isinstance(item, TextCanvasItem) and item.is_point_on_size_control(scene_pos):
                 return item
         return None
 
@@ -323,6 +349,15 @@ class ImageScene(QGraphicsScene):
         self._document.update_vector_payload(item.data.shape_id, {"text": final_text, "text_size": int(text_size)})
         item.update()
         self._persist_vectors()
+
+    def _handle_text_size_change(self, item, text_size):
+        item.data.payload["text_size"] = int(text_size)
+        self._document.update_vector_payload(item.data.shape_id, {"text_size": int(text_size)})
+        item.update()
+        self._persist_vectors()
+
+    def _is_over_size_control(self, scene_pos):
+        return self._find_text_item_for_size_control(scene_pos) is not None
 
 class CanvasView(QGraphicsView):
     def __init__(self, scene, parent=None):
@@ -377,6 +412,10 @@ class CanvasView(QGraphicsView):
             return
 
         scene_pos = self.mapToScene(view_pos)
+        if hasattr(scene, "_is_over_size_control") and scene._is_over_size_control(scene_pos):
+            self._set_canvas_cursor(Qt.ArrowCursor)
+            return
+
         handle_hit = None
         if hasattr(scene, "_find_handle_hit"):
             handle_hit = scene._find_handle_hit(scene_pos)
@@ -474,6 +513,12 @@ class CanvasView(QGraphicsView):
     def _can_start_pan(self, view_pos):
         if not self._has_scroll_margin():
             return False
+
+        scene = self.scene()
+        if scene is not None:
+            scene_pos = self.mapToScene(view_pos)
+            if hasattr(scene, "_is_over_size_control") and scene._is_over_size_control(scene_pos):
+                return False
 
         item = self.itemAt(view_pos)
         return not isinstance(item, (CanvasItem, InlineTextEditor))
