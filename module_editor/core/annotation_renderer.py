@@ -107,7 +107,8 @@ class DrawingTool:
         elif v_type == "text":
             text_payload = payload or {}
             normalized_text = text_support.normalize_text(text_payload["text"])
-            font = text_support.load_pil_font(text_payload["text_size"])
+            scaled_text_size = max(1, int(round(text_payload["text_size"] * scale)))
+            font = text_support.load_pil_font(scaled_text_size)
             scaled_coords = [value * scale for value in coords]
             padding = text_support.get_text_padding(coords) * scale
             x1, y1, x2, y2 = scaled_coords
