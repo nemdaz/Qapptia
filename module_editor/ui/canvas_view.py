@@ -276,6 +276,11 @@ class ImageScene(QGraphicsScene):
     def get_composite_image(self):
         return self._document.get_composite_image()
 
+    def finalize_active_edits(self):
+        editing_item = self._find_editing_text_item()
+        if editing_item is not None:
+            editing_item.finish_editing()
+
     def _persist_vectors(self):
         self._document.save_vectors()
         self.content_changed.emit()

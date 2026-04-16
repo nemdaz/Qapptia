@@ -280,6 +280,7 @@ class MainWindow(QMainWindow):
             show_toast(self, constants.TOAST_MESSAGES["save_error"], kind="error")
 
     def copy_to_clipboard(self):
+        self.scene.finalize_active_edits()
         composite = self.scene.get_composite_image()
         if composite:
             QApplication.clipboard().setPixmap(QPixmap.fromImage(ImageQt.ImageQt(composite.convert("RGB"))))

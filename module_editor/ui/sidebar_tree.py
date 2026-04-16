@@ -102,7 +102,7 @@ class SidebarTree(QWidget):
 
         self.tree.setModel(self._model)
         self.tree.setRootIndex(self._model.index(base_path))
-        self.tree.sortByColumn(3, Qt.DescendingOrder)
+        self.tree.sortByColumn(0, Qt.DescendingOrder)
         self.tree.selectionModel().currentChanged.connect(self._on_current_changed)
 
         for i in range(1, self._model.columnCount()):
