@@ -187,7 +187,7 @@ class ImageScene(QGraphicsScene):
                 coords[0] += delta.x(); coords[3] += delta.y()
 
             item.set_coords(coords)
-            if isinstance(item, TextCanvasItem) and grip != "move":
+            if isinstance(item, TextCanvasItem) and grip != "move" and self._dragging.get("created"):
                 item.recompute_text_size_to_fit()
             event.accept()
         else:
