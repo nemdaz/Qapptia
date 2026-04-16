@@ -41,7 +41,7 @@ FAVORITE_COLOR_NAMES = {
     "orange": "Naranja"
 }
 DEFAULT_FAV_COLOR = "green"
-VECTOR_COLOR_TOOLS = ("arrow", "rect", "highlighter", "text")
+VECTOR_COLOR_TOOLS = ("line", "arrow", "rect", "highlighter", "text")
 
 # Tooltips y Textos UI
 TOOLTIPS = {
@@ -49,6 +49,7 @@ TOOLTIPS = {
     "copy_file": "Copiar archivo",
     "copy_clip": "Copiar captura al portapapeles",
     "save": "Guardar cambios",
+    "line": "Dibujar línea (L)",
     "arrow": "Dibujar flecha (A)",
     "rect": "Dibujar rectángulo (R)",
     "highlighter": "Resaltador (H)",
@@ -83,6 +84,7 @@ VECTOR_STYLE = {
     "export_max_pixels": 36000000,
     "draw_min_distance": 8,
     "selection_tolerance": {
+        "line": 10,
         "rect": 8,
         "arrow": 10,
         "highlighter": 2,

@@ -133,7 +133,7 @@ class ImageScene(QGraphicsScene):
             self._emit_selection_context("drawing", item.data.color)
             self._dragging = {
                 "item": item,
-                "grip": "br" if self._draw_mode != "arrow" else "end",
+                "grip": "end" if self._draw_mode in ("arrow", "line") else "br",
                 "last": pos,
                 "created": True,
                 "origin": (pos.x(), pos.y()),

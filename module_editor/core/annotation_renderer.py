@@ -46,6 +46,8 @@ class DrawingTool:
         if v_type == "rect":
             rect = QRectF(min(x1, x2), min(y1, y2), abs(x2 - x1), abs(y2 - y1))
             painter.drawRoundedRect(rect, 2, 2)
+        elif v_type == "line":
+            painter.drawLine(QLineF(x1, y1, x2, y2))
         elif v_type == "arrow":
             dx, dy = x2 - x1, y2 - y1
             arrow_wing_len = constants.VECTOR_STYLE["arrow_wing_len"]
@@ -85,6 +87,8 @@ class DrawingTool:
         
         if v_type == "rect":
             DrawingTool._pil_draw_round_line(draw, [(x1, y1), (x2, y1), (x2, y2), (x1, y2), (x1, y1)], color, scaled_width)
+        elif v_type == "line":
+            DrawingTool._pil_draw_round_line(draw, [(x1, y1), (x2, y2)], color, scaled_width)
         elif v_type == "arrow":
             dx, dy = x2 - x1, y2 - y1
             arrow_wing_len = constants.VECTOR_STYLE["arrow_wing_len"] * scale

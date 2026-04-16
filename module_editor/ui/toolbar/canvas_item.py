@@ -7,7 +7,7 @@ from module_editor.core.annotation_renderer import DrawingTool
 
 
 class CanvasItem(QGraphicsItem):
-    GRIP_NAMES = {"rect": ["tl", "tr", "bl", "br"], "highlighter": ["tl", "tr", "bl", "br"], "arrow": ["start", "end"], "text": ["tl", "tr", "bl", "br"]}
+    GRIP_NAMES = {"rect": ["tl", "tr", "bl", "br"], "highlighter": ["tl", "tr", "bl", "br"], "line": ["start", "end"], "arrow": ["start", "end"], "text": ["tl", "tr", "bl", "br"]}
 
     def __init__(self, data):
         super().__init__()
@@ -84,6 +84,14 @@ class CanvasItem(QGraphicsItem):
             line_path.lineTo(x2, y2)
             stroker = QPainterPathStroker()
             stroker.setWidth(max(stroke_width * 2 + tolerance["arrow"], tolerance["arrow"]))
+            return stroker.createStroke(line_path)
+
+        if self.data.shape_type == "line":
+            line_path = QPainterPath()
+            line_path.moveTo(x1, y1)
+            line_path.lineTo(x2, y2)
+            stroker = QPainterPathStroker()
+            stroker.setWidth(max(stroke_width * 2 + tolerance["line"], tolerance["line"]))
             return stroker.createStroke(line_path)
 
         fallback = QPainterPath()

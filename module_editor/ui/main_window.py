@@ -141,6 +141,7 @@ class MainWindow(QMainWindow):
         self._add_action(toolbar, "image_real_size", "image_real_size", self.reset_zoom)
 
         toolbar.addSeparator()
+        self.act_line = self._add_action(toolbar, "line", "line", lambda: self.set_tool("line"), checkable=True)
         self.act_arrow = self._add_action(toolbar, "arrow", "arrow", lambda: self.set_tool("arrow"), checkable=True)
         self.act_rect = self._add_action(toolbar, "rect", "rect", lambda: self.set_tool("rect"), checkable=True)
         self.act_high = self._add_action(toolbar, "highlighter", "highlighter", lambda: self.set_tool("highlighter"), checkable=True)
@@ -192,24 +193,28 @@ class MainWindow(QMainWindow):
         painter = QPainter(pix)
         painter.setRenderHint(QPainter.Antialiasing, True)
 
-        outer_ring = QColor(swatch["outer_ring_active"] if active else swatch["outer_ring_inactive"])
-        inner_ring = QColor(swatch["inner_ring_active"] if active else swatch["inner_ring_inactive"])
+        outer_ring = QColor(swatch["outer_ring_active"])
         color_fill = QColor(hex_color)
         padding = swatch["outer_padding"]
 
-        painter.setBrush(Qt.NoBrush)
-        painter.setPen(QPen(outer_ring, 2))
-        painter.drawEllipse(padding, padding, icon_size - (padding * 2), icon_size - (padding * 2))
+        if active:
+            painter.setBrush(Qt.NoBrush)
+            painter.setPen(QPen(outer_ring, 2))
+            painter.drawEllipse(padding, padding, icon_size - (padding * 2), icon_size - (padding * 2))
+            fill_padding = 4
+        else:
+            fill_padding = 2
 
-        painter.setPen(QPen(inner_ring, 2))
+        painter.setPen(Qt.NoPen)
         painter.setBrush(color_fill)
-        painter.drawEllipse(4, 4, icon_size - 8, icon_size - 8)
+        painter.drawEllipse(fill_padding, fill_padding, icon_size - (fill_padding * 2), icon_size - (fill_padding * 2))
         painter.end()
         return QIcon(pix)
 
     def _apply_toolbar_state(self, state):
         for swatch_name, action in self._color_btns.items():
             action.setIcon(self._make_color_icon(constants.FAVORITE_COLORS[swatch_name], swatch_name == state.color_name))
+        self.act_line.setChecked(state.active_tool == "line")
         self.act_arrow.setChecked(state.active_tool == "arrow")
         self.act_rect.setChecked(state.active_tool == "rect")
         self.act_high.setChecked(state.active_tool == "highlighter")
