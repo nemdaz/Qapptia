@@ -136,7 +136,7 @@ class SidebarTree(QWidget):
         if os.path.isfile(path) and os.path.splitext(path)[1].lower() in IMAGE_EXTENSIONS:
             self.image_selected.emit(path.replace("\\", "/"))
 
-    def select_path(self, path):
+    def select_path(self, path, expand_parents=True):
         if self._model and os.path.exists(path):
             current_path = self.current_selected_path()
             if (
@@ -147,7 +147,8 @@ class SidebarTree(QWidget):
             idx = self._model.index(os.path.normpath(path))
             if not idx.isValid():
                 return
-            self._expand_parent_chain(idx)
+            if expand_parents:
+                self._expand_parent_chain(idx)
             self._suppress_selection_signal = True
             try:
                 self.tree.setCurrentIndex(idx)
@@ -172,7 +173,7 @@ class SidebarTree(QWidget):
         self._pending_preferred_path = None
         self._is_restoring_tree_state = False
         if preferred_path and os.path.exists(preferred_path):
-            self.select_path(preferred_path)
+            self.select_path(preferred_path, expand_parents=False)
 
     def _restore_expanded_folders(self):
         if not self._model:

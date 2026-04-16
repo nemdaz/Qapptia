@@ -61,7 +61,7 @@ def fit_text_qt(text, coords, bold=False):
     return font, document.toPlainText().split("\n"), rect
 
 
-def fit_text_font_px(text, coords, bold=False):
+def fit_text_size_to_fit(text, coords, bold=False):
     normalized_text = normalize_text(text)
     padding = get_text_padding(coords)
     rect = get_content_rect(coords, padding)

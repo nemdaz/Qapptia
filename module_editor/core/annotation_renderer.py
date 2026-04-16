@@ -66,7 +66,7 @@ class DrawingTool:
         elif v_type == "text":
             text_payload = payload or {}
             normalized_text = text_support.normalize_text(text_payload["text"])
-            font = text_support.build_qt_font(text_payload["font_px"])
+            font = text_support.build_qt_font(text_payload["text_size"])
             content_rect = text_support.get_content_rect(coords, text_support.get_text_padding(coords))
             document = text_support.create_qt_text_document(normalized_text, font, content_rect.width(), color=color)
 
@@ -103,7 +103,7 @@ class DrawingTool:
         elif v_type == "text":
             text_payload = payload or {}
             normalized_text = text_support.normalize_text(text_payload["text"])
-            font = text_support.load_pil_font(text_payload["font_px"])
+            font = text_support.load_pil_font(text_payload["text_size"])
             scaled_coords = [value * scale for value in coords]
             padding = text_support.get_text_padding(coords) * scale
             x1, y1, x2, y2 = scaled_coords

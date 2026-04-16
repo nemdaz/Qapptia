@@ -18,7 +18,7 @@ class InlineTextEditor(QGraphicsTextItem):
         self._vector_data = vector_data
         self._commit_callback = commit_callback
         self._original_text = vector_data.payload.get("text", "")
-        self._font_px = int(vector_data.payload["font_px"])
+        self._text_size = int(vector_data.payload["text_size"])
         self._finalized = False
 
         self.setPlainText(self._original_text or self._EMPTY_PLACEHOLDER)
@@ -34,11 +34,11 @@ class InlineTextEditor(QGraphicsTextItem):
         self._sync_layout(sync_height=True)
 
     @property
-    def font_px(self):
-        return self._font_px
+    def text_size(self):
+        return self._text_size
 
-    def set_font_px(self, font_px):
-        self._font_px = int(font_px)
+    def set_text_size(self, text_size):
+        self._text_size = int(text_size)
         self._sync_layout(sync_height=True)
 
     def _sync_layout(self, sync_height):
@@ -50,7 +50,7 @@ class InlineTextEditor(QGraphicsTextItem):
             parent_item.data.coords,
             text_support.get_text_padding(parent_item.data.coords),
         )
-        font = text_support.build_qt_font(self._font_px)
+        font = text_support.build_qt_font(self._text_size)
 
         self.setFont(font)
         self.setDefaultTextColor(QColor(self._vector_data.color))
@@ -149,11 +149,11 @@ class TextCanvasItem(CanvasItem):
         new_y2 = y1 + target_height if y2 >= y1 else y1 - target_height
         self.set_coords([x1, y1, x2, new_y2])
 
-    def recompute_font_px_to_fit(self):
+    def recompute_text_size_to_fit(self):
         sample_text = self.data.payload["text"] or constants.TEXT_STYLE["placeholder"]
-        self.data.payload["font_px"] = text_support.fit_text_font_px(sample_text, self.data.coords)
+        self.data.payload["text_size"] = text_support.fit_text_size_to_fit(sample_text, self.data.coords)
         if self._editor is not None:
-            self._editor.set_font_px(self.data.payload["font_px"])
+            self._editor.set_text_size(self.data.payload["text_size"])
         self.update()
 
     def set_text_color(self, color):
@@ -190,7 +190,7 @@ class TextCanvasItem(CanvasItem):
         self._editor.setTextCursor(cursor)
 
     def _finish_edit(self, text, cancelled):
-        final_font_px = self._editor.font_px if self._editor is not None else self.data.payload["font_px"]
+        final_text_size = self._editor.text_size if self._editor is not None else self.data.payload["text_size"]
 
         if cancelled and self._editing_start_coords is not None:
             self.set_coords(self._editing_start_coords)
@@ -199,7 +199,7 @@ class TextCanvasItem(CanvasItem):
             self.scene().removeItem(self._editor)
         self._editor = None
         self._editing_start_coords = None
-        self._commit_callback(self, text, cancelled, final_font_px)
+        self._commit_callback(self, text, cancelled, final_text_size)
 
     def _paint_selection_bounds(self, painter):
         x1, y1, x2, y2 = self.data.coords
