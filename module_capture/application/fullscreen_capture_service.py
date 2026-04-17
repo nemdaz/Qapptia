@@ -3,6 +3,7 @@ import os
 import time
 
 from core import config, utils
+from core.constants import APP_NAME
 from core.logger import logger
 from core.platform import get_platform_services
 from module_capture import constants
@@ -13,6 +14,9 @@ _platform = get_platform_services()
 class FullscreenCaptureService:
     def capture_fullscreen(self, play_sound=True, output_directory=None):
         try:
+            if play_sound:
+                utils.play_beep_async()
+
             now = datetime.datetime.now()
             target_directory = output_directory or utils.get_save_directory(config.get("save_path"), now)
             filename = utils.parse_filename_format(config.get("filename_format"), now)
@@ -21,13 +25,11 @@ class FullscreenCaptureService:
             screen_image = self._capture_active_monitor()
             screen_image.save(output_path, "PNG")
 
-            if play_sound:
-                utils.play_beep_async()
-
             logger.success(constants.CAPTURE_MESSAGES["screen_capture_success"].format(path=output_path))
             return output_path
         except Exception as exc:
             logger.error(constants.CAPTURE_MESSAGES["screen_capture_error"].format(error=exc))
+            _platform.desktop.show_info_message(APP_NAME, constants.CAPTURE_MESSAGES["capture_user_error"])
             return None
 
     def capture_with_timer(self):

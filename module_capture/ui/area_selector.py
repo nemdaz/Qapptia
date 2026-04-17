@@ -7,6 +7,7 @@ from PySide6.QtGui import QColor, QKeySequence, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import QApplication, QWidget
 
 from core import config, utils
+from core.constants import APP_NAME
 from core.logger import logger
 from core.platform import get_platform_services
 from module_capture import constants
@@ -172,6 +173,8 @@ class AreaSelectorWindow(QWidget):
 
     def _save_selection(self, selection):
         try:
+            utils.play_beep_async()
+
             scale = utils.get_dpi_scaling()
             global_x1 = self._monitor_x + selection.x()
             global_y1 = self._monitor_y + selection.y()
@@ -194,6 +197,7 @@ class AreaSelectorWindow(QWidget):
             self._save_capture(cropped_image, int(image_x1 * scale), int(image_y1 * scale))
         except Exception as exc:
             logger.error(constants.CAPTURE_MESSAGES["area_crop_error"].format(error=exc))
+            _platform.desktop.show_info_message(APP_NAME, constants.CAPTURE_MESSAGES["capture_user_error"])
 
     def _save_capture(self, image, x_offset, y_offset):
         try:
@@ -223,10 +227,10 @@ class AreaSelectorWindow(QWidget):
             if self._on_capture_callback:
                 self._on_capture_callback(output_path)
 
-            utils.play_beep_async()
             logger.success(constants.CAPTURE_MESSAGES["area_save_success"].format(path=output_path))
         except Exception as exc:
             logger.error(constants.CAPTURE_MESSAGES["area_save_error"].format(error=exc))
+            _platform.desktop.show_info_message(APP_NAME, constants.CAPTURE_MESSAGES["capture_user_error"])
 
 
 def run_area_selector(on_capture_callback=None):

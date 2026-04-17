@@ -99,6 +99,7 @@ CAPTURE_MESSAGES = {
     "area_crop_error": "Error al recortar area: {error}",
     "area_save_success": "Area capturada: {path}",
     "area_save_error": "Error al guardar captura de area: {error}",
+    "capture_user_error": "Ocurrio un error durante la captura. Revisa el log de la aplicacion para mayor detalle.",
 }
 
 FLOW_MESSAGES = {
