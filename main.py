@@ -23,6 +23,7 @@ _is_editor_launching = False
 _platform = get_platform_services()
 _tray_icon = None
 _pending_existing_instance_notification = False
+_pending_tray_icon_refresh = False
 
 
 def _register_capture_hotkeys():
@@ -73,7 +74,13 @@ def _notify_existing_background_instance():
 
     _pending_existing_instance_notification = True
 
-def create_image():
+
+def _request_tray_icon_refresh():
+    global _pending_tray_icon_refresh
+    _pending_tray_icon_refresh = True
+
+
+def create_tray_icon_image():
     return assets.create_app_tray_icon_image(32)
 
 def on_mouse_event(event):
@@ -96,7 +103,8 @@ def capture_area_menu(icon, item=None):
     trigger_area_capture()
 
 
-def _tray_capture_label(title, shortcut_key):
+def _tray_icon_capture_label(title, shortcut_key):
+    config.load_config()
     hotkey = (config.get(shortcut_key) or "").strip().upper()
     if not hotkey:
         return title
@@ -174,16 +182,16 @@ def reload_hooks(icon=None, item=None):
         icon.stop()
     should_exit = True
 
-def setup(icon):
+def setup(tray_icon_instance):
     global _tray_icon, _pending_existing_instance_notification
 
-    _tray_icon = icon
-    icon.visible = True
-    if hasattr(icon, "notify"):
+    _tray_icon = tray_icon_instance
+    tray_icon_instance.visible = True
+    if hasattr(tray_icon_instance, "notify"):
         try:
-            icon.notify("La aplicación está activa en segundo plano.", APP_NAME)
+            tray_icon_instance.notify("La aplicación está activa en segundo plano.", APP_NAME)
             if _pending_existing_instance_notification:
-                icon.notify("La aplicación ya está activa en segundo plano.", APP_NAME)
+                tray_icon_instance.notify("La aplicación ya está activa en segundo plano.", APP_NAME)
                 _pending_existing_instance_notification = False
         except Exception as exc:
             logger.debug(f"No se pudo mostrar notificación de bandeja: {exc}")
@@ -191,7 +199,7 @@ def setup(icon):
     _platform.input.hook_mouse(on_mouse_event)
 
 def main():
-    global should_exit, should_restart
+    global should_exit, should_restart, _pending_tray_icon_refresh
     # Despachador para modo portable / PyInstaller
     if len(sys.argv) > 1:
         if sys.argv[1] == "--editor":
@@ -207,19 +215,22 @@ def main():
             _platform.desktop.show_info_message(APP_NAME, "La aplicación ya está activa en segundo plano.")
         return
 
-    ipc.start_server(ipc.CHANNEL_APP, _notify_existing_background_instance)
+    ipc.start_server(
+        ipc.CHANNEL_APP,
+        _notify_existing_background_instance,
+        on_refresh_tray_icon_callback=_request_tray_icon_refresh,
+    )
 
     # El proceso principal también termina creando QApplication para el selector de área.
     # Dejamos que Qt gestione el contexto DPI para evitar colisiones con Windows.
 
-    global should_exit
     if not _register_capture_hotkeys():
         logger.warning("Uno o mas atajos no pudieron registrarse en el arranque.")
     
     menu = _platform.tray.menu(
         _platform.tray.menu_item('Abrir_oculto', open_editor_icon, default=True, visible=False),
-        _platform.tray.menu_item(_tray_capture_label('Capturar pantalla', 'shortcut_screen'), capture_full_menu),
-        _platform.tray.menu_item(_tray_capture_label('Capturar area', 'shortcut_area'), capture_area_menu),
+        _platform.tray.menu_item(lambda item: _tray_icon_capture_label('Capturar pantalla', 'shortcut_screen'), capture_full_menu),
+        _platform.tray.menu_item(lambda item: _tray_icon_capture_label('Capturar area', 'shortcut_area'), capture_area_menu),
         # _platform.tray.menu_item(lambda text: 'Capturar flujo (Detener)' if flow_capture_service.is_active else 'Capturar flujo (Iniciar)', toggle_flow_menu),
         _platform.tray.menu_separator(),
         _platform.tray.menu_item('Editor', open_editor_menu),
@@ -229,12 +240,20 @@ def main():
         _platform.tray.menu_item('Salir', quit_app)
     )
     
-    icon = _platform.tray.icon("screenshot_app", create_image(), f"{APP_NAME} v{VERSION}", menu)
+    tray_icon = _platform.tray.icon("screenshot_app", create_tray_icon_image(), f"{APP_NAME} v{VERSION}", menu)
     
-    icon.run_detached(setup)
+    tray_icon.run_detached(setup)
     
     last_time = time.time()
     while not should_exit:
+        if _pending_tray_icon_refresh:
+            _pending_tray_icon_refresh = False
+            if hasattr(tray_icon, "update_menu"):
+                try:
+                    tray_icon.update_menu()
+                except Exception as exc:
+                    logger.debug(f"No se pudo refrescar menu tray icon: {exc}")
+
         time.sleep(RUNTIME_CONFIG["main_loop_sleep_seconds"])
         current_time = time.time()
         
@@ -242,13 +261,13 @@ def main():
         jump = current_time - last_time
         if jump > RUNTIME_CONFIG["suspend_jump_threshold_seconds"]:
             logger.warning(f"Salto de tiempo detectado ({jump:.1f}s). Probable suspensión del OS.")
-            if not _restore_global_input_after_resume(icon):
+            if not _restore_global_input_after_resume(tray_icon):
                 if _platform.input.requires_process_restart_after_resume():
                     logger.warning("Reiniciando el capturador para recuperar los hooks globales tras reanudacion...")
                 else:
                     logger.warning("No fue posible reactivar los hooks globales de entrada tras reanudacion. Reiniciando el capturador...")
                 should_restart = True
-                icon.stop()
+                tray_icon.stop()
                 break
             
         last_time = current_time

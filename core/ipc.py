@@ -22,6 +22,7 @@ PROTOCOL_PREFIX = "QASCREENSHOT_IPC_V2"
 ACK_SIGNAL = "ACK"
 WAKE_UP_SIGNAL = "WAKE_UP"
 QUIT_SIGNAL = "QUIT"
+REFRESH_TRAY_ICON_SIGNAL = "REFRESH_TRAY_ICON"
 
 
 def _state_file_path(channel):
@@ -134,7 +135,12 @@ def request_quit(channel):
     return _send_signal(channel, QUIT_SIGNAL)
 
 
-def start_server(channel, on_wake_up_callback, on_quit_callback=None):
+def request_refresh_tray_icon(channel):
+    """Solicita a la instancia existente del canal indicado refrescar el menu del tray icon."""
+    return _send_signal(channel, REFRESH_TRAY_ICON_SIGNAL)
+
+
+def start_server(channel, on_wake_up_callback, on_quit_callback=None, on_refresh_tray_icon_callback=None):
     """Inicia un servidor IPC para el canal indicado usando un puerto local dinámico."""
     server_socket = _bind_server_socket()
     bound_port = server_socket.getsockname()[1]
@@ -164,9 +170,14 @@ def start_server(channel, on_wake_up_callback, on_quit_callback=None):
                     except OSError:
                         continue
 
-                    if _maybe_ack(conn, token, WAKE_UP_SIGNAL, data, on_wake_up_callback):
-                        continue
-                    _maybe_ack(conn, token, QUIT_SIGNAL, data, on_quit_callback)
+                    signal_handlers = (
+                        (WAKE_UP_SIGNAL, on_wake_up_callback),
+                        (REFRESH_TRAY_ICON_SIGNAL, on_refresh_tray_icon_callback),
+                        (QUIT_SIGNAL, on_quit_callback),
+                    )
+                    for signal, callback in signal_handlers:
+                        if _maybe_ack(conn, token, signal, data, callback):
+                            break
 
     thread = threading.Thread(target=server_thread, daemon=True)
     thread.start()

@@ -21,7 +21,12 @@ def run_config_window(on_close_callback=None):
     app_icon = assets.create_app_window_icon()
     app.setWindowIcon(app_icon)
 
-    window = CaptureConfigWindow(on_close_callback=on_close_callback)
+    def _on_config_saved_and_closed():
+        ipc.request_refresh_tray_icon(ipc.CHANNEL_APP)
+        if on_close_callback:
+            on_close_callback()
+
+    window = CaptureConfigWindow(on_close_callback=_on_config_saved_and_closed)
     window.setWindowIcon(app_icon)
 
     ipc.start_server(ipc.CHANNEL_CONFIG, window.request_wake_up, window.request_close)
