@@ -14,9 +14,8 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[
-        ('core', 'core'),
-        ('module_capture', 'module_capture'),
-        ('module_editor', 'module_editor'),
+        ('core/assets', 'core/assets'),
+        ('module_editor/styles', 'module_editor/styles'),
     ],
     hiddenimports=[],
     hookspath=[],

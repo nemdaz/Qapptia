@@ -1,7 +1,7 @@
 import os
 
-from PySide6.QtCore import QMetaObject, Qt, Slot
-from PySide6.QtWidgets import QCheckBox, QDialog, QFileDialog, QFormLayout, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QSlider, QSpinBox, QTabWidget, QVBoxLayout, QWidget
+from PySide6.QtCore import QEvent, QMetaObject, Qt, Slot
+from PySide6.QtWidgets import QCheckBox, QDialog, QFileDialog, QFormLayout, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QSpinBox, QTabWidget, QVBoxLayout, QWidget
 
 from module_capture import constants
 from module_capture.application.capture_settings_service import capture_settings_service
@@ -138,18 +138,6 @@ class CaptureConfigWindow(QDialog):
         filename_row.addWidget(self.filename_edit, 1)
         filename_row.addWidget(self.help_button)
         form.addRow(constants.WINDOW_TEXT["labels"]["filename_format"], self._wrap_layout(filename_row))
-
-        quality_row = QHBoxLayout()
-        self.quality_slider = QSlider(Qt.Horizontal)
-        self.quality_slider.setRange(
-            constants.CAPTURE_DEFAULTS["image_quality"]["min"],
-            constants.CAPTURE_DEFAULTS["image_quality"]["max"],
-        )
-        self.quality_label = QLabel()
-        self.quality_slider.valueChanged.connect(self._update_quality_label)
-        quality_row.addWidget(self.quality_slider, 1)
-        quality_row.addWidget(self.quality_label)
-        form.addRow(constants.WINDOW_TEXT["labels"]["image_quality"], self._wrap_layout(quality_row))
         layout.addLayout(form)
 
         subfolders_group = QGroupBox(constants.WINDOW_TEXT["groups"]["subfolders"])
@@ -174,10 +162,21 @@ class CaptureConfigWindow(QDialog):
 
     def _build_capture_tab(self):
         layout = QVBoxLayout(self.capture_tab)
-        layout.addWidget(self._build_screen_group())
-        layout.addWidget(self._build_area_group())
-        layout.addWidget(self._build_flow_group())
+        screen_group = self._build_screen_group()
+        area_group = self._build_area_group()
+        flow_group = self._build_flow_group()
+        layout.addWidget(screen_group)
+        layout.addWidget(area_group)
+        layout.addWidget(flow_group)
         layout.addStretch(1)
+        self._register_capture_focus_clear_targets(
+            self.capture_tab,
+            screen_group,
+            area_group,
+            flow_group,
+            self.timer_spin,
+            self.scroll_check,
+        )
 
     def _build_screen_group(self):
         group = QGroupBox(constants.WINDOW_TEXT["groups"]["screen_mode"])
@@ -219,7 +218,6 @@ class CaptureConfigWindow(QDialog):
     def _load_values(self):
         self.path_edit.setText(self._settings.save_path)
         self.filename_edit.setText(self._settings.filename_format)
-        self.quality_slider.setValue(self._settings.image_quality)
         self.month_check.setChecked(self._settings.subfolder_month)
         self.day_check.setChecked(self._settings.subfolder_day)
         self.hour_check.setChecked(self._settings.subfolder_hour)
@@ -232,7 +230,6 @@ class CaptureConfigWindow(QDialog):
         self.shortcut_flow_edit.setText(self._settings.shortcut_flow.upper())
         self.shortcut_pause_edit.setText(self._settings.shortcut_flow_pause.upper())
         self.scroll_check.setChecked(self._settings.enable_scroll_capture)
-        self._update_quality_label(self._settings.image_quality)
 
     def _browse_path(self):
         selected_path = QFileDialog.getExistingDirectory(self, "Selecciona carpeta", self.path_edit.text() or os.path.expanduser("~"))
@@ -246,9 +243,6 @@ class CaptureConfigWindow(QDialog):
             constants.WINDOW_TEXT["format_help"]["body"],
         )
 
-    def _update_quality_label(self, value):
-        self.quality_label.setText(f"{value}%")
-
     def _on_show_mouse_toggled(self, enabled):
         self.highlight_mouse_check.setEnabled(enabled)
         if not enabled:
@@ -257,17 +251,16 @@ class CaptureConfigWindow(QDialog):
     def _save_and_close(self):
         self._settings.save_path = self.path_edit.text().strip()
         self._settings.filename_format = self.filename_edit.text().strip() or constants.CAPTURE_DEFAULTS["filename_format"]
-        self._settings.image_quality = int(self.quality_slider.value())
         self._settings.subfolder_month = self.month_check.isChecked()
         self._settings.subfolder_day = self.day_check.isChecked()
         self._settings.subfolder_hour = self.hour_check.isChecked()
         self._settings.show_mouse = self.show_mouse_check.isChecked()
         self._settings.highlight_mouse = self.highlight_mouse_check.isChecked() and self.show_mouse_check.isChecked()
         self._settings.manual_timer = int(self.timer_spin.value())
-        self._settings.shortcut_screen = self.shortcut_screen_edit.shortcut_value() or constants.CAPTURE_DEFAULTS["shortcuts"]["screen"]
-        self._settings.shortcut_area = self.shortcut_area_edit.shortcut_value() or constants.CAPTURE_DEFAULTS["shortcuts"]["area"]
-        self._settings.shortcut_flow = self.shortcut_flow_edit.shortcut_value() or constants.CAPTURE_DEFAULTS["shortcuts"]["flow"]
-        self._settings.shortcut_flow_pause = self.shortcut_pause_edit.shortcut_value() or constants.CAPTURE_DEFAULTS["shortcuts"]["flow_pause"]
+        self._settings.shortcut_screen = self.shortcut_screen_edit.shortcut_value() or constants.CAPTURE_DEFAULTS["shortcuts"]["shortcut_screen"]
+        self._settings.shortcut_area = self.shortcut_area_edit.shortcut_value() or constants.CAPTURE_DEFAULTS["shortcuts"]["shortcut_area"]
+        self._settings.shortcut_flow = self.shortcut_flow_edit.shortcut_value() or constants.CAPTURE_DEFAULTS["shortcuts"]["shortcut_flow"]
+        self._settings.shortcut_flow_pause = self.shortcut_pause_edit.shortcut_value() or constants.CAPTURE_DEFAULTS["shortcuts"]["shortcut_flow_pause"]
         self._settings.enable_scroll_capture = self.scroll_check.isChecked()
 
         capture_settings_service.save(self._settings)
@@ -281,6 +274,18 @@ class CaptureConfigWindow(QDialog):
         container = QWidget()
         container.setLayout(layout)
         return container
+
+    def eventFilter(self, watched, event):
+        if event.type() == QEvent.MouseButtonPress and event.button() == Qt.LeftButton:
+            focused_widget = self.focusWidget()
+            if isinstance(focused_widget, ShortcutLineEdit) and watched is not focused_widget:
+                focused_widget.clearFocus()
+
+        return super().eventFilter(watched, event)
+
+    def _register_capture_focus_clear_targets(self, *widgets):
+        for widget in widgets:
+            widget.installEventFilter(self)
 
     def request_wake_up(self):
         QMetaObject.invokeMethod(self, "_handle_wake_up", Qt.QueuedConnection)

@@ -5,12 +5,14 @@ from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsPixmapItem
 from PySide6.QtCore import Qt, QRectF, Signal, QTimer, QPointF
 from PySide6.QtGui import QPixmap, QColor, QPainter, QCursor
 
+from core.constants import INTERNAL_CONFIG
 from module_editor import constants
 from module_editor.ui.toolbar.canvas_item import CanvasItem
 from module_editor.ui.toolbar.text_item import InlineTextEditor, TextCanvasItem
 
 class ImageScene(QGraphicsScene):
     content_changed = Signal()
+    selection_context_changed = Signal(object)
 
     def __init__(self, document, parent=None):
         super().__init__(parent)
@@ -30,6 +32,22 @@ class ImageScene(QGraphicsScene):
             "pending_text": True,
         }
 
+    def _create_text_item(self, start_pos, end_pos=None):
+        payload = {"text": "", "text_size": constants.TEXT_STYLE["font_default_px"]}
+        vector = self._document.create_vector("text", start_pos, self._active_color, payload=payload)
+        item = self._create_item(vector)
+        self.addItem(item)
+        item.setSelected(True)
+
+        if end_pos is None:
+            end_pos = QPointF(
+                start_pos.x() + INTERNAL_CONFIG["editor_tool_text_default_width"],
+                start_pos.y() + INTERNAL_CONFIG["editor_tool_text_default_height"],
+            )
+
+        item.set_coords([start_pos.x(), start_pos.y(), end_pos.x(), end_pos.y()])
+        return item
+
     def load_image(self, pil_image, path):
         self._document.load(pil_image, path)
         self.clear()
@@ -46,6 +64,18 @@ class ImageScene(QGraphicsScene):
     def set_active_color(self, color):
         self._active_color = color
 
+    def has_selected_vectors(self):
+        return any(isinstance(item, CanvasItem) for item in self.selectedItems())
+
+    def selected_vector_color(self):
+        for item in self.selectedItems():
+            if isinstance(item, CanvasItem):
+                return item.data.color
+        return None
+
+    def _emit_selection_context(self, context, color=None):
+        self.selection_context_changed.emit({"context": context, "color": color})
+
     def deselect_all(self):
         for item in list(self.selectedItems()):
             item.setSelected(False)
@@ -56,21 +86,43 @@ class ImageScene(QGraphicsScene):
         handle_hit = self._find_handle_hit(pos)
         hit = self.itemAt(pos, self.views()[0].transform())
         editing_item = self._find_editing_text_item()
+        closed_editing_on_press = False
+
+        size_control_item = self._find_text_item_for_size_control(pos)
+        if size_control_item is not None:
+            if not size_control_item.isSelected():
+                self.deselect_all()
+                size_control_item.setSelected(True)
+                size_control_item.update()
+            self._emit_selection_context("editing", size_control_item.data.color)
+            super().mousePressEvent(event)
+            return
 
         if isinstance(hit, InlineTextEditor):
             super().mousePressEvent(event)
             return
 
+        if editing_item is not None and editing_item.is_point_on_size_control(pos):
+            super().mousePressEvent(event)
+            return
+
         if editing_item is not None and hit is not editing_item:
             editing_item.finish_editing()
+            closed_editing_on_press = True
             hit = self.itemAt(pos, self.views()[0].transform())
             handle_hit = self._find_handle_hit(pos)
+
+        if closed_editing_on_press and not isinstance(hit, CanvasItem):
+            self._emit_selection_context("none")
+            event.accept()
+            return
 
         if handle_hit:
             item, grip_name = handle_hit
             self.deselect_all()
             item.setSelected(True)
             item.update()
+            self._emit_selection_context("editing", item.data.color)
             self._dragging = {"item": item, "grip": grip_name, "last": pos}
             event.accept()
             return
@@ -80,6 +132,7 @@ class ImageScene(QGraphicsScene):
             self.deselect_all()
             hit.setSelected(True)
             hit.update()
+            self._emit_selection_context("editing", hit.data.color)
             self._dragging = {"item": hit, "grip": "move", "last": pos}
             event.accept()
             return
@@ -97,9 +150,10 @@ class ImageScene(QGraphicsScene):
             self.addItem(item)
             item.setSelected(True)
             item.update()
+            self._emit_selection_context("drawing", item.data.color)
             self._dragging = {
                 "item": item,
-                "grip": "br" if self._draw_mode != "arrow" else "end",
+                "grip": "end" if self._draw_mode in ("arrow", "line") else "br",
                 "last": pos,
                 "created": True,
                 "origin": (pos.x(), pos.y()),
@@ -108,6 +162,7 @@ class ImageScene(QGraphicsScene):
             return
 
         self.deselect_all()
+        self._emit_selection_context("none")
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
@@ -122,13 +177,9 @@ class ImageScene(QGraphicsScene):
                     return
 
                 origin = self._dragging["origin"]
-                payload = {"text": ""}
                 origin_pointf = QPointF(origin[0], origin[1])
-                vector = self._document.create_vector("text", origin_pointf, self._active_color, payload=payload)
-                item = self._create_item(vector)
-                self.addItem(item)
-                item.setSelected(True)
-                item.set_coords([origin[0], origin[1], pos.x(), pos.y()])
+                item = self._create_text_item(origin_pointf, pos)
+                self._emit_selection_context("drawing", item.data.color)
                 self._dragging["item"] = item
                 self._dragging["pending_text"] = False
                 self._dragging["last"] = pos
@@ -156,6 +207,8 @@ class ImageScene(QGraphicsScene):
                 coords[0] += delta.x(); coords[3] += delta.y()
 
             item.set_coords(coords)
+            if isinstance(item, TextCanvasItem) and grip != "move" and self._dragging.get("created"):
+                item.recompute_text_size_to_fit()
             event.accept()
         else:
             super().mouseMoveEvent(event)
@@ -163,7 +216,12 @@ class ImageScene(QGraphicsScene):
     def mouseReleaseEvent(self, event):
         if self._dragging:
             if self._dragging.get("pending_text") and self._dragging.get("item") is None:
+                origin = self._dragging["origin"]
+                origin_pointf = QPointF(origin[0], origin[1])
+                item = self._create_text_item(origin_pointf)
+                self._emit_selection_context("drawing", item.data.color)
                 self._dragging = None
+                QTimer.singleShot(0, item.start_editing)
                 event.accept()
                 return
 
@@ -177,6 +235,7 @@ class ImageScene(QGraphicsScene):
                 if distance < min_distance:
                     self._document.delete_vector(item.data.shape_id)
                     self.removeItem(item)
+                    self._emit_selection_context("none")
                     self._dragging = None
                     event.accept()
                     return
@@ -185,6 +244,7 @@ class ImageScene(QGraphicsScene):
                     if rect.width() < constants.TEXT_STYLE["min_box_width"] or rect.height() < constants.TEXT_STYLE["min_box_height"]:
                         self._document.delete_vector(item.data.shape_id)
                         self.removeItem(item)
+                        self._emit_selection_context("none")
                         self._dragging = None
                         event.accept()
                         return
@@ -213,23 +273,33 @@ class ImageScene(QGraphicsScene):
                 self._document.delete_vector(item.data.shape_id)
                 self.removeItem(item)
         self._persist_vectors()
+        self._emit_selection_context("none")
 
     def recolor_selected(self, color):
+        selected_items = [item for item in self.selectedItems() if isinstance(item, CanvasItem)]
+        selected_types = {item.data.shape_type for item in selected_items}
+        if not selected_items:
+            return set()
+
         changed = False
-        for item in list(self.selectedItems()):
-            if isinstance(item, CanvasItem):
-                if isinstance(item, TextCanvasItem):
-                    item.set_text_color(color)
-                else:
-                    item.data.color = color
-                    item.update()
-                changed = self._document.update_vector_color(item.data.shape_id, color) or changed
+        for item in selected_items:
+            if isinstance(item, TextCanvasItem):
+                item.set_text_color(color)
+            else:
+                item.data.color = color
+                item.update()
+            changed = self._document.update_vector_color(item.data.shape_id, color) or changed
         if changed:
             self._persist_vectors()
-        return changed
+        return selected_types
 
     def get_composite_image(self):
         return self._document.get_composite_image()
+
+    def finalize_active_edits(self):
+        editing_item = self._find_editing_text_item()
+        if editing_item is not None:
+            editing_item.finish_editing()
 
     def _persist_vectors(self):
         self._document.save_vectors()
@@ -245,7 +315,11 @@ class ImageScene(QGraphicsScene):
 
     def _create_item(self, vector):
         if vector.shape_type == "text":
-            return TextCanvasItem(vector, self._handle_text_commit)
+            if "text" not in vector.payload:
+                raise ValueError(f"Invalid text payload for vector '{vector.shape_id}': required key text")
+            if "text_size" not in vector.payload:
+                vector.payload["text_size"] = constants.TEXT_STYLE["font_default_px"]
+            return TextCanvasItem(vector, self._handle_text_commit, self._handle_text_size_change)
         return CanvasItem(vector)
 
     def _find_editing_text_item(self):
@@ -254,19 +328,36 @@ class ImageScene(QGraphicsScene):
                 return item
         return None
 
-    def _handle_text_commit(self, item, text, cancelled):
+    def _find_text_item_for_size_control(self, scene_pos):
+        for item in self.items():
+            if isinstance(item, TextCanvasItem) and item.is_point_on_size_control(scene_pos):
+                return item
+        return None
+
+    def _handle_text_commit(self, item, text, cancelled, text_size):
         previous_text = item.data.payload.get("text", "")
         final_text = previous_text if cancelled else text.replace("\r\n", "\n")
         if not final_text.strip():
             self._document.delete_vector(item.data.shape_id)
             self.removeItem(item)
             self._persist_vectors()
+            self._emit_selection_context("none")
             return
 
         item.data.payload["text"] = final_text
-        self._document.update_vector_payload(item.data.shape_id, {"text": final_text})
+        item.data.payload["text_size"] = int(text_size)
+        self._document.update_vector_payload(item.data.shape_id, {"text": final_text, "text_size": int(text_size)})
         item.update()
         self._persist_vectors()
+
+    def _handle_text_size_change(self, item, text_size):
+        item.data.payload["text_size"] = int(text_size)
+        self._document.update_vector_payload(item.data.shape_id, {"text_size": int(text_size)})
+        item.update()
+        self._persist_vectors()
+
+    def _is_over_size_control(self, scene_pos):
+        return self._find_text_item_for_size_control(scene_pos) is not None
 
 class CanvasView(QGraphicsView):
     def __init__(self, scene, parent=None):
@@ -321,6 +412,10 @@ class CanvasView(QGraphicsView):
             return
 
         scene_pos = self.mapToScene(view_pos)
+        if hasattr(scene, "_is_over_size_control") and scene._is_over_size_control(scene_pos):
+            self._set_canvas_cursor(Qt.ArrowCursor)
+            return
+
         handle_hit = None
         if hasattr(scene, "_find_handle_hit"):
             handle_hit = scene._find_handle_hit(scene_pos)
@@ -418,6 +513,12 @@ class CanvasView(QGraphicsView):
     def _can_start_pan(self, view_pos):
         if not self._has_scroll_margin():
             return False
+
+        scene = self.scene()
+        if scene is not None:
+            scene_pos = self.mapToScene(view_pos)
+            if hasattr(scene, "_is_over_size_control") and scene._is_over_size_control(scene_pos):
+                return False
 
         item = self.itemAt(view_pos)
         return not isinstance(item, (CanvasItem, InlineTextEditor))

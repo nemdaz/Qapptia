@@ -7,5 +7,5 @@
 # 1.1.0-beta.2   - Segunda beta (corrección de errores)
 # 1.1.0-rc.1     - Candidata a lanzamiento
 #
-VERSION = "1.0.0-beta.3"
+VERSION = "1.0.0-beta.4"
 APP_NAME = "QACappta"

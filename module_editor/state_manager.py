@@ -11,6 +11,7 @@ def save_state(state):
     preferences.expanded_folders = list(state.get("expanded_folders", []))
     preferences.last_selected_file = state.get("last_selected_file")
     preferences.active_fav_color = state.get("active_fav_color", preferences.active_fav_color)
+    preferences.tool_fav_colors = dict(state.get("tool_fav_colors", preferences.tool_fav_colors))
     state_store.save(preferences)
 
 def update_expanded(folder_path, expanded):

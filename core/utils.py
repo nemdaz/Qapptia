@@ -7,6 +7,8 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QImage, QPainter
 
 from core import config
+from core.constants import DEFAULT_CONFIG
+from core.input_runtime import remember_hotkey_registration
 from core.logger import logger
 from core.platform import get_platform_services
 
@@ -70,7 +72,7 @@ def play_beep_async():
 def parse_filename_format(base_format, now_datetime):
     """Devuelve el nombre final usando tokens amigables."""
     if not base_format:
-        base_format = "Screenshot_YYYYMMDD_HHmmSS"
+        base_format = DEFAULT_CONFIG["filename_format"]
 
     format_str = (
         base_format.replace("YYYY", "%Y")
@@ -176,54 +178,11 @@ def register_hotkey(hotkey, callback, description=""):
             logger.trace(f"[HOTKEY] Ignorada activacion de tecla solitaria: '{hotkey}'")
 
     try:
-        _platform.input.add_hotkey(hotkey, safe_callback, suppress=False)
+        hotkey_handle = _platform.input.add_hotkey(hotkey, safe_callback, suppress=False)
+        remember_hotkey_registration(hotkey, hotkey_handle, description)
         desc_str = f"({description})" if description else ""
         logger.info(f"Atajo {desc_str} '{hotkey}' registrado (Protegido).")
         return True
     except Exception as exc:
         logger.error(f"Error al registrar atajo {description} '{hotkey}': {exc}")
         return False
-
-
-def reset_input_hooks(input_service):
-    """Limpia hooks de teclado y mouse de manera segura."""
-    try:
-        if hasattr(input_service, "unhook_all_hotkeys"):
-            input_service.unhook_all_hotkeys()
-    except Exception as exc:
-        logger.debug(f"No se pudieron limpiar hotkeys previos: {exc}")
-
-    try:
-        input_service.unhook_all_mouse()
-    except Exception as exc:
-        logger.debug(f"No se pudieron limpiar hooks de mouse previos: {exc}")
-
-
-def recover_capture_hooks(
-    input_service,
-    register_hotkeys_callback,
-    mouse_callback,
-    max_attempts=2,
-    retry_delay_seconds=0.25,
-):
-    """Intenta restaurar hooks globales de captura tras suspensión."""
-    for attempt in range(1, max_attempts + 1):
-        reset_input_hooks(input_service)
-
-        hotkeys_ok = bool(register_hotkeys_callback())
-        mouse_ok = True
-        try:
-            input_service.hook_mouse(mouse_callback)
-        except Exception as exc:
-            mouse_ok = False
-            logger.error(f"No se pudo reenganchar hook de mouse: {exc}")
-
-        if hotkeys_ok and mouse_ok:
-            if attempt > 1:
-                logger.info(f"Hooks restaurados en intento {attempt}/{max_attempts}.")
-            return True
-
-        if attempt < max_attempts:
-            time.sleep(max(0.0, retry_delay_seconds))
-
-    return False

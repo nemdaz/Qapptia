@@ -1,3 +1,9 @@
+from core.constants import DEFAULT_CONFIG
+
+
+DEFAULT_FILENAME_FORMAT = DEFAULT_CONFIG["filename_format"]
+
+
 WINDOW_TEXT = {
     "title": "Configuracion de Capturador",
     "tabs": {
@@ -12,7 +18,6 @@ WINDOW_TEXT = {
     "labels": {
         "save_path": "Ruta de guardado:",
         "filename_format": "Formato de nombre:",
-        "image_quality": "Calidad JPG/PNG:",
         "shortcut": "Atajo:",
         "timer": "Timer:",
         "pause": "Pausa:",
@@ -22,7 +27,7 @@ WINDOW_TEXT = {
         "cursor": "Cursor",
         "screen_mode": "Modo Pantalla",
         "area_mode": "Modo Area",
-        "flow_mode": "Modo Flujo",
+        "flow_mode": "Modo Flujo"
     },
     "checkboxes": {
         "subfolder_month": "Por mes (YYYY-MM)",
@@ -33,7 +38,7 @@ WINDOW_TEXT = {
         "enable_scroll_capture": "Habilitar Captura de Scroll Inteligente",
     },
     "placeholders": {
-        "filename_format": "Screenshot_YYYYMMDD_HHmmSS",
+        "filename_format": DEFAULT_FILENAME_FORMAT,
         "shortcut": "Presiona teclas...",
     },
     "format_help": {
@@ -63,17 +68,7 @@ WINDOW_LAYOUT = {
 }
 
 CAPTURE_DEFAULTS = {
-    "filename_format": "Screenshot_YYYYMMDD_HHmmSS",
-    "shortcuts": {
-        "screen": "ctrl+shift+q",
-        "area": "ctrl+shift+a",
-        "flow": "ctrl+shift+f",
-        "flow_pause": "ctrl+shift",
-    },
-    "image_quality": {
-        "min": 10,
-        "max": 100,
-    },
+    "filename_format": DEFAULT_FILENAME_FORMAT,
     "manual_timer": {
         "min": 0,
         "max": 999,
@@ -104,6 +99,7 @@ CAPTURE_MESSAGES = {
     "area_crop_error": "Error al recortar area: {error}",
     "area_save_success": "Area capturada: {path}",
     "area_save_error": "Error al guardar captura de area: {error}",
+    "capture_user_error": "Ocurrio un error durante la captura. Revisa el log de la aplicacion para mayor detalle.",
 }
 
 FLOW_MESSAGES = {

@@ -2,10 +2,10 @@ import os
 
 from PIL import ImageQt
 from PySide6.QtCore import QMetaObject, QMimeData, QSize, Qt, QTimer, QUrl, Slot
-from PySide6.QtGui import QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap
+from PySide6.QtGui import QColor, QIcon, QKeySequence, QPainter, QPainterPath, QPen, QPixmap
 from PySide6.QtWidgets import QApplication, QComboBox, QMainWindow, QSplitter, QToolBar, QVBoxLayout, QWidget
 
-from core import ipc
+from core import config, ipc
 from core.logger import logger
 from module_editor import constants
 from module_editor.core.workflow_controller import EditorController
@@ -47,9 +47,6 @@ class MainWindow(QMainWindow):
         self._load_styles()
         self._resize_to_screen()
 
-        self.current_color_name = self._controller.current_color_name
-        self.current_color_hex = self._controller.current_color_hex
-
         self._setup_ui()
         ipc.start_server(ipc.CHANNEL_EDITOR, self._wake_up, self._request_close_from_ipc)
         QTimer.singleShot(constants.INITIAL_LOAD_DELAY_MS, self._load_initial_image)
@@ -74,19 +71,21 @@ class MainWindow(QMainWindow):
         layout.addWidget(self._create_toolbar())
         layout.addWidget(self._create_splitter(), 1)
         self.statusBar().showMessage("Listo")
+        self._apply_toolbar_state(self._controller.current_toolbar_state())
 
     def _create_splitter(self):
         split = QSplitter(Qt.Horizontal)
         self.splitter = split
         self.scene = ImageScene(self._controller.document)
         self.scene.content_changed.connect(self._refresh_save_action)
-        self.scene.set_active_color(self.current_color_hex)
+        self.scene.selection_context_changed.connect(self._handle_scene_selection_context)
+        self.scene.set_active_color(self._controller.current_color_hex)
         self.canvas = CanvasView(self.scene)
         self.canvas.set_zoom_callback(self._on_zoom_changed)
         split.addWidget(self.canvas)
 
         self.sidebar = SidebarTree()
-        self.sidebar.image_selected.connect(self.show_image)
+        self.sidebar.image_selected.connect(lambda path: self.show_image(path, sync_sidebar=False))
         self.sidebar.setMinimumWidth(constants.SIDEBAR_WIDTH)
         split.addWidget(self.sidebar)
         split.setStretchFactor(0, 1)
@@ -125,7 +124,8 @@ class MainWindow(QMainWindow):
         self.act_save = self._add_action(toolbar, "save", "save", self.save_image, enabled=False)
         self._add_action(toolbar, "rotate", "rotate", self.rotate_image)
         self._add_action(toolbar, "copy_file", "copy_file", self.copy_file_to_clipboard)
-        self._add_action(toolbar, "copy_clipboard", "copy_clip", self.copy_to_clipboard)
+        self.act_copy_clipboard = self._add_action(toolbar, "copy_clipboard", "copy_clip", self.copy_to_clipboard)
+        self._configure_copy_shortcut()
 
         toolbar.addSeparator()
         self.zoom_combo = ZoomComboBox()
@@ -141,6 +141,7 @@ class MainWindow(QMainWindow):
         self._add_action(toolbar, "image_real_size", "image_real_size", self.reset_zoom)
 
         toolbar.addSeparator()
+        self.act_line = self._add_action(toolbar, "line", "line", lambda: self.set_tool("line"), checkable=True)
         self.act_arrow = self._add_action(toolbar, "arrow", "arrow", lambda: self.set_tool("arrow"), checkable=True)
         self.act_rect = self._add_action(toolbar, "rect", "rect", lambda: self.set_tool("rect"), checkable=True)
         self.act_high = self._add_action(toolbar, "highlighter", "highlighter", lambda: self.set_tool("highlighter"), checkable=True)
@@ -152,9 +153,9 @@ class MainWindow(QMainWindow):
 
     def _populate_color_actions(self, toolbar):
         for name, hex_val in constants.FAVORITE_COLORS.items():
-            action = toolbar.addAction(self._make_color_icon(hex_val, name == self.current_color_name), "")
+            action = toolbar.addAction(self._make_color_icon(hex_val, name == self._controller.current_color_name), "")
             action.setToolTip(f"{constants.TOOLTIPS['color_prefix']}{constants.FAVORITE_COLOR_NAMES.get(name, name)}")
-            action.triggered.connect(lambda chk=False, n=name, h=hex_val: self.set_active_color(n, h))
+            action.triggered.connect(lambda chk=False, n=name: self.set_active_color(n))
             self._color_btns[name] = action
 
     def _add_action(self, toolbar, icon_name, tooltip_key, callback, enabled=True, checkable=False):
@@ -169,6 +170,21 @@ class MainWindow(QMainWindow):
         action.setCheckable(checkable)
         return action
 
+    def _configure_copy_shortcut(self):
+        from core.constants import INTERNAL_CONFIG
+        from module_editor.constants import TOOLTIPS
+        shortcut = INTERNAL_CONFIG["shortcut_copy_clipboard"].lower()
+        key_sequence = QKeySequence.fromString(shortcut, QKeySequence.PortableText)
+        self.act_copy_clipboard.setShortcut(key_sequence)
+        self.act_copy_clipboard.setShortcutContext(Qt.WindowShortcut)
+        self.act_copy_clipboard.setToolTip(self._build_tooltip_with_shortcut(TOOLTIPS["copy_clip"], key_sequence))
+
+    def _build_tooltip_with_shortcut(self, base_tooltip, key_sequence):
+        shortcut_text = key_sequence.toString(QKeySequence.NativeText)
+        if not shortcut_text:
+            return base_tooltip
+        return f"{base_tooltip} ({shortcut_text})"
+
     def _make_color_icon(self, hex_color, active=False):
         swatch = constants.COLOR_SWATCH_STYLE
         icon_size = swatch["icon_size"]
@@ -177,43 +193,51 @@ class MainWindow(QMainWindow):
         painter = QPainter(pix)
         painter.setRenderHint(QPainter.Antialiasing, True)
 
-        outer_ring = QColor(swatch["outer_ring_active"] if active else swatch["outer_ring_inactive"])
-        inner_ring = QColor(swatch["inner_ring_active"] if active else swatch["inner_ring_inactive"])
+        outer_ring = QColor(swatch["outer_ring_active"])
         color_fill = QColor(hex_color)
         padding = swatch["outer_padding"]
 
-        painter.setBrush(Qt.NoBrush)
-        painter.setPen(QPen(outer_ring, 2))
-        painter.drawEllipse(padding, padding, icon_size - (padding * 2), icon_size - (padding * 2))
+        if active:
+            painter.setBrush(Qt.NoBrush)
+            painter.setPen(QPen(outer_ring, 2))
+            painter.drawEllipse(padding, padding, icon_size - (padding * 2), icon_size - (padding * 2))
+            fill_padding = 4
+        else:
+            fill_padding = 2
 
-        painter.setPen(QPen(inner_ring, 2))
+        painter.setPen(Qt.NoPen)
         painter.setBrush(color_fill)
-        painter.drawEllipse(4, 4, icon_size - 8, icon_size - 8)
+        painter.drawEllipse(fill_padding, fill_padding, icon_size - (fill_padding * 2), icon_size - (fill_padding * 2))
         painter.end()
         return QIcon(pix)
 
-    def set_active_color(self, name, hex_val):
-        self.current_color_name = name
-        self.current_color_hex = hex_val
-        self._controller.set_active_color(name)
+    def _apply_toolbar_state(self, state):
+        for swatch_name, action in self._color_btns.items():
+            action.setIcon(self._make_color_icon(constants.FAVORITE_COLORS[swatch_name], swatch_name == state.color_name))
+        self.act_line.setChecked(state.active_tool == "line")
+        self.act_arrow.setChecked(state.active_tool == "arrow")
+        self.act_rect.setChecked(state.active_tool == "rect")
+        self.act_high.setChecked(state.active_tool == "highlighter")
+        self.act_text.setChecked(state.active_tool == "text")
+        self.scene.set_active_color(state.color_hex)
+        self.scene.set_draw_mode(state.draw_mode)
+        self.canvas.set_draw_cursor_active(state.draw_cursor_active)
 
-        for color_name, action in self._color_btns.items():
-            action.setIcon(self._make_color_icon(constants.FAVORITE_COLORS[color_name], color_name == name))
-
-        self.scene.set_active_color(hex_val)
-        self.scene.recolor_selected(hex_val)
+    def set_active_color(self, name):
+        state = self._controller.select_color(name, self.scene.has_selected_vectors())
+        if self.scene.has_selected_vectors():
+            self.scene.recolor_selected(state.color_hex)
+        self._apply_toolbar_state(state)
 
     def set_tool(self, tool):
-        active_tool = self._controller.set_active_tool(tool)
-        tool = active_tool
-        self.act_arrow.setChecked(tool == "arrow")
-        self.act_rect.setChecked(tool == "rect")
-        self.act_high.setChecked(tool == "highlighter")
-        self.act_text.setChecked(tool == "text")
-        self.scene.set_draw_mode(tool)
-        self.canvas.set_draw_cursor_active(bool(tool))
+        if self.scene.has_selected_vectors():
+            self.scene.deselect_all()
+        self._apply_toolbar_state(self._controller.select_tool(tool))
 
-    def show_image(self, path):
+    def _handle_scene_selection_context(self, payload):
+        self._apply_toolbar_state(self._controller.handle_selection_context(payload.get("context"), payload.get("color")))
+
+    def show_image(self, path, sync_sidebar=True):
         if not os.path.exists(path):
             return
 
@@ -224,10 +248,11 @@ class MainWindow(QMainWindow):
             self.scene.load_image(display_image, self._controller.current_image_path)
             self.setWindowTitle(f"{constants.WINDOW_TITLE} - {os.path.basename(path)}")
             self._refresh_save_action()
-            self.sidebar.select_path(self._controller.current_image_path)
+            if sync_sidebar:
+                self.sidebar.select_path(self._controller.current_image_path)
             QTimer.singleShot(0, self.reset_zoom)
         except Exception as exc:
-            logger.error(f"Error show_image: {exc}")
+            logger.error(f"Error show_image para '{path}': {exc}")
             show_toast(self, constants.TOAST_MESSAGES["open_error"], kind="error")
 
     def rotate_image(self):
@@ -255,6 +280,7 @@ class MainWindow(QMainWindow):
             show_toast(self, constants.TOAST_MESSAGES["save_error"], kind="error")
 
     def copy_to_clipboard(self):
+        self.scene.finalize_active_edits()
         composite = self.scene.get_composite_image()
         if composite:
             QApplication.clipboard().setPixmap(QPixmap.fromImage(ImageQt.ImageQt(composite.convert("RGB"))))
@@ -312,7 +338,8 @@ class MainWindow(QMainWindow):
         self.show()
         self.raise_()
         self.activateWindow()
-        self.sidebar.refresh_model()
+        preferred_path = self._controller.current_image_path or self._controller.load_initial_image_path()
+        self.sidebar.refresh_model(preferred_path=preferred_path)
 
     def _request_close_from_ipc(self):
         QMetaObject.invokeMethod(self, "close", Qt.QueuedConnection)

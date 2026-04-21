@@ -41,6 +41,7 @@ FAVORITE_COLOR_NAMES = {
     "orange": "Naranja"
 }
 DEFAULT_FAV_COLOR = "green"
+VECTOR_COLOR_TOOLS = ("line", "arrow", "rect", "highlighter", "text")
 
 # Tooltips y Textos UI
 TOOLTIPS = {
@@ -48,6 +49,7 @@ TOOLTIPS = {
     "copy_file": "Copiar archivo",
     "copy_clip": "Copiar captura al portapapeles",
     "save": "Guardar cambios",
+    "line": "Dibujar línea (L)",
     "arrow": "Dibujar flecha (A)",
     "rect": "Dibujar rectángulo (R)",
     "highlighter": "Resaltador (H)",
@@ -82,6 +84,7 @@ VECTOR_STYLE = {
     "export_max_pixels": 36000000,
     "draw_min_distance": 8,
     "selection_tolerance": {
+        "line": 10,
         "rect": 8,
         "arrow": 10,
         "highlighter": 2,
@@ -96,9 +99,14 @@ TEXT_STYLE = {
         "bold": "AtkinsonHyperlegible-Bold.ttf",
     },
     "placeholder": "Texto",
+    "font_default_px": 20,
     "font_min_px": 12,
     "font_max_px": 320,
     "line_spacing_ratio": 1.18,
+    "shadow_dark_rgba": (0, 0, 0, 90),
+    "shadow_light_rgba": (255, 255, 255, 72),
+    "shadow_dark_offsets": ((-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (0, 1), (1, 1)),
+    "shadow_light_offsets": ((-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (0, 1), (1, 1)),
     "selection_border": "#f5f7fa",
     "selection_border_width": 1,
     "selection_dash_pattern": [4, 3],

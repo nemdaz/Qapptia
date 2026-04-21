@@ -33,24 +33,30 @@ def _register_capture_hotkeys():
     return bool(screen_ok and area_ok and flow_ok)
 
 
-def _recover_hooks_after_resume(icon=None):
-    logger.info("Reintentando registro de hooks tras reanudacion del sistema...")
-    recovered = utils.recover_capture_hooks(
-        input_service=_platform.input,
+def _restore_global_input_after_resume(icon=None):
+    if _platform.input.requires_process_restart_after_resume():
+        logger.info("El SO requiere reiniciar el proceso para recuperar los hooks globales tras reanudacion.")
+    else:
+        logger.info("Reintentando restaurar los hooks globales de entrada tras reanudacion del sistema...")
+
+    recovered = _platform.input.restore_global_hooks_after_resume(
         register_hotkeys_callback=_register_capture_hotkeys,
         mouse_callback=on_mouse_event,
         max_attempts=RUNTIME_CONFIG["hook_recovery_max_attempts"],
         retry_delay_seconds=RUNTIME_CONFIG["hook_recovery_retry_delay_seconds"],
     )
     if recovered:
-        logger.info("Hooks restaurados correctamente tras reanudacion.")
+        logger.info("Hooks globales de entrada restaurados correctamente tras reanudacion.")
         if icon and hasattr(icon, "notify"):
             try:
-                icon.notify("Atajos restaurados tras reanudacion.", APP_NAME)
+                icon.notify("Hooks globales restaurados tras reanudacion.", APP_NAME)
             except Exception:
                 pass
     else:
-        logger.error("No fue posible restaurar hooks tras reanudacion.")
+        if _platform.input.requires_process_restart_after_resume():
+            logger.warning("Los hooks globales requieren reinicio completo del proceso tras reanudacion en este SO.")
+        else:
+            logger.error("No fue posible restaurar los hooks globales de entrada tras reanudacion.")
     return recovered
 
 
@@ -153,9 +159,9 @@ def quit_app(icon, item=None):
     should_exit = True
 
 def reload_hooks(icon=None, item=None):
-    """Reinicia la aplicación completa para restaurar hooks a bajo nivel."""
+    """Reinicia manualmente el capturador completo desde el menú de bandeja."""
     global should_exit, should_restart
-    logger.info("Reiniciando capturador completo (Recuperación de hilos OS)...")
+    logger.info("Reiniciando capturador completo por solicitud manual desde el menú...")
     should_restart = True
     if icon:
         icon.stop()
@@ -196,9 +202,8 @@ def main():
 
     ipc.start_server(ipc.CHANNEL_APP, _notify_existing_background_instance)
 
-    # Solo en el proceso principal (tray/captura).
-    # En editor/config dejamos que Qt gestione DPI para evitar doble configuracion.
-    _platform.dpi.set_process_dpi_awareness()
+    # El proceso principal también termina creando QApplication para el selector de área.
+    # Dejamos que Qt gestione el contexto DPI para evitar colisiones con Windows.
 
     global should_exit
     if not _register_capture_hotkeys():
@@ -229,18 +234,22 @@ def main():
         jump = current_time - last_time
         if jump > RUNTIME_CONFIG["suspend_jump_threshold_seconds"]:
             logger.warning(f"Salto de tiempo detectado ({jump:.1f}s). Probable suspensión del OS.")
-            if not _recover_hooks_after_resume(icon):
-                logger.warning("Fallo al recuperar hooks tras reanudacion. Reiniciando de raiz...")
+            if not _restore_global_input_after_resume(icon):
+                if _platform.input.requires_process_restart_after_resume():
+                    logger.warning("Reiniciando el capturador para recuperar los hooks globales tras reanudacion...")
+                else:
+                    logger.warning("No fue posible reactivar los hooks globales de entrada tras reanudacion. Reiniciando el capturador...")
                 should_restart = True
                 icon.stop()
                 break
             
         last_time = current_time
-        
+
     # Limpieza final
     try:
         _platform.input.unhook_all_mouse()
-    except: pass
+    except Exception:
+        pass
     
     if should_restart:
         logger.info("Ejecutando reinicio maestro de proceso...")
@@ -250,8 +259,8 @@ def main():
         else:
             os.execv(sys.executable, [sys.executable] + sys.argv)
     else:
-        os._exit(0)
+        return 0
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main() or 0)
 

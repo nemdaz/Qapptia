@@ -125,6 +125,12 @@ def create_arrow_icon(color="white"):
     d.line([(13, 19), (19, 19)], fill=color, width=w) # h-6
     return img
 
+def create_line_icon(color="white"):
+    img = Image.new("RGBA", (24, 24), (255, 255, 255, 0))
+    d = ImageDraw.Draw(img)
+    d.line([(4, 20), (20, 4)], fill=color, width=2)
+    return img
+
 def create_rect_icon(color="white"):
     img = Image.new("RGBA", (24, 24), (255, 255, 255, 0))
     d = ImageDraw.Draw(img)
@@ -303,6 +309,7 @@ _rotate_img = create_rotate_icon()
 _save_img = create_save_icon()
 _image_file_img = create_image_file_icon()
 _folder_img = create_folder_icon()
+_line_img = create_line_icon()
 _arrow_img = create_arrow_icon()
 _rect_img = create_rect_icon()
 _copy_file_img = create_copy_file_icon()
