@@ -95,6 +95,13 @@ def capture_area_menu(icon, item=None):
     config.load_config()
     trigger_area_capture()
 
+
+def _tray_capture_label(title, shortcut_key):
+    hotkey = (config.get(shortcut_key) or "").strip().upper()
+    if not hotkey:
+        return title
+    return f"{title} ({hotkey})"
+
 def launch_editor_process():
     """Lógica central para abrir el editor con protección de instancias multiples."""
     global _is_editor_launching
@@ -211,8 +218,9 @@ def main():
     
     menu = _platform.tray.menu(
         _platform.tray.menu_item('Abrir_oculto', open_editor_icon, default=True, visible=False),
-        _platform.tray.menu_item('Capturar pantalla', capture_full_menu),
-        _platform.tray.menu_item(lambda text: 'Capturar flujo (Detener)' if flow_capture_service.is_active else 'Capturar flujo (Iniciar)', toggle_flow_menu),
+        _platform.tray.menu_item(_tray_capture_label('Capturar pantalla', 'shortcut_screen'), capture_full_menu),
+        _platform.tray.menu_item(_tray_capture_label('Capturar area', 'shortcut_area'), capture_area_menu),
+        # _platform.tray.menu_item(lambda text: 'Capturar flujo (Detener)' if flow_capture_service.is_active else 'Capturar flujo (Iniciar)', toggle_flow_menu),
         _platform.tray.menu_separator(),
         _platform.tray.menu_item('Editor', open_editor_menu),
         _platform.tray.menu_item('Configuración', open_config),
