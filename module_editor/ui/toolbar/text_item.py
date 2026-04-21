@@ -1,8 +1,17 @@
 import math
 
-from PySide6.QtCore import Qt, QRectF, QTimer, QSignalBlocker
-from PySide6.QtGui import QPen, QColor, QTextCursor, QTextOption
-from PySide6.QtWidgets import QApplication, QGraphicsItem, QGraphicsTextItem, QSpinBox, QGraphicsProxyWidget
+from PySide6.QtCore import Qt, QRectF, QTimer, QSignalBlocker, Signal
+from PySide6.QtGui import QPen, QColor, QTextCursor, QTextOption, QIntValidator
+from PySide6.QtWidgets import (
+    QApplication,
+    QGraphicsItem,
+    QGraphicsTextItem,
+    QGraphicsProxyWidget,
+    QHBoxLayout,
+    QLineEdit,
+    QPushButton,
+    QWidget,
+)
 
 from module_editor import constants
 from module_editor.core import text_layout as text_support
@@ -115,6 +124,70 @@ class InlineTextEditor(QGraphicsTextItem):
         self._commit_callback(final_text, cancelled)
 
 
+class TextSizeControl(QWidget):
+    valueChanged = Signal(int)
+
+    def __init__(self, min_value, max_value, parent=None):
+        super().__init__(parent)
+        self.setObjectName("text-size-control")
+        self._min_value = int(min_value)
+        self._max_value = int(max_value)
+        self._value = self._min_value
+
+        self._minus_btn = QPushButton("-")
+        self._value_edit = QLineEdit()
+        self._plus_btn = QPushButton("+")
+
+        self._minus_btn.setObjectName("size-minus")
+        self._value_edit.setObjectName("size-value")
+        self._plus_btn.setObjectName("size-plus")
+
+        self._minus_btn.setCursor(Qt.ArrowCursor)
+        self._plus_btn.setCursor(Qt.ArrowCursor)
+        self._value_edit.setAlignment(Qt.AlignCenter)
+        self._value_edit.setFocusPolicy(Qt.ClickFocus)
+        self._value_edit.setValidator(QIntValidator(self._min_value, self._max_value, self))
+        self._value_edit.setMaxLength(len(str(self._max_value)))
+
+        self._minus_btn.setFixedWidth(16)
+        self._plus_btn.setFixedWidth(16)
+        self._minus_btn.setFixedHeight(22)
+        self._plus_btn.setFixedHeight(22)
+        self._value_edit.setFixedHeight(22)
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        layout.addWidget(self._minus_btn)
+        layout.addWidget(self._value_edit, 1)
+        layout.addWidget(self._plus_btn)
+
+        self._minus_btn.clicked.connect(lambda: self._step_value(-1))
+        self._plus_btn.clicked.connect(lambda: self._step_value(1))
+        self._value_edit.editingFinished.connect(self._commit_typed_value)
+
+    def value(self):
+        return self._value
+
+    def setValue(self, value):
+        clamped = max(self._min_value, min(int(value), self._max_value))
+        changed = clamped != self._value
+        self._value = clamped
+        self._value_edit.setText(str(self._value))
+        if changed:
+            self.valueChanged.emit(self._value)
+
+    def _step_value(self, delta):
+        self.setValue(self._value + int(delta))
+
+    def _commit_typed_value(self):
+        text_value = self._value_edit.text().strip()
+        if not text_value:
+            self._value_edit.setText(str(self._value))
+            return
+        self.setValue(int(text_value))
+
+
 class TextCanvasItem(CanvasItem):
     def __init__(self, data, commit_callback, size_change_callback):
         super().__init__(data)
@@ -123,16 +196,38 @@ class TextCanvasItem(CanvasItem):
         self._editor = None
         self._editing_start_coords = None
 
-        self._size_control = QSpinBox()
-        self._size_control.setRange(constants.TEXT_STYLE["font_min_px"], constants.TEXT_STYLE["font_max_px"])
-        self._size_control.setAlignment(Qt.AlignCenter)
-        self._size_control.setFixedSize(58, 22)
+        self._size_control = TextSizeControl(
+            constants.TEXT_STYLE["font_min_px"],
+            constants.TEXT_STYLE["font_max_px"],
+        )
+        self._size_control.setFixedSize(76, 22)
         self._size_control.setValue(int(self.data.payload["text_size"]))
         self._size_control.setFocusPolicy(Qt.StrongFocus)
         self._size_control.setCursor(Qt.ArrowCursor)
-        if self._size_control.lineEdit() is not None:
-            self._size_control.lineEdit().setFocusPolicy(Qt.ClickFocus)
-            self._size_control.lineEdit().setCursor(Qt.ArrowCursor)
+        self._size_control.setStyleSheet(
+            "QWidget#text-size-control {"
+            "background-color: rgba(20, 20, 20, 175);"
+            "border: none;"
+            "}"
+            "QPushButton#size-minus, QPushButton#size-plus {"
+            "background-color: rgba(255, 255, 255, 32);"
+            "color: white;"
+            "border: none;"
+            "font-weight: 700;"
+            "}"
+            "QPushButton#size-minus:hover, QPushButton#size-plus:hover {"
+            "background-color: rgba(255, 255, 255, 50);"
+            "}"
+            "QPushButton#size-minus:pressed, QPushButton#size-plus:pressed {"
+            "background-color: rgba(255, 255, 255, 70);"
+            "}"
+            "QLineEdit#size-value {"
+            "background: transparent;"
+            "border: none;"
+            "color: white;"
+            "padding: 0;"
+            "}"
+        )
         self._size_control.valueChanged.connect(self._on_size_control_changed)
 
         self._size_control_proxy = QGraphicsProxyWidget(self)
