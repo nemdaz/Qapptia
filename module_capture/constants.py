@@ -12,7 +12,8 @@ WINDOW_TEXT = {
     },
     "buttons": {
         "browse": "Examinar",
-        "save_close": "Guardar y Cerrar",
+        "save": "Guardar",
+        "close": "Cerrar",
         "help": "?",
     },
     "labels": {

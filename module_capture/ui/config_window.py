@@ -111,9 +111,12 @@ class CaptureConfigWindow(QDialog):
 
         button_row = QHBoxLayout()
         button_row.addStretch(1)
-        self.save_button = QPushButton(constants.WINDOW_TEXT["buttons"]["save_close"])
-        self.save_button.clicked.connect(self._save_and_close)
+        self.save_button = QPushButton(constants.WINDOW_TEXT["buttons"]["save"])
+        self.save_button.clicked.connect(self._save)
+        self.close_button = QPushButton(constants.WINDOW_TEXT["buttons"]["close"])
+        self.close_button.clicked.connect(self._close)
         button_row.addWidget(self.save_button)
+        button_row.addWidget(self.close_button)
         layout.addLayout(button_row)
 
     def _build_general_tab(self):
@@ -248,7 +251,7 @@ class CaptureConfigWindow(QDialog):
         if not enabled:
             self.highlight_mouse_check.setChecked(False)
 
-    def _save_and_close(self):
+    def _save(self):
         self._settings.save_path = self.path_edit.text().strip()
         self._settings.filename_format = self.filename_edit.text().strip() or constants.CAPTURE_DEFAULTS["filename_format"]
         self._settings.subfolder_month = self.month_check.isChecked()
@@ -268,7 +271,8 @@ class CaptureConfigWindow(QDialog):
         if self._on_close_callback:
             self._on_close_callback()
 
-        self.accept()
+    def _close(self):
+        self.reject()
 
     def _wrap_layout(self, layout):
         container = QWidget()
