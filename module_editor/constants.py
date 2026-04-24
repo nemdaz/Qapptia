@@ -4,6 +4,7 @@ Constantes para el módulo de edición (EditorApp).
 from core.version import APP_NAME
 
 WINDOW_TITLE = f"{APP_NAME} Editor"
+ANNOTATION_DIR = ".dibujo"
 SIDEBAR_WIDTH = 250
 
 ZOOM_CONFIG = {

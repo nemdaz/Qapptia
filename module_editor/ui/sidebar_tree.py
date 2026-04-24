@@ -2,13 +2,14 @@ import os
 
 from PIL import ImageQt
 from PySide6.QtWidgets import QTreeView, QVBoxLayout, QWidget, QLabel, QPushButton, QHBoxLayout, QFileSystemModel
-from PySide6.QtCore import QDir, Qt, Signal, QModelIndex, QSize, QTimer
+from PySide6.QtCore import QDir, Qt, Signal, QModelIndex, QSize, QTimer, QSortFilterProxyModel
 from PySide6.QtGui import QFont, QIcon, QPixmap
 
 from core import config, assets
 from module_editor import constants, state_manager
 
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg"}
+HIDDEN_DIR_PREFIX = constants.ANNOTATION_DIR[:1]
 
 class ImageFilterModel(QFileSystemModel):
     def hasChildren(self, parent=QModelIndex()):
@@ -20,11 +21,24 @@ class ImageFilterModel(QFileSystemModel):
         try:
             with os.scandir(path) as it:
                 for entry in it:
+                    if entry.is_dir() and entry.name.startswith(HIDDEN_DIR_PREFIX):
+                        continue
                     if entry.is_dir() or os.path.splitext(entry.name)[1].lower() in IMAGE_EXTENSIONS:
                         return True
         except OSError:
             pass
         return False
+
+
+class HiddenDirProxyModel(QSortFilterProxyModel):
+    def filterAcceptsRow(self, source_row, source_parent):
+        source_model = self.sourceModel()
+        index = source_model.index(source_row, 0, source_parent)
+        if source_model.isDir(index):
+            name = source_model.fileName(index)
+            if name.startswith(HIDDEN_DIR_PREFIX):
+                return False
+        return super().filterAcceptsRow(source_row, source_parent)
 
 class SidebarTree(QWidget):
     image_selected = Signal(str)
@@ -83,7 +97,14 @@ class SidebarTree(QWidget):
         layout.addWidget(self.tree, 1)
 
         self._model = None
+        self._proxy = None
         self.refresh_model()
+
+    def _to_source(self, proxy_index):
+        return self._proxy.mapToSource(proxy_index) if self._proxy else proxy_index
+
+    def _to_proxy(self, source_index):
+        return self._proxy.mapFromSource(source_index) if self._proxy else source_index
 
     def refresh_model(self, preferred_path=None):
         self._pending_preferred_path = preferred_path or self.current_selected_path()
@@ -100,8 +121,11 @@ class SidebarTree(QWidget):
         self._model.setNameFilters(["*.png", "*.jpg", "*.jpeg"])
         self._model.setNameFilterDisables(False)
 
-        self.tree.setModel(self._model)
-        self.tree.setRootIndex(self._model.index(base_path))
+        self._proxy = HiddenDirProxyModel(self)
+        self._proxy.setSourceModel(self._model)
+
+        self.tree.setModel(self._proxy)
+        self.tree.setRootIndex(self._proxy.mapFromSource(self._model.index(base_path)))
         self.tree.sortByColumn(0, Qt.DescendingOrder)
         self.tree.selectionModel().currentChanged.connect(self._on_current_changed)
 
@@ -118,7 +142,7 @@ class SidebarTree(QWidget):
         if not index.isValid():
             return None
 
-        path = self._model.filePath(index)
+        path = self._model.filePath(self._to_source(index))
         if os.path.isfile(path):
             return path.replace("\\", "/")
         return None
@@ -132,7 +156,7 @@ class SidebarTree(QWidget):
         if self._suppress_selection_signal:
             return
 
-        path = self._model.filePath(index)
+        path = self._model.filePath(self._to_source(index))
         if os.path.isfile(path) and os.path.splitext(path)[1].lower() in IMAGE_EXTENSIONS:
             self.image_selected.emit(path.replace("\\", "/"))
 
@@ -144,7 +168,7 @@ class SidebarTree(QWidget):
             ):
                 return
 
-            idx = self._model.index(os.path.normpath(path))
+            idx = self._to_proxy(self._model.index(os.path.normpath(path)))
             if not idx.isValid():
                 return
             if expand_parents:
@@ -181,19 +205,19 @@ class SidebarTree(QWidget):
         state = state_manager.load_state()
         for folder_path in state.get("expanded_folders", []):
             if os.path.isdir(folder_path):
-                idx = self._model.index(folder_path)
+                idx = self._to_proxy(self._model.index(folder_path))
                 if idx.isValid():
                     self.tree.expand(idx)
 
     def _on_expanded(self, index):
         if self._model:
-            path = self._model.filePath(index)
+            path = self._model.filePath(self._to_source(index))
             if os.path.isdir(path):
                 state_manager.update_expanded(path, True)
 
     def _on_collapsed(self, index):
         if self._model:
-            path = self._model.filePath(index)
+            path = self._model.filePath(self._to_source(index))
             if os.path.isdir(path):
                 state_manager.update_expanded(path, False)
 
