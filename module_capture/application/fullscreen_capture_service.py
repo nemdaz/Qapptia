@@ -1,6 +1,5 @@
 import datetime
 import os
-import time
 
 from core import config, utils
 from core.constants import APP_NAME
@@ -31,16 +30,6 @@ class FullscreenCaptureService:
             logger.error(constants.CAPTURE_MESSAGES["screen_capture_error"].format(error=exc))
             _platform.desktop.show_info_message(APP_NAME, constants.CAPTURE_MESSAGES["capture_user_error"])
             return None
-
-    def capture_with_timer(self):
-        config.load_config()
-        timer = config.get("manual_timer")
-        if timer > 0:
-            logger.info(constants.CAPTURE_MESSAGES["screen_capture_wait"].format(timer=timer))
-            time.sleep(timer)
-        else:
-            logger.info(constants.CAPTURE_MESSAGES["screen_capture_now"])
-        return self.capture_fullscreen()
 
     def _capture_active_monitor(self):
         monitor_x, monitor_y, monitor_width, monitor_height = utils.get_monitor_at_cursor()

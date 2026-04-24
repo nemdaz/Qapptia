@@ -1,4 +1,5 @@
 import threading
+import time
 
 from PySide6.QtCore import QTimer, QThread
 from PySide6.QtWidgets import QApplication
@@ -16,16 +17,26 @@ def request_capture(mode, source="unknown"):
     config.load_config()
 
     if mode == "screen":
-        threading.Thread(target=fullscreen_capture_service.capture_with_timer, daemon=True).start()
+        threading.Thread(target=capture_screen, daemon=True).start()
     elif mode == "area":
-        _dispatch_area_capture()
+        capture_area()
     elif mode == "flow":
-        flow_capture_service.toggle()
+        capture_flow()
     else:
         logger.warning(f"[DISPATCHER] Modo de captura desconocido: {mode}")
 
 
-def _dispatch_area_capture():
+def capture_screen():
+    timer = config.get("manual_timer")
+    if timer > 0:
+        logger.info(CAPTURE_MESSAGES["screen_capture_wait"].format(timer=timer))
+        time.sleep(timer)
+    else:
+        logger.info(CAPTURE_MESSAGES["screen_capture_now"])
+    fullscreen_capture_service.capture_fullscreen()
+
+
+def capture_area():
     app = QApplication.instance()
     if app is None:
         app = QApplication([])
@@ -34,9 +45,13 @@ def _dispatch_area_capture():
         logger.info(CAPTURE_MESSAGES["area_mode_start"])
         run_area_selector()
     else:
-        QTimer.singleShot(0, app, _area_capture_on_main_thread)
+        QTimer.singleShot(0, app, capture_area_on_main_thread)
 
 
-def _area_capture_on_main_thread():
+def capture_area_on_main_thread():
     logger.info(CAPTURE_MESSAGES["area_mode_start"])
     run_area_selector()
+
+
+def capture_flow():
+    flow_capture_service.toggle()
