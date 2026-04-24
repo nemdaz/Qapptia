@@ -1,5 +1,6 @@
 import os
 import sys
+import threading
 import time
 
 from PIL import Image, ImageQt
@@ -173,7 +174,7 @@ def register_hotkey(hotkey, callback, description=""):
         time.sleep(0.05)
         if all(_platform.input.is_key_pressed(m) for m in modifiers):
             logger.debug(f"[HOTKEY] Disparando '{description}' ({hotkey})")
-            callback()
+            threading.Thread(target=callback, daemon=True).start()
         else:
             logger.trace(f"[HOTKEY] Ignorada activacion de tecla solitaria: '{hotkey}'")
 
