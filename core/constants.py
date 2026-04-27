@@ -26,7 +26,9 @@ DEFAULT_CONFIG = {
     "shortcut_area": "ctrl+shift+a",
     "shortcut_flow": "ctrl+shift+f",
     "shortcut_flow_pause": "ctrl+shift",
-    "enable_scroll_capture": True
+    "enable_scroll_capture": True,
+    "copy_to_clipboard_screen": False,
+    "copy_to_clipboard_area": False,
 }
 
 

@@ -2,6 +2,7 @@ import threading
 import time
 
 from PySide6.QtCore import QTimer, QThread
+from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QApplication
 
 from core import config
@@ -33,7 +34,10 @@ def capture_screen():
         time.sleep(timer)
     else:
         logger.info(CAPTURE_MESSAGES["screen_capture_now"])
-    fullscreen_capture_service.capture_fullscreen()
+
+    output_path = fullscreen_capture_service.capture_fullscreen()
+    if output_path and config.get("copy_to_clipboard_screen"):
+        _copy_to_clipboard_on_main_thread(output_path)
 
 
 def capture_area():
@@ -42,16 +46,45 @@ def capture_area():
         app = QApplication([])
 
     if app.thread() == QThread.currentThread():
-        logger.info(CAPTURE_MESSAGES["area_mode_start"])
-        run_area_selector()
+        _capture_area_on_main_thread()
     else:
-        QTimer.singleShot(0, app, capture_area_on_main_thread)
+        QTimer.singleShot(0, app, _capture_area_on_main_thread)
 
 
-def capture_area_on_main_thread():
+def _capture_area_on_main_thread():
     logger.info(CAPTURE_MESSAGES["area_mode_start"])
-    run_area_selector()
+
+    def _on_area_saved(output_path):
+        if output_path and config.get("copy_to_clipboard_area"):
+            _copy_to_clipboard_on_main_thread(output_path)
+
+    run_area_selector(on_capture_callback=_on_area_saved)
 
 
 def capture_flow():
     flow_capture_service.toggle()
+
+
+def _copy_to_clipboard_on_main_thread(image_path):
+    app = QApplication.instance()
+    if app is None:
+        logger.error("No hay QApplication para copiar al portapapeles")
+        return
+    if app.thread() == QThread.currentThread():
+        _copy_to_clipboard(image_path)
+    else:
+        QTimer.singleShot(0, app, lambda: _copy_to_clipboard(image_path))
+
+
+def _copy_to_clipboard(image_path):
+    try:
+        pixmap = QPixmap(image_path)
+        if pixmap.isNull():
+            logger.error(f"No se pudo cargar imagen para portapapeles: {image_path}")
+            return
+        clipboard = QApplication.clipboard()
+        clipboard.setPixmap(pixmap)
+        clipboard.setImage(pixmap.toImage())
+        logger.debug(f"Imagen copiada al portapapeles: {image_path}")
+    except Exception as exc:
+        logger.error(f"Error copiando imagen al portapapeles: {exc}")

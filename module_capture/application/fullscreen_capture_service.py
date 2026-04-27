@@ -63,4 +63,3 @@ class FullscreenCaptureService:
 
 
 fullscreen_capture_service = FullscreenCaptureService()
-

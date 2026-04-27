@@ -115,7 +115,7 @@ class AreaSelectorWindow(QWidget):
         self._current_y = point.y()
         if self._selection_origin is not None:
             self._selection_end = point
-        self.update()
+            self.update()
 
     def mouseReleaseEvent(self, event):
         if event.button() != Qt.LeftButton or self._selection_origin is None:
@@ -245,4 +245,3 @@ def run_area_selector(on_capture_callback=None):
     selector.activateWindow()
     selector.raise_()
     event_loop.exec()
-

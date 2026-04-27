@@ -6,6 +6,7 @@ import time
 from PIL import Image, ImageQt
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QImage, QPainter
+from PySide6.QtWidgets import QApplication
 
 from core import config
 from core.constants import DEFAULT_CONFIG

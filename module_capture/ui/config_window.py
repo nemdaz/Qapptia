@@ -191,18 +191,22 @@ class CaptureConfigWindow(QDialog):
             constants.CAPTURE_DEFAULTS["manual_timer"]["max"],
         )
         self.timer_spin.setSuffix(constants.WINDOW_LAYOUT["timer_suffix"])
+        self.copy_clipboard_screen_check = QCheckBox(constants.WINDOW_TEXT["checkboxes"]["copy_to_clipboard_screen"])
         grid.addWidget(QLabel(constants.WINDOW_TEXT["labels"]["shortcut"]), 0, 0)
         grid.addWidget(self.shortcut_screen_edit, 0, 1)
         grid.addWidget(QLabel(constants.WINDOW_TEXT["labels"]["timer"]), 1, 0)
         grid.addWidget(self.timer_spin, 1, 1)
+        grid.addWidget(self.copy_clipboard_screen_check, 2, 0, 1, 2)
         return group
 
     def _build_area_group(self):
         group = QGroupBox(constants.WINDOW_TEXT["groups"]["area_mode"])
         grid = QGridLayout(group)
         self.shortcut_area_edit = ShortcutLineEdit(3)
+        self.copy_clipboard_area_check = QCheckBox(constants.WINDOW_TEXT["checkboxes"]["copy_to_clipboard_area"])
         grid.addWidget(QLabel(constants.WINDOW_TEXT["labels"]["shortcut"]), 0, 0)
         grid.addWidget(self.shortcut_area_edit, 0, 1)
+        grid.addWidget(self.copy_clipboard_area_check, 1, 0, 1, 2)
         return group
 
     def _build_flow_group(self):
@@ -233,6 +237,8 @@ class CaptureConfigWindow(QDialog):
         self.shortcut_flow_edit.setText(self._settings.shortcut_flow.upper())
         self.shortcut_pause_edit.setText(self._settings.shortcut_flow_pause.upper())
         self.scroll_check.setChecked(self._settings.enable_scroll_capture)
+        self.copy_clipboard_screen_check.setChecked(self._settings.copy_to_clipboard_screen)
+        self.copy_clipboard_area_check.setChecked(self._settings.copy_to_clipboard_area)
 
     def _browse_path(self):
         selected_path = QFileDialog.getExistingDirectory(self, "Selecciona carpeta", self.path_edit.text() or os.path.expanduser("~"))
@@ -265,6 +271,8 @@ class CaptureConfigWindow(QDialog):
         self._settings.shortcut_flow = self.shortcut_flow_edit.shortcut_value() or constants.CAPTURE_DEFAULTS["shortcuts"]["shortcut_flow"]
         self._settings.shortcut_flow_pause = self.shortcut_pause_edit.shortcut_value() or constants.CAPTURE_DEFAULTS["shortcuts"]["shortcut_flow_pause"]
         self._settings.enable_scroll_capture = self.scroll_check.isChecked()
+        self._settings.copy_to_clipboard_screen = self.copy_clipboard_screen_check.isChecked()
+        self._settings.copy_to_clipboard_area = self.copy_clipboard_area_check.isChecked()
 
         capture_settings_service.save(self._settings)
 

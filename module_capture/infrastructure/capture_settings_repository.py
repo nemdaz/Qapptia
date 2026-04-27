@@ -22,8 +22,10 @@ class CaptureSettingsRepository:
             shortcut_area=(config.get("shortcut_area") or constants.CAPTURE_DEFAULTS["shortcuts"]["shortcut_area"]).lower(),
             shortcut_flow=(config.get("shortcut_flow") or constants.CAPTURE_DEFAULTS["shortcuts"]["shortcut_flow"]).lower(),
             shortcut_flow_pause=(config.get("shortcut_flow_pause") or constants.CAPTURE_DEFAULTS["shortcuts"]["shortcut_flow_pause"]).lower(),
-            enable_scroll_capture=bool(config.get("enable_scroll_capture")),
-        )
+        enable_scroll_capture=bool(config.get("enable_scroll_capture")),
+        copy_to_clipboard_screen=bool(config.get("copy_to_clipboard_screen")),
+        copy_to_clipboard_area=bool(config.get("copy_to_clipboard_area")),
+    )
 
     def save_settings(self, settings):
         payload = settings.to_config_payload()

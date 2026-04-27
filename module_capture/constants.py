@@ -37,6 +37,8 @@ WINDOW_TEXT = {
         "show_mouse": "Capturar",
         "highlight_mouse": "Resaltar (Halo)",
         "enable_scroll_capture": "Habilitar Captura de Scroll Inteligente",
+        "copy_to_clipboard_screen": "Copiar al portapapeles",
+        "copy_to_clipboard_area": "Copiar al portapapeles",
     },
     "placeholders": {
         "filename_format": DEFAULT_FILENAME_FORMAT,
