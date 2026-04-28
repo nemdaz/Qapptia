@@ -153,8 +153,10 @@ class MainWindow(QMainWindow):
 
     def _populate_color_actions(self, toolbar):
         for name, hex_val in constants.FAVORITE_COLORS.items():
-            action = toolbar.addAction(self._make_color_icon(hex_val, name == self._controller.current_color_name), "")
+            action = toolbar.addAction(self._make_color_icon(hex_val), "")
             action.setToolTip(f"{constants.TOOLTIPS['color_prefix']}{constants.FAVORITE_COLOR_NAMES.get(name, name)}")
+            action.setCheckable(True)
+            action.setChecked(name == self._controller.current_color_name)
             action.triggered.connect(lambda chk=False, n=name: self.set_active_color(n))
             self._color_btns[name] = action
 
@@ -185,35 +187,22 @@ class MainWindow(QMainWindow):
             return base_tooltip
         return f"{base_tooltip} ({shortcut_text})"
 
-    def _make_color_icon(self, hex_color, active=False):
+    def _make_color_icon(self, hex_color):
         swatch = constants.COLOR_SWATCH_STYLE
         icon_size = swatch["icon_size"]
         pix = QPixmap(icon_size, icon_size)
         pix.fill(Qt.transparent)
         painter = QPainter(pix)
         painter.setRenderHint(QPainter.Antialiasing, True)
-
-        outer_ring = QColor(swatch["outer_ring_active"])
-        color_fill = QColor(hex_color)
-        padding = swatch["outer_padding"]
-
-        if active:
-            painter.setBrush(Qt.NoBrush)
-            painter.setPen(QPen(outer_ring, 2))
-            painter.drawEllipse(padding, padding, icon_size - (padding * 2), icon_size - (padding * 2))
-            fill_padding = 4
-        else:
-            fill_padding = 2
-
         painter.setPen(Qt.NoPen)
-        painter.setBrush(color_fill)
-        painter.drawEllipse(fill_padding, fill_padding, icon_size - (fill_padding * 2), icon_size - (fill_padding * 2))
+        painter.setBrush(QColor(hex_color))
+        painter.drawEllipse(2, 2, icon_size - 4, icon_size - 4)
         painter.end()
         return QIcon(pix)
 
     def _apply_toolbar_state(self, state):
         for swatch_name, action in self._color_btns.items():
-            action.setIcon(self._make_color_icon(constants.FAVORITE_COLORS[swatch_name], swatch_name == state.color_name))
+            action.setChecked(swatch_name == state.color_name)
         self.act_line.setChecked(state.active_tool == "line")
         self.act_arrow.setChecked(state.active_tool == "arrow")
         self.act_rect.setChecked(state.active_tool == "rect")

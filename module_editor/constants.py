@@ -31,7 +31,9 @@ FAVORITE_COLORS = {
     "blue": "#0078D7",
     "cyan": "#00B7C3",
     "yellow": "#F7EB0C",
-    "orange": "#ffa500"
+    "orange": "#ffa500",
+    "white": "#ffffff",
+    "black": "#000000"
 }
 FAVORITE_COLOR_NAMES = {
     "green": "Verde",
@@ -39,7 +41,9 @@ FAVORITE_COLOR_NAMES = {
     "blue": "Azul",
     "cyan": "Celeste",
     "yellow": "Amarillo",
-    "orange": "Naranja"
+    "orange": "Naranja",
+    "white": "Blanco",
+    "black": "Negro"
 }
 DEFAULT_FAV_COLOR = "green"
 VECTOR_COLOR_TOOLS = ("line", "arrow", "rect", "highlighter", "text")
@@ -118,9 +122,4 @@ TEXT_STYLE = {
 
 COLOR_SWATCH_STYLE = {
     "icon_size": 22,
-    "outer_padding": 1,
-    "outer_ring_active": "#f5f7fa",
-    "outer_ring_inactive": "#2f343b",
-    "inner_ring_active": UI_COLORS["active_tool"],
-    "inner_ring_inactive": "#555b63",
 }
