@@ -61,7 +61,7 @@ class SidebarTree(QWidget):
 
         header = QWidget()
         header.setFixedHeight(36)
-        header.setStyleSheet("background-color: #2b2b2b; border-bottom: 1px solid #3a3a3a;")
+        header.setStyleSheet("background-color: #1a1a1a;")
         header_lay = QHBoxLayout(header)
         header_lay.setContentsMargins(10, 0, 5, 0)
 
@@ -89,7 +89,7 @@ class SidebarTree(QWidget):
         self.tree.setAnimated(True)
         self.tree.setIndentation(15)
         self.tree.setStyleSheet(
-            "QTreeView { background-color: #1e1e1e; border: 1px solid #3a3a3a; border-top: none; }"
+            "QTreeView { background-color: #1a1a1a; border: none; }"
             "QTreeView::item { padding: 3px 4px; }"
         )
         self.tree.expanded.connect(self._on_expanded)
