@@ -187,9 +187,6 @@ class UnixScreenMixin:
 
 
 class UnixDesktopMixin:
-    def play_beep(self, _sound_path):
-        print("\a", end="", flush=True)
-
     def show_info_message(self, title, message):
         print(f"{title}: {message}", flush=True)
 

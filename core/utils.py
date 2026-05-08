@@ -2,21 +2,22 @@ import os
 import sys
 import threading
 import time
+import wave
 
+import sounddevice as sd
 from PIL import Image, ImageQt
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QImage, QPainter
 from PySide6.QtWidgets import QApplication
 
 from core import config
-from core.constants import DEFAULT_CONFIG
+from core.constants import DEFAULT_CONFIG, INTERNAL_CONFIG
 from core.input_runtime import remember_hotkey_registration
 from core.logger import logger
 from core.platform import get_platform_services
 
 _platform = get_platform_services()
 
-# Cache global para datos de audio (evita latencia de disco)
 _AUDIO_CACHE = {}
 
 
@@ -47,26 +48,35 @@ def get_save_directory(base_path, now):
 
 
 def play_beep_async():
-    """Reproduce sonido de obturador de forma asincrona."""
-    timestamp = time.strftime("%H:%M:%S")
-    logger.trace(f"[AUDIO] Solicitud de reproduccion a las {timestamp}")
-
-    global _AUDIO_CACHE
+    """Reproduce sonido de obturador de forma asincrona via sounddevice."""
     try:
-        sound_key = "shutter"
-        if sound_key not in _AUDIO_CACHE:
-            sound_path = get_resource_path(os.path.join("core", "assets", "sounds", "shutter_a.wav"))
-            logger.debug(f"[AUDIO] Verificando archivo local: {sound_path}")
+        if "shutter" not in _AUDIO_CACHE:
+            sound_path = get_resource_path(INTERNAL_CONFIG["shutter_sound"])
             if os.path.exists(sound_path):
-                _AUDIO_CACHE[sound_key] = sound_path
-                logger.debug("[AUDIO] Ruta de audio referenciada exitosamente.")
+                with wave.open(sound_path, "rb") as w:
+                    frames = w.readframes(w.getnframes())
+                    sample_rate = w.getframerate()
+                    channels = w.getnchannels()
+                    sample_width = w.getsampwidth()
+                dtype_map = {1: "int8", 2: "int16", 4: "int32"}
+                _AUDIO_CACHE["shutter"] = {
+                    "frames": frames,
+                    "sample_rate": sample_rate,
+                    "channels": channels,
+                    "dtype": dtype_map.get(sample_width, "int16"),
+                }
             else:
-                logger.error("[AUDIO] Archivo no encontrado. Ejecutando beep de emergencia.")
-                _platform.desktop.play_beep(None)
                 return
 
-        _platform.desktop.play_beep(_AUDIO_CACHE[sound_key])
-        logger.debug("[AUDIO] Comando de reproduccion enviado al sistema.")
+        sd.stop()
+        cached = _AUDIO_CACHE["shutter"]
+        stream = sd.RawOutputStream(
+            samplerate=cached["sample_rate"],
+            channels=cached["channels"],
+            dtype=cached["dtype"],
+        )
+        stream.start()
+        stream.write(cached["frames"])
     except Exception as exc:
         logger.error(f"[AUDIO] Error al reproducir audio: {exc}")
 

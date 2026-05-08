@@ -10,6 +10,7 @@ INTERNAL_CONFIG = {
     "shortcut_copy_clipboard": "ctrl+c",
     "editor_tool_text_default_width": 240,
     "editor_tool_text_default_height": 28,
+    "shutter_sound": os.path.join("core", "assets", "sounds", "shutter_a.wav"),
 }
 
 # Hotkeys configurables por usuario y otros valores por defecto
