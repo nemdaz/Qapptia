@@ -9,6 +9,7 @@ from PySide6.QtCore import QtMsgType, qInstallMessageHandler
 from PySide6.QtWidgets import QApplication
 
 from core import assets, ipc
+from core.constants import APP_NAME, VERSION
 from core.logger import logger, build_daily_log_path
 from core.platform import get_platform_services
 from module_editor.ui.main_window import MainWindow
@@ -84,7 +85,7 @@ def run_editor():
     window.setWindowIcon(app_icon)
     window.show()
     
-    logger.info(f"Editor iniciado (pid={os.getpid()})")
+    logger.info(f"=== {APP_NAME} v{VERSION} === Editor iniciado (pid={os.getpid()})")
     sys.exit(app.exec())
 
 if __name__ == "__main__":

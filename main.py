@@ -38,6 +38,8 @@ def main():
             run_config_window()
             return
 
+    logger.info(f"=== {APP_NAME} v{VERSION} === Iniciando servicio de captura en segundo plano...")
+
     app_instance_guard = _platform.process.acquire_single_instance(ipc.CHANNEL_APP)
     if app_instance_guard is None:
         if not ipc.request_wake_up(ipc.CHANNEL_APP):
