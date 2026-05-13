@@ -9,6 +9,7 @@ from core.logger import logger
 from core.platform import get_platform_services
 from module_capture.capture_dispatcher import request_capture
 from module_capture.application.flow_capture_service import flow_capture_service
+from module_capture.constants import CAPTURE_MODE_SCREEN, CAPTURE_MODE_AREA, CAPTURE_MODE_FLOW, CAPTURE_SOURCE_TRAY
 from module_capture.entrypoints.suspend_watcher import on_mouse_event
 
 _platform = get_platform_services()
@@ -85,15 +86,15 @@ def _capture_label(title, shortcut_key):
 
 
 def start_screen_capture(icon, item=None):
-    request_capture("screen", source="tray")
+    request_capture(constants.CAPTURE_MODE_SCREEN, source=constants.CAPTURE_SOURCE_TRAY)
 
 
 def start_area_capture(icon, item=None):
-    request_capture("area", source="tray")
+    request_capture(constants.CAPTURE_MODE_AREA, source=constants.CAPTURE_SOURCE_TRAY)
 
 
 def start_flow_capture(icon, item=None):
-    request_capture("flow", source="tray")
+    request_capture(constants.CAPTURE_MODE_FLOW, source=constants.CAPTURE_SOURCE_TRAY)
 
 
 def _open_editor_icon(icon, item=None):

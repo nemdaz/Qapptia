@@ -128,3 +128,13 @@ HOTKEY_DESCRIPTIONS = {
     "area": "Modo Area",
     "flow": "Modo Flujo (Toggle)",
 }
+
+# Modos de captura
+CAPTURE_MODE_SCREEN = "screen"
+CAPTURE_MODE_AREA = "area"
+CAPTURE_MODE_FLOW = "flow"
+
+# Fuentes de captura
+CAPTURE_SOURCE_TRAY = "tray"
+CAPTURE_SOURCE_HOTKEY = "hotkey"
+CAPTURE_SOURCE_UNKNOWN = "unknown"

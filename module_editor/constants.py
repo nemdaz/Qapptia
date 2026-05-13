@@ -46,7 +46,15 @@ FAVORITE_COLOR_NAMES = {
     "black": "Negro"
 }
 DEFAULT_FAV_COLOR = "green"
-VECTOR_COLOR_TOOLS = ("line", "arrow", "rect", "highlighter", "text")
+
+# Tipos de herramientas de dibujo
+TOOL_TYPE_LINE = "line"
+TOOL_TYPE_ARROW = "arrow"
+TOOL_TYPE_RECT = "rect"
+TOOL_TYPE_HIGHLIGHTER = "highlighter"
+TOOL_TYPE_TEXT = "text"
+
+VECTOR_COLOR_TOOLS = (TOOL_TYPE_LINE, TOOL_TYPE_ARROW, TOOL_TYPE_RECT, TOOL_TYPE_HIGHLIGHTER, TOOL_TYPE_TEXT)
 
 # Tooltips y Textos UI
 TOOLTIPS = {

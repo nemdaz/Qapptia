@@ -34,7 +34,7 @@ class ImageScene(QGraphicsScene):
 
     def _create_text_item(self, start_pos, end_pos=None):
         payload = {"text": "", "text_size": constants.TEXT_STYLE["font_default_px"]}
-        vector = self._document.create_vector("text", start_pos, self._active_color, payload=payload)
+        vector = self._document.create_vector(constants.TOOL_TYPE_TEXT, start_pos, self._active_color, payload=payload)
         item = self._create_item(vector)
         self.addItem(item)
         item.setSelected(True)
@@ -140,7 +140,7 @@ class ImageScene(QGraphicsScene):
         # 3. Draw mode
         if event.button() == Qt.LeftButton and self._draw_mode:
             self.deselect_all()
-            if self._draw_mode == "text":
+            if self._draw_mode == constants.TOOL_TYPE_TEXT:
                 self._start_text_drag(pos)
                 event.accept()
                 return
@@ -153,7 +153,7 @@ class ImageScene(QGraphicsScene):
             self._emit_selection_context("drawing", item.data.color)
             self._dragging = {
                 "item": item,
-                "grip": "end" if self._draw_mode in ("arrow", "line") else "br",
+                "grip": "end" if self._draw_mode in (constants.TOOL_TYPE_ARROW, constants.TOOL_TYPE_LINE) else "br",
                 "last": pos,
                 "created": True,
                 "origin": (pos.x(), pos.y()),
@@ -314,7 +314,7 @@ class ImageScene(QGraphicsScene):
         return None
 
     def _create_item(self, vector):
-        if vector.shape_type == "text":
+        if vector.shape_type == constants.TOOL_TYPE_TEXT:
             if "text" not in vector.payload:
                 raise ValueError(f"Invalid text payload for vector '{vector.shape_id}': required key text")
             if "text_size" not in vector.payload:

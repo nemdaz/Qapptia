@@ -141,11 +141,11 @@ class MainWindow(QMainWindow):
         self._add_action(toolbar, "image_real_size", "image_real_size", self.reset_zoom)
 
         toolbar.addSeparator()
-        self.act_line = self._add_action(toolbar, "line", "line", lambda: self.set_tool("line"), checkable=True)
-        self.act_arrow = self._add_action(toolbar, "arrow", "arrow", lambda: self.set_tool("arrow"), checkable=True)
-        self.act_rect = self._add_action(toolbar, "rect", "rect", lambda: self.set_tool("rect"), checkable=True)
-        self.act_high = self._add_action(toolbar, "highlighter", "highlighter", lambda: self.set_tool("highlighter"), checkable=True)
-        self.act_text = self._add_action(toolbar, "text", "text", lambda: self.set_tool("text"), checkable=True)
+        self.act_line = self._add_action(toolbar, "line", "line", lambda: self.set_tool(constants.TOOL_TYPE_LINE), checkable=True)
+        self.act_arrow = self._add_action(toolbar, "arrow", "arrow", lambda: self.set_tool(constants.TOOL_TYPE_ARROW), checkable=True)
+        self.act_rect = self._add_action(toolbar, "rect", "rect", lambda: self.set_tool(constants.TOOL_TYPE_RECT), checkable=True)
+        self.act_high = self._add_action(toolbar, "highlighter", "highlighter", lambda: self.set_tool(constants.TOOL_TYPE_HIGHLIGHTER), checkable=True)
+        self.act_text = self._add_action(toolbar, "text", "text", lambda: self.set_tool(constants.TOOL_TYPE_TEXT), checkable=True)
 
         toolbar.addSeparator()
         self._populate_color_actions(toolbar)
@@ -203,11 +203,11 @@ class MainWindow(QMainWindow):
     def _apply_toolbar_state(self, state):
         for swatch_name, action in self._color_btns.items():
             action.setChecked(swatch_name == state.color_name)
-        self.act_line.setChecked(state.active_tool == "line")
-        self.act_arrow.setChecked(state.active_tool == "arrow")
-        self.act_rect.setChecked(state.active_tool == "rect")
-        self.act_high.setChecked(state.active_tool == "highlighter")
-        self.act_text.setChecked(state.active_tool == "text")
+        self.act_line.setChecked(state.active_tool == constants.TOOL_TYPE_LINE)
+        self.act_arrow.setChecked(state.active_tool == constants.TOOL_TYPE_ARROW)
+        self.act_rect.setChecked(state.active_tool == constants.TOOL_TYPE_RECT)
+        self.act_high.setChecked(state.active_tool == constants.TOOL_TYPE_HIGHLIGHTER)
+        self.act_text.setChecked(state.active_tool == constants.TOOL_TYPE_TEXT)
         self.scene.set_active_color(state.color_hex)
         self.scene.set_draw_mode(state.draw_mode)
         self.canvas.set_draw_cursor_active(state.draw_cursor_active)

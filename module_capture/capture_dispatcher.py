@@ -9,7 +9,7 @@ from core import config
 from core.logger import logger
 from module_capture.application.fullscreen_capture_service import fullscreen_capture_service
 from module_capture.application.flow_capture_service import flow_capture_service
-from module_capture.constants import CAPTURE_MESSAGES
+from module_capture.constants import CAPTURE_MESSAGES, CAPTURE_MODE_SCREEN, CAPTURE_MODE_AREA, CAPTURE_MODE_FLOW
 from module_capture.ui.area_selector import run_area_selector
 
 
@@ -17,11 +17,11 @@ def request_capture(mode, source="unknown"):
     logger.debug(f"[DISPATCHER] request_capture(mode={mode}, source={source})")
     config.load_config()
 
-    if mode == "screen":
+    if mode == CAPTURE_MODE_SCREEN:
         threading.Thread(target=capture_screen, daemon=True).start()
-    elif mode == "area":
+    elif mode == CAPTURE_MODE_AREA:
         capture_area()
-    elif mode == "flow":
+    elif mode == CAPTURE_MODE_FLOW:
         capture_flow()
     else:
         logger.warning(f"[DISPATCHER] Modo de captura desconocido: {mode}")
