@@ -19,7 +19,215 @@ from module_editor.core.annotation_renderer import DrawingTool
 from module_editor.ui.toolbar.canvas_item import CanvasItem
 
 
-class InlineTextEditor(QGraphicsTextItem):
+class CanvasTextItem(CanvasItem):
+    def __init__(self, data, commit_callback, size_change_callback):
+        super().__init__(data)
+        self._commit_callback = commit_callback
+        self._size_change_callback = size_change_callback
+        self._editor = None
+        self._editing_start_coords = None
+
+        self._size_control = _TextSizeControl(
+            constants.TEXT_STYLE["font_min_px"],
+            constants.TEXT_STYLE["font_max_px"],
+        )
+        self._size_control.setFixedSize(76, 22)
+        self._size_control.setValue(int(self.data.payload["text_size"]))
+        self._size_control.setFocusPolicy(Qt.NoFocus)
+        self._size_control.setCursor(Qt.ArrowCursor)
+        self._size_control.setStyleSheet(
+            "QWidget#text-size-control {"
+            "background-color: rgba(20, 20, 20, 175);"
+            "border: none;"
+            "}"
+            "QPushButton#size-minus, QPushButton#size-plus {"
+            "background-color: rgba(255, 255, 255, 32);"
+            "color: white;"
+            "border: none;"
+            "font-weight: 700;"
+            "}"
+            "QPushButton#size-minus:hover, QPushButton#size-plus:hover {"
+            "background-color: rgba(255, 255, 255, 50);"
+            "}"
+            "QPushButton#size-minus:pressed, QPushButton#size-plus:pressed {"
+            "background-color: rgba(255, 255, 255, 70);"
+            "}"
+            "QLineEdit#size-value {"
+            "background: transparent;"
+            "border: none;"
+            "color: white;"
+            "padding: 0;"
+            "}"
+        )
+        self._size_control.valueChanged.connect(self._on_size_control_changed)
+
+        self._size_control_proxy = QGraphicsProxyWidget(self)
+        self._size_control_proxy.setWidget(self._size_control)
+        self._size_control_proxy.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
+        self._size_control_proxy.setZValue(8)
+        self._size_control_proxy.hide()
+
+    def paint(self, painter, option, widget=None):
+        if not self.is_editing():
+            DrawingTool.render_qt(
+                painter,
+                self.data.shape_type,
+                self.data.coords,
+                self.data.color,
+                constants.VECTOR_STYLE["stroke_width"],
+                payload=self.data.payload,
+            )
+        if self.isSelected():
+            self._paint_grips(painter)
+        if self.isSelected() or self.is_editing():
+            self._paint_selection_bounds(painter)
+
+    def set_coords(self, coords):
+        super().set_coords(coords)
+        if self._editor is not None:
+            self._editor._sync_layout(sync_height=False)
+        self._sync_size_control_position()
+
+    def ensure_text_height(self, required_height):
+        x1, y1, x2, y2 = self.data.coords
+        current_height = abs(y2 - y1)
+        target_height = max(float(required_height), float(constants.TEXT_STYLE["min_box_height"]))
+        if abs(target_height - current_height) <= 0.5:
+            return
+
+        new_y2 = y1 + target_height if y2 >= y1 else y1 - target_height
+        self.set_coords([x1, y1, x2, new_y2])
+
+    def recompute_text_size_to_fit(self):
+        sample_text = self.data.payload["text"] or constants.TEXT_STYLE["placeholder"]
+        self.data.payload["text_size"] = text_support.fit_text_size_to_fit(sample_text, self.data.coords)
+        if self._editor is not None:
+            self._editor.set_text_size(self.data.payload["text_size"])
+        with QSignalBlocker(self._size_control):
+            self._size_control.setValue(int(self.data.payload["text_size"]))
+        self.update()
+
+    def set_text_color(self, color):
+        self.data.color = color
+        if self._editor is not None:
+            self._editor.setDefaultTextColor(QColor(color))
+            self._editor._sync_layout(sync_height=False)
+        self.update()
+
+    def is_editing(self):
+        return self._editor is not None
+
+    def start_editing(self):
+        if self._editor is not None:
+            return
+        self._editing_start_coords = list(self.data.coords)
+        self._editor = _InlineTextEditor(self, self.data, self._finish_edit)
+        self.setSelected(True)
+        self._sync_size_control_state()
+        QTimer.singleShot(0, self._focus_editor)
+
+    def finish_editing(self, cancelled=False):
+        if self._editor is None:
+            return
+        self._editor._finalize(cancelled)
+
+    def _focus_editor(self):
+        if self._editor is None:
+            return
+        if self.scene() is not None:
+            self.scene().setFocusItem(self._editor, Qt.OtherFocusReason)
+            self._editor.setFocus(Qt.OtherFocusReason)
+            cursor = self._editor.textCursor()
+            cursor.movePosition(QTextCursor.End)
+            self._editor.setTextCursor(cursor)
+
+    def _finish_edit(self, text, cancelled):
+        final_text_size = self._editor.text_size if self._editor is not None else self.data.payload["text_size"]
+
+        if cancelled and self._editing_start_coords is not None:
+            self.set_coords(self._editing_start_coords)
+
+        if self.scene() is not None and self._editor is not None:
+            self.scene().removeItem(self._editor)
+        self._editor = None
+        self._editing_start_coords = None
+        self._sync_size_control_state()
+        self._commit_callback(self, text, cancelled, final_text_size)
+
+    def itemChange(self, change, value):
+        if change == QGraphicsItem.ItemSelectedHasChanged:
+            self._sync_size_control_state()
+        return super().itemChange(change, value)
+
+    def _sync_size_control_state(self):
+        visible = self.isSelected() or self.is_editing()
+        self._size_control_proxy.setVisible(visible)
+        with QSignalBlocker(self._size_control):
+            self._size_control.setValue(int(self.data.payload["text_size"]))
+        self._sync_size_control_position()
+
+    def _sync_size_control_position(self):
+        x1, y1, x2, y2 = self.data.coords
+        right = max(x1, x2)
+        top = min(y1, y2)
+        control_w = self._size_control.width()
+        control_h = self._size_control.height()
+        self._size_control_proxy.setPos(right - control_w, top - control_h)
+
+    def owns_size_control_item(self, item):
+        current = item
+        while current is not None:
+            if current is self._size_control_proxy:
+                return True
+            current = current.parentItem()
+        return False
+
+    def is_point_on_size_control(self, scene_pos):
+        if not self._size_control_proxy.isVisible():
+            return False
+        return self._size_control_proxy.sceneBoundingRect().contains(scene_pos)
+
+    def is_size_control_focus_target(self):
+        focus_widget = QApplication.focusWidget()
+        current = focus_widget
+        while current is not None:
+            if current is self._size_control:
+                return True
+            current = current.parentWidget()
+        return False
+
+    def _on_size_control_changed(self, value):
+        self.data.payload["text_size"] = int(value)
+        if self._editor is not None:
+            self._editor.set_text_size(value)
+        else:
+            self._grow_text_box_for_current_content()
+        self.update()
+        self._size_change_callback(self, int(value))
+        self._sync_size_control_position()
+
+    def _grow_text_box_for_current_content(self):
+        content_text = self.data.payload.get("text", "")
+        normalized_text = text_support.normalize_text(content_text)
+        font = text_support.build_qt_font(self.data.payload["text_size"])
+        content_rect = text_support.get_content_rect(self.data.coords, text_support.get_text_padding(self.data.coords))
+        document = text_support.create_qt_text_document(normalized_text, font, max(1.0, content_rect.width()))
+        required_height = max(constants.TEXT_STYLE["min_box_height"], math.ceil(float(document.size().height())))
+        self.ensure_text_height(required_height)
+
+    def _paint_selection_bounds(self, painter):
+        x1, y1, x2, y2 = self.data.coords
+        rect = QRectF(min(x1, x2), min(y1, y2), abs(x2 - x1), abs(y2 - y1))
+        painter.save()
+        pen = QPen(QColor(constants.TEXT_STYLE["selection_border"]), constants.TEXT_STYLE["selection_border_width"])
+        pen.setDashPattern(constants.TEXT_STYLE["selection_dash_pattern"])
+        painter.setPen(pen)
+        painter.setBrush(Qt.NoBrush)
+        painter.drawRect(rect)
+        painter.restore()
+
+
+class _InlineTextEditor(QGraphicsTextItem):
     _EMPTY_PLACEHOLDER = " "
 
     def __init__(self, parent_item, vector_data, commit_callback):
@@ -124,7 +332,7 @@ class InlineTextEditor(QGraphicsTextItem):
         self._commit_callback(final_text, cancelled)
 
 
-class TextSizeControl(QWidget):
+class _TextSizeControl(QWidget):
     valueChanged = Signal(int)
 
     def __init__(self, min_value, max_value, parent=None):
@@ -186,211 +394,3 @@ class TextSizeControl(QWidget):
             self._value_edit.setText(str(self._value))
             return
         self.setValue(int(text_value))
-
-
-class TextCanvasItem(CanvasItem):
-    def __init__(self, data, commit_callback, size_change_callback):
-        super().__init__(data)
-        self._commit_callback = commit_callback
-        self._size_change_callback = size_change_callback
-        self._editor = None
-        self._editing_start_coords = None
-
-        self._size_control = TextSizeControl(
-            constants.TEXT_STYLE["font_min_px"],
-            constants.TEXT_STYLE["font_max_px"],
-        )
-        self._size_control.setFixedSize(76, 22)
-        self._size_control.setValue(int(self.data.payload["text_size"]))
-        self._size_control.setFocusPolicy(Qt.StrongFocus)
-        self._size_control.setCursor(Qt.ArrowCursor)
-        self._size_control.setStyleSheet(
-            "QWidget#text-size-control {"
-            "background-color: rgba(20, 20, 20, 175);"
-            "border: none;"
-            "}"
-            "QPushButton#size-minus, QPushButton#size-plus {"
-            "background-color: rgba(255, 255, 255, 32);"
-            "color: white;"
-            "border: none;"
-            "font-weight: 700;"
-            "}"
-            "QPushButton#size-minus:hover, QPushButton#size-plus:hover {"
-            "background-color: rgba(255, 255, 255, 50);"
-            "}"
-            "QPushButton#size-minus:pressed, QPushButton#size-plus:pressed {"
-            "background-color: rgba(255, 255, 255, 70);"
-            "}"
-            "QLineEdit#size-value {"
-            "background: transparent;"
-            "border: none;"
-            "color: white;"
-            "padding: 0;"
-            "}"
-        )
-        self._size_control.valueChanged.connect(self._on_size_control_changed)
-
-        self._size_control_proxy = QGraphicsProxyWidget(self)
-        self._size_control_proxy.setWidget(self._size_control)
-        self._size_control_proxy.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
-        self._size_control_proxy.setZValue(8)
-        self._size_control_proxy.hide()
-
-    def paint(self, painter, option, widget=None):
-        if not self.is_editing():
-            DrawingTool.render_qt(
-                painter,
-                self.data.shape_type,
-                self.data.coords,
-                self.data.color,
-                constants.VECTOR_STYLE["stroke_width"],
-                payload=self.data.payload,
-            )
-        if self.isSelected():
-            self._paint_grips(painter)
-        if self.isSelected() or self.is_editing():
-            self._paint_selection_bounds(painter)
-
-    def set_coords(self, coords):
-        super().set_coords(coords)
-        if self._editor is not None:
-            self._editor._sync_layout(sync_height=False)
-        self._sync_size_control_position()
-
-    def ensure_text_height(self, required_height):
-        x1, y1, x2, y2 = self.data.coords
-        current_height = abs(y2 - y1)
-        target_height = max(float(required_height), float(constants.TEXT_STYLE["min_box_height"]))
-        if abs(target_height - current_height) <= 0.5:
-            return
-
-        new_y2 = y1 + target_height if y2 >= y1 else y1 - target_height
-        self.set_coords([x1, y1, x2, new_y2])
-
-    def recompute_text_size_to_fit(self):
-        sample_text = self.data.payload["text"] or constants.TEXT_STYLE["placeholder"]
-        self.data.payload["text_size"] = text_support.fit_text_size_to_fit(sample_text, self.data.coords)
-        if self._editor is not None:
-            self._editor.set_text_size(self.data.payload["text_size"])
-        with QSignalBlocker(self._size_control):
-            self._size_control.setValue(int(self.data.payload["text_size"]))
-        self.update()
-
-    def set_text_color(self, color):
-        self.data.color = color
-        if self._editor is not None:
-            self._editor.setDefaultTextColor(QColor(color))
-            self._editor._sync_layout(sync_height=False)
-        self.update()
-
-    def is_editing(self):
-        return self._editor is not None
-
-    def start_editing(self):
-        if self._editor is not None:
-            return
-        self._editing_start_coords = list(self.data.coords)
-        self._editor = InlineTextEditor(self, self.data, self._finish_edit)
-        self.setSelected(True)
-        self._sync_size_control_state()
-        QTimer.singleShot(0, self._focus_editor)
-
-    def finish_editing(self, cancelled=False):
-        if self._editor is None:
-            return
-        self._editor._finalize(cancelled)
-
-    def _focus_editor(self):
-        if self._editor is None:
-            return
-        if self.scene() is not None:
-            self.scene().setFocusItem(self._editor, Qt.OtherFocusReason)
-        self._editor.setFocus(Qt.OtherFocusReason)
-        cursor = self._editor.textCursor()
-        cursor.movePosition(QTextCursor.End)
-        self._editor.setTextCursor(cursor)
-
-    def _finish_edit(self, text, cancelled):
-        final_text_size = self._editor.text_size if self._editor is not None else self.data.payload["text_size"]
-
-        if cancelled and self._editing_start_coords is not None:
-            self.set_coords(self._editing_start_coords)
-
-        if self.scene() is not None and self._editor is not None:
-            self.scene().removeItem(self._editor)
-        self._editor = None
-        self._editing_start_coords = None
-        self._sync_size_control_state()
-        self._commit_callback(self, text, cancelled, final_text_size)
-
-    def itemChange(self, change, value):
-        if change == QGraphicsItem.ItemSelectedHasChanged:
-            self._sync_size_control_state()
-        return super().itemChange(change, value)
-
-    def _sync_size_control_state(self):
-        visible = self.isSelected() or self.is_editing()
-        self._size_control_proxy.setVisible(visible)
-        with QSignalBlocker(self._size_control):
-            self._size_control.setValue(int(self.data.payload["text_size"]))
-        self._sync_size_control_position()
-
-    def _sync_size_control_position(self):
-        x1, y1, x2, y2 = self.data.coords
-        right = max(x1, x2)
-        top = min(y1, y2)
-        control_w = self._size_control.width()
-        control_h = self._size_control.height()
-        self._size_control_proxy.setPos(right - control_w, top - control_h)
-
-    def owns_size_control_item(self, item):
-        current = item
-        while current is not None:
-            if current is self._size_control_proxy:
-                return True
-            current = current.parentItem()
-        return False
-
-    def is_point_on_size_control(self, scene_pos):
-        if not self._size_control_proxy.isVisible():
-            return False
-        return self._size_control_proxy.sceneBoundingRect().contains(scene_pos)
-
-    def is_size_control_focus_target(self):
-        focus_widget = QApplication.focusWidget()
-        current = focus_widget
-        while current is not None:
-            if current is self._size_control:
-                return True
-            current = current.parentWidget()
-        return False
-
-    def _on_size_control_changed(self, value):
-        self.data.payload["text_size"] = int(value)
-        if self._editor is not None:
-            self._editor.set_text_size(value)
-        else:
-            self._grow_text_box_for_current_content()
-        self.update()
-        self._size_change_callback(self, int(value))
-        self._sync_size_control_position()
-
-    def _grow_text_box_for_current_content(self):
-        content_text = self.data.payload.get("text", "")
-        normalized_text = text_support.normalize_text(content_text)
-        font = text_support.build_qt_font(self.data.payload["text_size"])
-        content_rect = text_support.get_content_rect(self.data.coords, text_support.get_text_padding(self.data.coords))
-        document = text_support.create_qt_text_document(normalized_text, font, max(1.0, content_rect.width()))
-        required_height = max(constants.TEXT_STYLE["min_box_height"], math.ceil(float(document.size().height())))
-        self.ensure_text_height(required_height)
-
-    def _paint_selection_bounds(self, painter):
-        x1, y1, x2, y2 = self.data.coords
-        rect = QRectF(min(x1, x2), min(y1, y2), abs(x2 - x1), abs(y2 - y1))
-        painter.save()
-        pen = QPen(QColor(constants.TEXT_STYLE["selection_border"]), constants.TEXT_STYLE["selection_border_width"])
-        pen.setDashPattern(constants.TEXT_STYLE["selection_dash_pattern"])
-        painter.setPen(pen)
-        painter.setBrush(Qt.NoBrush)
-        painter.drawRect(rect)
-        painter.restore()

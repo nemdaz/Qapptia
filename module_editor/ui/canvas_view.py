@@ -8,7 +8,7 @@ from PySide6.QtGui import QPixmap, QColor, QPainter, QCursor
 from core.constants import INTERNAL_CONFIG
 from module_editor import constants
 from module_editor.ui.toolbar.canvas_item import CanvasItem
-from module_editor.ui.toolbar.text_item import InlineTextEditor, TextCanvasItem
+from module_editor.ui.toolbar.canvas_text_item import CanvasTextItem, _InlineTextEditor
 
 class ImageScene(QGraphicsScene):
     content_changed = Signal()
@@ -98,7 +98,7 @@ class ImageScene(QGraphicsScene):
             super().mousePressEvent(event)
             return
 
-        if isinstance(hit, InlineTextEditor):
+        if isinstance(hit, _InlineTextEditor):
             super().mousePressEvent(event)
             return
 
@@ -207,7 +207,7 @@ class ImageScene(QGraphicsScene):
                 coords[0] += delta.x(); coords[3] += delta.y()
 
             item.set_coords(coords)
-            if isinstance(item, TextCanvasItem) and grip != "move" and self._dragging.get("created"):
+            if isinstance(item, CanvasTextItem) and grip != "move" and self._dragging.get("created"):
                 item.recompute_text_size_to_fit()
             event.accept()
         else:
@@ -231,7 +231,7 @@ class ImageScene(QGraphicsScene):
                 x1, y1 = self._dragging["origin"]
                 x2, y2 = item.data.coords[2], item.data.coords[3]
                 distance = math.hypot(x2 - x1, y2 - y1)
-                min_distance = constants.TEXT_STYLE["create_min_distance"] if isinstance(item, TextCanvasItem) else constants.VECTOR_STYLE["draw_min_distance"]
+                min_distance = constants.TEXT_STYLE["create_min_distance"] if isinstance(item, CanvasTextItem) else constants.VECTOR_STYLE["draw_min_distance"]
                 if distance < min_distance:
                     self._document.delete_vector(item.data.shape_id)
                     self.removeItem(item)
@@ -239,7 +239,7 @@ class ImageScene(QGraphicsScene):
                     self._dragging = None
                     event.accept()
                     return
-                if isinstance(item, TextCanvasItem):
+                if isinstance(item, CanvasTextItem):
                     rect = QRectF(min(item.data.coords[0], item.data.coords[2]), min(item.data.coords[1], item.data.coords[3]), abs(item.data.coords[2] - item.data.coords[0]), abs(item.data.coords[3] - item.data.coords[1]))
                     if rect.width() < constants.TEXT_STYLE["min_box_width"] or rect.height() < constants.TEXT_STYLE["min_box_height"]:
                         self._document.delete_vector(item.data.shape_id)
@@ -249,7 +249,7 @@ class ImageScene(QGraphicsScene):
                         event.accept()
                         return
             self._dragging = None
-            if isinstance(dragged_item, TextCanvasItem):
+            if isinstance(dragged_item, CanvasTextItem):
                 QTimer.singleShot(0, dragged_item.start_editing)
                 event.accept()
                 return
@@ -258,7 +258,7 @@ class ImageScene(QGraphicsScene):
 
     def mouseDoubleClickEvent(self, event):
         hit = self.itemAt(event.scenePos(), self.views()[0].transform())
-        if isinstance(hit, TextCanvasItem):
+        if isinstance(hit, CanvasTextItem):
             hit.start_editing()
             event.accept()
             return
@@ -283,7 +283,7 @@ class ImageScene(QGraphicsScene):
 
         changed = False
         for item in selected_items:
-            if isinstance(item, TextCanvasItem):
+            if isinstance(item, CanvasTextItem):
                 item.set_text_color(color)
             else:
                 item.data.color = color
@@ -319,18 +319,18 @@ class ImageScene(QGraphicsScene):
                 raise ValueError(f"Invalid text payload for vector '{vector.shape_id}': required key text")
             if "text_size" not in vector.payload:
                 vector.payload["text_size"] = constants.TEXT_STYLE["font_default_px"]
-            return TextCanvasItem(vector, self._handle_text_commit, self._handle_text_size_change)
+            return CanvasTextItem(vector, self._handle_text_commit, self._handle_text_size_change)
         return CanvasItem(vector)
 
     def _find_editing_text_item(self):
         for item in self.items():
-            if isinstance(item, TextCanvasItem) and item.is_editing():
+            if isinstance(item, CanvasTextItem) and item.is_editing():
                 return item
         return None
 
     def _find_text_item_for_size_control(self, scene_pos):
         for item in self.items():
-            if isinstance(item, TextCanvasItem) and item.is_point_on_size_control(scene_pos):
+            if isinstance(item, CanvasTextItem) and item.is_point_on_size_control(scene_pos):
                 return item
         return None
 
@@ -402,7 +402,7 @@ class CanvasView(QGraphicsView):
             return
 
         hit = self.itemAt(view_pos)
-        if isinstance(hit, InlineTextEditor):
+        if isinstance(hit, _InlineTextEditor):
             self._set_canvas_cursor(Qt.IBeamCursor)
             return
 
@@ -521,7 +521,7 @@ class CanvasView(QGraphicsView):
                 return False
 
         item = self.itemAt(view_pos)
-        return not isinstance(item, (CanvasItem, InlineTextEditor))
+        return not isinstance(item, (CanvasItem, _InlineTextEditor))
 
     def _has_scroll_margin(self):
         h_scroll = self.horizontalScrollBar()
