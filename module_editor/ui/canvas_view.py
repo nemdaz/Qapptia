@@ -1,14 +1,15 @@
 import math
 
 from PIL import ImageQt
-from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsPixmapItem
 from PySide6.QtCore import Qt, QRectF, Signal, QTimer, QPointF
 from PySide6.QtGui import QPixmap, QColor, QPainter, QCursor
+from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsPixmapItem
 
 from core.constants import INTERNAL_CONFIG
 from module_editor import constants
 from module_editor.ui.toolbar.canvas_item import CanvasItem
 from module_editor.ui.toolbar.canvas_text_item import CanvasTextItem, _InlineTextEditor
+
 
 class ImageScene(QGraphicsScene):
     content_changed = Signal()
@@ -33,7 +34,7 @@ class ImageScene(QGraphicsScene):
         }
 
     def _create_text_item(self, start_pos, end_pos=None):
-        payload = {"text": "", "text_size": constants.TEXT_STYLE["font_default_px"]}
+        payload = {"text": constants.TEXT_STYLE["placeholder"], "text_size": constants.TEXT_STYLE["font_default_px"]}
         vector = self._document.create_vector(constants.TOOL_TYPE_TEXT, start_pos, self._active_color, payload=payload)
         item = self._create_item(vector)
         self.addItem(item)
@@ -54,7 +55,7 @@ class ImageScene(QGraphicsScene):
         pix = QPixmap.fromImage(ImageQt.ImageQt(pil_image))
         self.addItem(QGraphicsPixmapItem(pix))
         self.setSceneRect(QRectF(0, 0, pix.width(), pix.height()))
-        
+
         for v in self._document.vectors:
             self.addItem(self._create_item(v))
 
@@ -88,21 +89,21 @@ class ImageScene(QGraphicsScene):
         editing_item = self._find_editing_text_item()
         closed_editing_on_press = False
 
+        if editing_item is not None and editing_item.is_point_on_size_control(pos):
+            event.accept()
+            return
+
         size_control_item = self._find_text_item_for_size_control(pos)
         if size_control_item is not None:
             if not size_control_item.isSelected():
                 self.deselect_all()
                 size_control_item.setSelected(True)
                 size_control_item.update()
-            self._emit_selection_context("editing", size_control_item.data.color)
+                self._emit_selection_context("editing", size_control_item.data.color)
             super().mousePressEvent(event)
             return
 
         if isinstance(hit, _InlineTextEditor):
-            super().mousePressEvent(event)
-            return
-
-        if editing_item is not None and editing_item.is_point_on_size_control(pos):
             super().mousePressEvent(event)
             return
 
@@ -194,7 +195,7 @@ class ImageScene(QGraphicsScene):
                 return
             grip = self._dragging["grip"]
             coords = list(item.data.coords)
-            
+
             if grip == "move":
                 coords[0] += delta.x(); coords[1] += delta.y(); coords[2] += delta.x(); coords[3] += delta.y()
             elif grip in ("tl", "start"):
@@ -287,7 +288,7 @@ class ImageScene(QGraphicsScene):
                 item.set_text_color(color)
             else:
                 item.data.color = color
-                item.update()
+            item.update()
             changed = self._document.update_vector_color(item.data.shape_id, color) or changed
         if changed:
             self._persist_vectors()
@@ -337,7 +338,8 @@ class ImageScene(QGraphicsScene):
     def _handle_text_commit(self, item, text, cancelled, text_size):
         previous_text = item.data.payload.get("text", "")
         final_text = previous_text if cancelled else text.replace("\r\n", "\n")
-        if not final_text.strip():
+        is_placeholder = final_text == constants.TEXT_STYLE["placeholder"]
+        if not final_text.strip() or is_placeholder:
             self._document.delete_vector(item.data.shape_id)
             self.removeItem(item)
             self._persist_vectors()
@@ -359,6 +361,7 @@ class ImageScene(QGraphicsScene):
     def _is_over_size_control(self, scene_pos):
         return self._find_text_item_for_size_control(scene_pos) is not None
 
+
 class CanvasView(QGraphicsView):
     def __init__(self, scene, parent=None):
         super().__init__(scene, parent)
@@ -371,6 +374,34 @@ class CanvasView(QGraphicsView):
         self._pan_active = False
         self._pan_last_pos = None
         self._draw_cursor_active = False
+        self.viewport().installEventFilter(self)
+
+    def eventFilter(self, obj, event):
+        if obj is self.viewport() and event.type() == event.Type.MouseButtonPress and event.button() == Qt.LeftButton:
+            scene = self.scene()
+            if isinstance(scene, ImageScene):
+                editing_item = scene._find_editing_text_item()
+                if editing_item is not None:
+                    scene_pos = self.mapToScene(event.position().toPoint())
+                    if editing_item.is_point_on_size_control(scene_pos):
+                        proxy = editing_item._size_control_proxy
+                        local_pos = proxy.mapFromScene(scene_pos).toPoint()
+                        widget = editing_item._size_control
+                        minus_global = widget._minus_btn.mapTo(widget, widget._minus_btn.rect().topLeft())
+                        plus_global = widget._plus_btn.mapTo(widget, widget._plus_btn.rect().topLeft())
+                        value_global = widget._value_edit.mapTo(widget, widget._value_edit.rect().topLeft())
+                        minus_rect = QRectF(minus_global.x(), minus_global.y(), widget._minus_btn.width(), widget._minus_btn.height())
+                        plus_rect = QRectF(plus_global.x(), plus_global.y(), widget._plus_btn.width(), widget._plus_btn.height())
+                        value_rect = QRectF(value_global.x(), value_global.y(), widget._value_edit.width(), widget._value_edit.height())
+                        if minus_rect.contains(local_pos):
+                            widget._step_value(-1)
+                        elif plus_rect.contains(local_pos):
+                            widget._step_value(1)
+                        elif value_rect.contains(local_pos):
+                            widget._value_edit.setFocus()
+                            widget._value_edit.selectAll()
+                        return True
+        return super().eventFilter(obj, event)
 
     def set_zoom_callback(self, cb): self._on_zoom_cb = cb
 
@@ -533,6 +564,6 @@ class CanvasView(QGraphicsView):
             scene = self.scene()
             if scene and hasattr(scene, "delete_selected"):
                 scene.delete_selected()
-                event.accept()
-                return
+            event.accept()
+            return
         super().keyPressEvent(event)

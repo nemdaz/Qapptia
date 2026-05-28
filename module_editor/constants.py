@@ -111,7 +111,7 @@ TEXT_STYLE = {
         "regular": "AtkinsonHyperlegible-Regular.ttf",
         "bold": "AtkinsonHyperlegible-Bold.ttf",
     },
-    "placeholder": "Texto",
+    "placeholder": "Escribe aquí...",
     "font_default_px": 20,
     "font_min_px": 12,
     "font_max_px": 320,

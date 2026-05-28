@@ -20,6 +20,8 @@ from module_editor.ui.toolbar.canvas_item import CanvasItem
 
 
 class CanvasTextItem(CanvasItem):
+    _PLACEHOLDER = constants.TEXT_STYLE["placeholder"]
+
     def __init__(self, data, commit_callback, size_change_callback):
         super().__init__(data)
         self._commit_callback = commit_callback
@@ -35,6 +37,10 @@ class CanvasTextItem(CanvasItem):
         self._size_control.setValue(int(self.data.payload["text_size"]))
         self._size_control.setFocusPolicy(Qt.NoFocus)
         self._size_control.setCursor(Qt.ArrowCursor)
+        self._minus_btn = self._size_control._minus_btn
+        self._plus_btn = self._size_control._plus_btn
+        self._minus_btn.setFocusPolicy(Qt.NoFocus)
+        self._plus_btn.setFocusPolicy(Qt.NoFocus)
         self._size_control.setStyleSheet(
             "QWidget#text-size-control {"
             "background-color: rgba(20, 20, 20, 175);"
@@ -99,7 +105,7 @@ class CanvasTextItem(CanvasItem):
         self.set_coords([x1, y1, x2, new_y2])
 
     def recompute_text_size_to_fit(self):
-        sample_text = self.data.payload["text"] or constants.TEXT_STYLE["placeholder"]
+        sample_text = self.data.payload["text"] or self._PLACEHOLDER
         self.data.payload["text_size"] = text_support.fit_text_size_to_fit(sample_text, self.data.coords)
         if self._editor is not None:
             self._editor.set_text_size(self.data.payload["text_size"])
@@ -187,14 +193,13 @@ class CanvasTextItem(CanvasItem):
             return False
         return self._size_control_proxy.sceneBoundingRect().contains(scene_pos)
 
-    def is_size_control_focus_target(self):
-        focus_widget = QApplication.focusWidget()
-        current = focus_widget
-        while current is not None:
-            if current is self._size_control:
-                return True
-            current = current.parentWidget()
-        return False
+    def is_point_inside(self, scene_pos):
+        x1, y1, x2, y2 = self.data.coords
+        rect = QRectF(min(x1, x2), min(y1, y2), abs(x2 - x1), abs(y2 - y1))
+        return rect.contains(scene_pos)
+
+    def is_point_on_item(self, scene_pos):
+        return self.is_point_inside(scene_pos) or self.is_point_on_size_control(scene_pos)
 
     def _on_size_control_changed(self, value):
         self.data.payload["text_size"] = int(value)
@@ -228,7 +233,7 @@ class CanvasTextItem(CanvasItem):
 
 
 class _InlineTextEditor(QGraphicsTextItem):
-    _EMPTY_PLACEHOLDER = " "
+    _PLACEHOLDER = constants.TEXT_STYLE["placeholder"]
 
     def __init__(self, parent_item, vector_data, commit_callback):
         super().__init__(parent_item)
@@ -237,8 +242,10 @@ class _InlineTextEditor(QGraphicsTextItem):
         self._original_text = vector_data.payload.get("text", "")
         self._text_size = int(vector_data.payload["text_size"])
         self._finalized = False
+        self._is_placeholder_active = not self._original_text or self._original_text == self._PLACEHOLDER
 
-        self.setPlainText(self._original_text or self._EMPTY_PLACEHOLDER)
+        if not self._is_placeholder_active:
+            self.setPlainText(self._original_text)
         self.setFlag(QGraphicsItem.ItemIsFocusable, True)
         self.setTextInteractionFlags(Qt.TextEditorInteraction)
         self.setTabChangesFocus(True)
@@ -270,7 +277,8 @@ class _InlineTextEditor(QGraphicsTextItem):
         font = text_support.build_qt_font(self._text_size)
 
         self.setFont(font)
-        self.setDefaultTextColor(QColor(self._vector_data.color))
+        if not self._is_placeholder_active:
+            self.setDefaultTextColor(QColor(self._vector_data.color))
         self.setPos(content_rect.topLeft())
         self.setTextWidth(max(1.0, content_rect.width()))
         if sync_height:
@@ -281,13 +289,28 @@ class _InlineTextEditor(QGraphicsTextItem):
         if parent_item is None:
             return
 
-        required_height = max(
-            constants.TEXT_STYLE["min_box_height"],
-            math.ceil(float(self.document().size().height())),
-        )
+        if self._is_placeholder_active:
+            from PySide6.QtGui import QFontMetrics
+            fm = QFontMetrics(self.font())
+            required_height = max(
+                constants.TEXT_STYLE["min_box_height"],
+                float(fm.height()),
+            )
+        else:
+            required_height = max(
+                constants.TEXT_STYLE["min_box_height"],
+                math.ceil(float(self.document().size().height())),
+            )
         parent_item.ensure_text_height(required_height)
 
     def paint(self, painter, option, widget=None):
+        if self._is_placeholder_active:
+            painter.save()
+            painter.setPen(QColor(160, 160, 160))
+            painter.setFont(self.font())
+            painter.drawText(self.boundingRect(), Qt.AlignLeft | Qt.AlignTop, self._PLACEHOLDER)
+            painter.restore()
+            return
         DrawingTool.draw_qt_text_shadows(
             painter,
             self._content_text(),
@@ -297,32 +320,44 @@ class _InlineTextEditor(QGraphicsTextItem):
         super().paint(painter, option, widget)
 
     def _content_text(self):
-        text = self.toPlainText()
-        return "" if text == self._EMPTY_PLACEHOLDER else text
+        if self._is_placeholder_active:
+            return ""
+        return self.toPlainText()
 
     def focusOutEvent(self, event):
         super().focusOutEvent(event)
-        parent_item = self.parentItem()
-        if parent_item is not None and parent_item.is_size_control_focus_target():
-            return
         self._finalize(cancelled=False)
 
     def keyPressEvent(self, event):
-        if self.toPlainText() == self._EMPTY_PLACEHOLDER and event.text() and not event.text().isspace():
-            self.setPlainText("")
-            cursor = self.textCursor()
-            cursor.movePosition(QTextCursor.End)
-            self.setTextCursor(cursor)
+        if self._is_placeholder_active:
+            if event.key() == Qt.Key_Escape:
+                self._finalize(cancelled=True)
+                event.accept()
+                return
+            if event.key() in (Qt.Key_Backspace, Qt.Key_Delete):
+                event.accept()
+                return
+            if event.text() and not event.text().isspace():
+                self._is_placeholder_active = False
+                self.setPlainText(event.text())
+                self.setDefaultTextColor(QColor(self._vector_data.color))
+                cursor = self.textCursor()
+                cursor.movePosition(QTextCursor.End)
+                self.setTextCursor(cursor)
+                self._sync_layout(sync_height=True)
+                event.accept()
+                return
+            event.ignore()
+            return
         if event.key() == Qt.Key_Escape:
             self._finalize(cancelled=True)
             event.accept()
             return
         super().keyPressEvent(event)
-        if not self.toPlainText():
-            self.setPlainText(self._EMPTY_PLACEHOLDER)
-            cursor = self.textCursor()
-            cursor.movePosition(QTextCursor.End)
-            self.setTextCursor(cursor)
+        if not self.toPlainText() and not self._is_placeholder_active:
+            self._is_placeholder_active = True
+            self.update()
+            self._sync_height_to_content()
 
     def _finalize(self, cancelled):
         if self._finalized:
