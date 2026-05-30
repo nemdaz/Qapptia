@@ -377,31 +377,36 @@ class CanvasView(QGraphicsView):
         self.viewport().installEventFilter(self)
 
     def eventFilter(self, obj, event):
-        if obj is self.viewport() and event.type() == event.Type.MouseButtonPress and event.button() == Qt.LeftButton:
+        if obj is self.viewport():
             scene = self.scene()
             if isinstance(scene, ImageScene):
                 editing_item = scene._find_editing_text_item()
                 if editing_item is not None:
-                    scene_pos = self.mapToScene(event.position().toPoint())
-                    if editing_item.is_point_on_size_control(scene_pos):
-                        proxy = editing_item._size_control_proxy
-                        local_pos = proxy.mapFromScene(scene_pos).toPoint()
-                        widget = editing_item._size_control
-                        minus_global = widget._minus_btn.mapTo(widget, widget._minus_btn.rect().topLeft())
-                        plus_global = widget._plus_btn.mapTo(widget, widget._plus_btn.rect().topLeft())
-                        value_global = widget._value_edit.mapTo(widget, widget._value_edit.rect().topLeft())
-                        minus_rect = QRectF(minus_global.x(), minus_global.y(), widget._minus_btn.width(), widget._minus_btn.height())
-                        plus_rect = QRectF(plus_global.x(), plus_global.y(), widget._plus_btn.width(), widget._plus_btn.height())
-                        value_rect = QRectF(value_global.x(), value_global.y(), widget._value_edit.width(), widget._value_edit.height())
-                        if minus_rect.contains(local_pos):
-                            widget._step_value(-1)
-                        elif plus_rect.contains(local_pos):
-                            widget._step_value(1)
-                        elif value_rect.contains(local_pos):
-                            widget._value_edit.setFocus()
-                            widget._value_edit.selectAll()
-                        return True
+                    is_press = event.type() == event.Type.MouseButtonPress and event.button() == Qt.LeftButton
+                    is_release = event.type() == event.Type.MouseButtonRelease and event.button() == Qt.LeftButton
+                    is_dblclick = event.type() == event.Type.MouseButtonDblClick and event.button() == Qt.LeftButton
+                    if is_press or is_release or is_dblclick:
+                        scene_pos = self.mapToScene(event.position().toPoint())
+                        if editing_item.is_point_on_size_control(scene_pos):
+                            if is_press:
+                                self._handle_size_control_click(editing_item, scene_pos)
+                            return True
         return super().eventFilter(obj, event)
+
+    def _handle_size_control_click(self, editing_item, scene_pos):
+        proxy = editing_item._size_control_proxy
+        local_pos = proxy.mapFromScene(scene_pos).toPoint()
+        widget = editing_item._size_control
+        minus_rect = widget._minus_btn.geometry()
+        plus_rect = widget._plus_btn.geometry()
+        value_rect = widget._value_edit.geometry()
+        if minus_rect.contains(local_pos):
+            widget._step_value(-1)
+        elif plus_rect.contains(local_pos):
+            widget._step_value(1)
+        elif value_rect.contains(local_pos):
+            widget._value_edit.setFocus()
+            widget._value_edit.selectAll()
 
     def set_zoom_callback(self, cb): self._on_zoom_cb = cb
 

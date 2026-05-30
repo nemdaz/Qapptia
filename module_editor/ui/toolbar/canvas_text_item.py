@@ -326,7 +326,22 @@ class _InlineTextEditor(QGraphicsTextItem):
 
     def focusOutEvent(self, event):
         super().focusOutEvent(event)
+        parent_item = self.parentItem()
+        if parent_item is not None and event.reason() == Qt.MouseFocusReason:
+            from PySide6.QtGui import QCursor
+            view = self.scene().views()[0] if self.scene() else None
+            if view is not None:
+                scene_pos = view.mapToScene(view.mapFromGlobal(QCursor.pos()))
+                if parent_item.is_point_on_item(scene_pos):
+                    return
         self._finalize(cancelled=False)
+
+    def mousePressEvent(self, event):
+        if self._is_placeholder_active:
+            self._is_placeholder_active = False
+            self.setDefaultTextColor(QColor(self._vector_data.color))
+            self.update()
+        super().mousePressEvent(event)
 
     def keyPressEvent(self, event):
         if self._is_placeholder_active:
