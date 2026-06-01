@@ -202,12 +202,19 @@ class SidebarTree(QWidget):
     def _restore_expanded_folders(self):
         if not self._model:
             return
+        self.tree.collapseAll()
         state = state_manager.load_state()
-        for folder_path in state.get("expanded_folders", []):
-            if os.path.isdir(folder_path):
-                idx = self._to_proxy(self._model.index(folder_path))
-                if idx.isValid():
-                    self.tree.expand(idx)
+        expanded = set(state.get("expanded_folders", []))
+        sorted_paths = sorted(expanded, key=lambda p: p.count(os.sep))
+        for folder_path in sorted_paths:
+            if not os.path.isdir(folder_path):
+                continue
+            parent = os.path.dirname(folder_path)
+            if parent not in expanded and parent != os.path.expandvars(config.get("save_path")):
+                continue
+            idx = self._to_proxy(self._model.index(folder_path))
+            if idx.isValid():
+                self.tree.expand(idx)
 
     def _on_expanded(self, index):
         if self._model:
