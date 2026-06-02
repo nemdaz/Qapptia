@@ -112,7 +112,7 @@ TEXT_STYLE = {
         "bold": "AtkinsonHyperlegible-Bold.ttf",
     },
     "placeholder": "Escribe aquí...",
-    "font_default_px": 20,
+    "font_default_px": 25,
     "font_min_px": 12,
     "font_max_px": 320,
     "line_spacing_ratio": 1.18,

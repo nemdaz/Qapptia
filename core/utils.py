@@ -19,6 +19,59 @@ from core.platform import get_platform_services
 _platform = get_platform_services()
 
 _AUDIO_CACHE = {}
+_audio_lock = threading.Lock()
+_active_audio_stream = None
+
+
+def _play_shutter_sound():
+    global _active_audio_stream
+    try:
+        cached = _AUDIO_CACHE.get("shutter")
+        if cached is None:
+            return
+        with _audio_lock:
+            if _active_audio_stream is not None:
+                try:
+                    _active_audio_stream.stop()
+                    _active_audio_stream.close()
+                except Exception:
+                    pass
+                _active_audio_stream = None
+        stream = sd.RawOutputStream(
+            samplerate=cached["sample_rate"],
+            channels=cached["channels"],
+            dtype=cached["dtype"],
+        )
+        stream.start()
+        stream.write(cached["frames"])
+        with _audio_lock:
+            _active_audio_stream = stream
+    except Exception:
+        pass
+
+
+def play_shutter_async():
+    try:
+        if "shutter" not in _AUDIO_CACHE:
+            sound_path = get_resource_path(INTERNAL_CONFIG["shutter_sound"])
+            if os.path.exists(sound_path):
+                with wave.open(sound_path, "rb") as w:
+                    frames = w.readframes(w.getnframes())
+                    sample_rate = w.getframerate()
+                    channels = w.getnchannels()
+                    sample_width = w.getsampwidth()
+                    dtype_map = {1: "int8", 2: "int16", 4: "int32"}
+                    _AUDIO_CACHE["shutter"] = {
+                        "frames": frames,
+                        "sample_rate": sample_rate,
+                        "channels": channels,
+                        "dtype": dtype_map.get(sample_width, "int16"),
+                    }
+            else:
+                return
+        threading.Thread(target=_play_shutter_sound, daemon=True).start()
+    except Exception:
+        pass
 
 
 def get_resource_path(relative_path):
@@ -45,40 +98,6 @@ def get_save_directory(base_path, now):
     if not os.path.exists(full_path):
         os.makedirs(full_path, exist_ok=True)
     return full_path
-
-
-def play_beep_async():
-    """Reproduce sonido de obturador de forma asincrona via sounddevice."""
-    try:
-        if "shutter" not in _AUDIO_CACHE:
-            sound_path = get_resource_path(INTERNAL_CONFIG["shutter_sound"])
-            if os.path.exists(sound_path):
-                with wave.open(sound_path, "rb") as w:
-                    frames = w.readframes(w.getnframes())
-                    sample_rate = w.getframerate()
-                    channels = w.getnchannels()
-                    sample_width = w.getsampwidth()
-                dtype_map = {1: "int8", 2: "int16", 4: "int32"}
-                _AUDIO_CACHE["shutter"] = {
-                    "frames": frames,
-                    "sample_rate": sample_rate,
-                    "channels": channels,
-                    "dtype": dtype_map.get(sample_width, "int16"),
-                }
-            else:
-                return
-
-        sd.stop()
-        cached = _AUDIO_CACHE["shutter"]
-        stream = sd.RawOutputStream(
-            samplerate=cached["sample_rate"],
-            channels=cached["channels"],
-            dtype=cached["dtype"],
-        )
-        stream.start()
-        stream.write(cached["frames"])
-    except Exception as exc:
-        logger.error(f"[AUDIO] Error al reproducir audio: {exc}")
 
 
 def parse_filename_format(base_format, now_datetime):

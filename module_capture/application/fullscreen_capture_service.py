@@ -14,7 +14,7 @@ class FullscreenCaptureService:
     def capture_fullscreen(self, play_sound=True, output_directory=None):
         try:
             if play_sound:
-                utils.play_beep_async()
+                utils.play_shutter_async()
 
             now = datetime.datetime.now()
             target_directory = output_directory or utils.get_save_directory(config.get("save_path"), now)
