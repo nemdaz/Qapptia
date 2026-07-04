@@ -3,13 +3,12 @@ import sys
 import threading
 import time
 
-from core import config, ipc
-from core.constants import APP_NAME, RUNTIME_CONFIG
+from core import config, constants as core_constants, ipc
 from core.logger import logger
 from core.platform import get_platform_services
+from module_capture import constants
 from module_capture.capture_dispatcher import request_capture
 from module_capture.application.flow_capture_service import flow_capture_service
-from module_capture.constants import CAPTURE_MODE_SCREEN, CAPTURE_MODE_AREA, CAPTURE_MODE_FLOW, CAPTURE_SOURCE_TRAY
 from module_capture.entrypoints.suspend_watcher import on_mouse_event
 
 _platform = get_platform_services()
@@ -101,7 +100,7 @@ def _open_editor_icon(icon, item=None):
     global _editor_last_click
 
     current_time = time.time()
-    if current_time - _editor_last_click > RUNTIME_CONFIG["editor_double_click_seconds"]:
+    if current_time - _editor_last_click > core_constants.RUNTIME_CONFIG["editor_double_click_seconds"]:
         _editor_last_click = current_time
         logger.debug("Clic detectado en el icono, esperando segundo clic para abrir editor...")
         return
@@ -132,7 +131,7 @@ def _launch_editor_process():
         global _is_editor_launching
         _is_editor_launching = False
 
-    threading.Timer(RUNTIME_CONFIG["editor_launch_guard_seconds"], reset_launching_flag).start()
+    threading.Timer(core_constants.RUNTIME_CONFIG["editor_launch_guard_seconds"], reset_launching_flag).start()
 
     if getattr(sys, 'frozen', False):
         subprocess.Popen([sys.executable, "--editor"])
@@ -186,7 +185,7 @@ def get_tray_icon():
 def _try_notify(icon, message):
     if icon and hasattr(icon, "notify"):
         try:
-            icon.notify(message, APP_NAME)
+            icon.notify(message, core_constants.APP_NAME)
             return True
         except Exception:
             pass
