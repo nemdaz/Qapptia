@@ -4,8 +4,10 @@ __pycache__/
 *$py.class
 .env
 .venv
+.venvqc
 env/
 venv/
+venvqc/
 ENV/
 
 # PyInstaller / Build

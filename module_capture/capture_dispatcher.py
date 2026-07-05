@@ -22,7 +22,8 @@ def request_capture(mode, source="unknown"):
     elif mode == CAPTURE_MODE_AREA:
         capture_area()
     elif mode == CAPTURE_MODE_FLOW:
-        capture_flow()
+        #capture_flow()
+        logger.info(f"[DISPATCHER] Modo de captura flujo, proximamente: {mode}")
     else:
         logger.warning(f"[DISPATCHER] Modo de captura desconocido: {mode}")
 

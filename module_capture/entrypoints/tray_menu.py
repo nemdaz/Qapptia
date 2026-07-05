@@ -40,11 +40,11 @@ def build_tray_menu():
     return _platform.tray.menu(
         _platform.tray.menu_item('Abrir_oculto', _open_editor_icon, default=True, visible=False),
         _platform.tray.menu_item(lambda item: _capture_label('Capturar pantalla', 'shortcut_screen'), start_screen_capture),
-        _platform.tray.menu_item(lambda item: _capture_label('Capturar area', 'shortcut_area'), start_area_capture),
+        _platform.tray.menu_item(lambda item: _capture_label('Capturar área', 'shortcut_area'), start_area_capture),
         # _platform.tray.menu_item(lambda text: 'Capturar flujo (Detener)' if flow_capture_service.is_active else 'Capturar flujo (Iniciar)', start_flow_capture),
         _platform.tray.menu_separator(),
         _platform.tray.menu_item('Editor', _open_editor_menu),
-        _platform.tray.menu_item('Configuracion', _open_config),
+        _platform.tray.menu_item('Configuración', _open_config),
         _platform.tray.menu_separator(),
         _platform.tray.menu_item('Reiniciar', _reload_hooks),
         _platform.tray.menu_item('Salir', _quit_app),

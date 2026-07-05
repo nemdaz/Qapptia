@@ -5,7 +5,7 @@ DEFAULT_FILENAME_FORMAT = DEFAULT_CONFIG["filename_format"]
 
 
 WINDOW_TEXT = {
-    "title": "Configuracion de Capturador",
+    "title": "Configuración de Capturador",
     "tabs": {
         "general": "General",
         "captures": "Capturas",
@@ -27,16 +27,16 @@ WINDOW_TEXT = {
         "subfolders": "Organizar en subcarpetas",
         "cursor": "Cursor",
         "screen_mode": "Modo Pantalla",
-        "area_mode": "Modo Area",
+        "area_mode": "Modo Área",
         "flow_mode": "Modo Flujo"
     },
     "checkboxes": {
         "subfolder_month": "Por mes (YYYY-MM)",
-        "subfolder_day": "Por dia (YYYY-MM-DD)",
+        "subfolder_day": "Por día (YYYY-MM-DD)",
         "subfolder_hour": "Por hora (YYYY-MM-DD HH)",
         "show_mouse": "Capturar",
         "highlight_mouse": "Resaltar (Halo)",
-        "enable_scroll_capture": "Habilitar Captura de Scroll Inteligente",
+        "enable_scroll_capture": "Habilitar captura de scroll inteligente",
         "copy_to_clipboard_screen": "Copiar al portapapeles",
         "copy_to_clipboard_area": "Copiar al portapapeles",
     },
@@ -45,14 +45,14 @@ WINDOW_TEXT = {
         "shortcut": "Presiona teclas...",
     },
     "format_help": {
-        "title": "Ayuda de Formato",
+        "title": "Ayuda de formato",
         "body": "\n".join(
             [
                 "Usa los siguientes valores para formatear la fecha:",
                 "",
-                "YYYY = Ano (4 digitos)",
+                "YYYY = Año (4 digitos)",
                 "MM = Mes (2 digitos)",
-                "DD = Dia (2 digitos)",
+                "DD = Día (2 digitos)",
                 "HH = Horas",
                 "mm = Minutos",
                 "SS = Segundos",
@@ -98,20 +98,20 @@ CAPTURE_MESSAGES = {
     "screen_capture_success": "Captura guardada: {path}",
     "screen_capture_error": "Error captura: {error}",
     "screen_mouse_error": "Error dibujo mouse: {error}",
-    "area_mode_start": "Modo Area: Activando selector de pantalla...",
-    "area_crop_error": "Error al recortar area: {error}",
-    "area_save_success": "Area capturada: {path}",
-    "area_save_error": "Error al guardar captura de area: {error}",
-    "capture_user_error": "Ocurrio un error durante la captura. Revisa el log de la aplicacion para mayor detalle.",
+    "area_mode_start": "Modo Área: Activando selector de pantalla...",
+    "area_crop_error": "Error al recortar área: {error}",
+    "area_save_success": "Área capturada: {path}",
+    "area_save_error": "Error al guardar captura de área: {error}",
+    "capture_user_error": "Ocurrio un error durante la captura. Revisa el log de la aplicación para mayor detalle.",
 }
 
 FLOW_MESSAGES = {
     "session_suffix": " Flujo",
-    "session_started": "Sesion de flujo iniciada en: {path}",
+    "session_started": "Sesión de flujo iniciada en: {path}",
     "manual_scroll_start": "Inicio de Scroll Manual en X relativa={x}",
     "manual_scroll_end": "Fin de Scroll Manual.",
     "manual_scroll_omitted": "Fin de Scroll omitido por redundancia.",
-    "auto_capture": "--- Captura automatica ({reason}) ---",
+    "auto_capture": "--- Captura automática ({reason}) ---",
     "reasons": {
         "click": "Clic",
         "manual_scroll_start": "Inicio Scroll",
@@ -125,7 +125,7 @@ FLOW_MESSAGES = {
 
 HOTKEY_DESCRIPTIONS = {
     "screen": "Modo Pantalla",
-    "area": "Modo Area",
+    "area": "Modo Área",
     "flow": "Modo Flujo (Toggle)",
 }
 

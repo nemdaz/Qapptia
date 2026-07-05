@@ -215,11 +215,14 @@ class CaptureConfigWindow(QDialog):
         self.shortcut_flow_edit = ShortcutLineEdit(3)
         self.shortcut_pause_edit = ShortcutLineEdit(2)
         self.scroll_check = QCheckBox(constants.WINDOW_TEXT["checkboxes"]["enable_scroll_capture"])
+        self.scroll_check.setChecked(False)
+        self.scroll_check.setDisabled(True)
         grid.addWidget(QLabel(constants.WINDOW_TEXT["labels"]["shortcut"]), 0, 0)
         grid.addWidget(self.shortcut_flow_edit, 0, 1)
         grid.addWidget(QLabel(constants.WINDOW_TEXT["labels"]["pause"]), 1, 0)
         grid.addWidget(self.shortcut_pause_edit, 1, 1)
         grid.addWidget(self.scroll_check, 2, 0, 1, 2)
+        group.setDisabled(True)
         return group
 
     def _load_values(self):
