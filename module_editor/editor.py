@@ -12,6 +12,7 @@ from core import assets, ipc
 from core.constants import APP_NAME, VERSION
 from core.logger import logger, build_daily_log_path
 from core.platform import get_platform_services
+from core.theme import apply_dark_theme
 from module_editor.ui.main_window import MainWindow
 
 _crash_log_file = None
@@ -77,7 +78,7 @@ def run_editor():
     atexit.register(_cleanup_crash_logging)
 
     app = QApplication.instance() or QApplication(sys.argv)
-    app.setStyle("Fusion")
+    apply_dark_theme(app)
     app_icon = assets.create_app_window_icon()
     app.setWindowIcon(app_icon)
     

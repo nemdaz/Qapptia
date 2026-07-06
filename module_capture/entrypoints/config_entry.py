@@ -2,6 +2,7 @@ from PySide6.QtWidgets import QApplication
 
 from core import assets, ipc
 from core.platform import get_platform_services
+from core.theme import apply_dark_theme
 
 from module_capture.ui.config_window import CaptureConfigWindow
 
@@ -18,6 +19,7 @@ def run_config_window(on_close_callback=None):
     if app is None:
         app = QApplication([])
 
+    apply_dark_theme(app)
     app_icon = assets.create_app_window_icon()
     app.setWindowIcon(app_icon)
 
