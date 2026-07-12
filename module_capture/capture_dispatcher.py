@@ -88,4 +88,4 @@ def _copy_to_clipboard(image_path):
         clipboard.setImage(pixmap.toImage())
         logger.debug(f"Imagen copiada al portapapeles: {image_path}")
     except Exception as exc:
-        logger.error(f"Error copiando imagen al portapapeles: {exc}")
+        logger.exception(f"Error copiando imagen al portapapeles: {exc}")

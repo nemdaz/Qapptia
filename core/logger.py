@@ -52,6 +52,8 @@ logger.add(
     retention="7 days",
     encoding="utf-8",
     enqueue=True,
+    backtrace=True,
+    diagnose=is_dev,
 )
 
 logger.level("SUCCESS", color="<green>")

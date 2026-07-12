@@ -204,11 +204,11 @@ class AreaSelectorWindow(QWidget):
                     )
                     self._save_capture_async(cropped_image, int(image_x1 * scale), int(image_y1 * scale), mouse_pos, cursor_data, callback)
                 except Exception as exc:
-                    logger.error(constants.CAPTURE_MESSAGES["area_crop_error"].format(error=exc))
+                    logger.exception(constants.CAPTURE_MESSAGES["area_crop_error"].format(error=exc))
 
             threading.Thread(target=_worker, daemon=True).start()
         except Exception as exc:
-            logger.error(constants.CAPTURE_MESSAGES["area_crop_error"].format(error=exc))
+            logger.exception(constants.CAPTURE_MESSAGES["area_crop_error"].format(error=exc))
 
     def _save_capture_async(self, image, x_offset, y_offset, mouse_pos, cursor_data, callback):
         try:
@@ -242,8 +242,8 @@ class AreaSelectorWindow(QWidget):
 
             logger.success(constants.CAPTURE_MESSAGES["area_save_success"].format(path=output_path))
         except Exception as exc:
-            logger.error(constants.CAPTURE_MESSAGES["area_save_error"].format(error=exc))
-            _platform.desktop.show_info_message(APP_NAME, constants.CAPTURE_MESSAGES["capture_user_error"])
+            logger.exception(constants.CAPTURE_MESSAGES["area_save_error"].format(error=exc))
+            _platform.desktop.show_error_message(APP_NAME, constants.CAPTURE_MESSAGES["capture_user_error"])
 
 
 def run_area_selector(on_capture_callback=None):

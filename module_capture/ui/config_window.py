@@ -1,6 +1,6 @@
 import os
 
-from PySide6.QtCore import QEvent, QMetaObject, Qt, Slot
+from PySide6.QtCore import QEvent, QMetaObject, Qt, QTimer, Slot
 from PySide6.QtWidgets import QCheckBox, QDialog, QFileDialog, QFormLayout, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QSpinBox, QTabWidget, QVBoxLayout, QWidget
 
 from module_capture import constants
@@ -109,7 +109,11 @@ class CaptureConfigWindow(QDialog):
 
         layout.addWidget(self.tabs)
 
+        self.footer_label = QLabel("")
+        self.footer_label.setObjectName("footerMessage")
+
         button_row = QHBoxLayout()
+        button_row.addWidget(self.footer_label)
         button_row.addStretch(1)
         self.save_button = QPushButton(constants.WINDOW_TEXT["buttons"]["save"])
         self.save_button.clicked.connect(self._save)
@@ -118,6 +122,10 @@ class CaptureConfigWindow(QDialog):
         button_row.addWidget(self.save_button)
         button_row.addWidget(self.close_button)
         layout.addLayout(button_row)
+
+        self._footer_timer = QTimer(self)
+        self._footer_timer.setSingleShot(True)
+        self._footer_timer.timeout.connect(self._clear_footer)
 
     def _build_general_tab(self):
         layout = QVBoxLayout(self.general_tab)
@@ -261,7 +269,12 @@ class CaptureConfigWindow(QDialog):
             self.highlight_mouse_check.setChecked(False)
 
     def _save(self):
-        self._settings.save_path = self.path_edit.text().strip()
+        save_path = self.path_edit.text().strip()
+        if not save_path or not os.path.isdir(os.path.expandvars(save_path)):
+            self._show_footer(constants.WINDOW_TEXT["footer"]["save_error_path"], "error")
+            return
+
+        self._settings.save_path = save_path
         self._settings.filename_format = self.filename_edit.text().strip() or constants.CAPTURE_DEFAULTS["filename_format"]
         self._settings.subfolder_month = self.month_check.isChecked()
         self._settings.subfolder_day = self.day_check.isChecked()
@@ -278,9 +291,22 @@ class CaptureConfigWindow(QDialog):
         self._settings.copy_to_clipboard_area = self.copy_clipboard_area_check.isChecked()
 
         capture_settings_service.save(self._settings)
+        self._show_footer(constants.WINDOW_TEXT["footer"]["save_success"], "success")
 
         if self._on_close_callback:
             self._on_close_callback()
+
+    def _show_footer(self, text, kind):
+        self.footer_label.setText(text)
+        if kind == "success":
+            self.footer_label.setStyleSheet("color: #16a34a; font-weight: bold;")
+            self._footer_timer.start(5000)
+        else:
+            self.footer_label.setStyleSheet("color: #dc2626; font-weight: bold;")
+            self._footer_timer.stop()
+
+    def _clear_footer(self):
+        self.footer_label.setText("")
 
     def _close(self):
         self.reject()

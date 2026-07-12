@@ -27,8 +27,8 @@ class FullscreenCaptureService:
             logger.success(constants.CAPTURE_MESSAGES["screen_capture_success"].format(path=output_path))
             return output_path
         except Exception as exc:
-            logger.error(constants.CAPTURE_MESSAGES["screen_capture_error"].format(error=exc))
-            _platform.desktop.show_info_message(APP_NAME, constants.CAPTURE_MESSAGES["capture_user_error"])
+            logger.exception(constants.CAPTURE_MESSAGES["screen_capture_error"].format(error=exc))
+            _platform.desktop.show_error_message(APP_NAME, constants.CAPTURE_MESSAGES["capture_user_error"])
             return None
 
     def _capture_active_monitor(self):
@@ -58,7 +58,7 @@ class FullscreenCaptureService:
                 highlight_style=constants.CURSOR_HIGHLIGHT_STYLE,
             )
         except Exception as exc:
-            logger.error(constants.CAPTURE_MESSAGES["screen_mouse_error"].format(error=exc))
+            logger.exception(constants.CAPTURE_MESSAGES["screen_mouse_error"].format(error=exc))
             return image
 
 

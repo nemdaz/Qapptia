@@ -117,6 +117,11 @@ class WindowsDesktopService(DesktopService):
     def show_info_message(self, title, message):
         ctypes.windll.user32.MessageBoxW(None, message, title, 0x00000040)
 
+    def show_error_message(self, title, message):
+        user32 = ctypes.windll.user32
+        user32.AllowSetForegroundWindow(-1)
+        user32.MessageBoxW(None, message, title, 0x00040000 | 0x00010000 | 0x00000010 | 0x00002000)
+
     def get_dpi_scaling(self):
         try:
             user32 = ctypes.windll.user32

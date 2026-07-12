@@ -187,7 +187,7 @@ def draw_mouse_overlay(screen_image, mouse_x, mouse_y, highlight=False, cursor_d
         screen_image.paste(cursor_img, (mx - int(hx * scale), my - int(hy * scale)), cursor_img)
         screen_image = screen_image.convert("RGB")
     except Exception as exc:
-        logger.error(f"Error en el dibujo del mouse: {exc}")
+        logger.exception(f"Error en el dibujo del mouse: {exc}")
 
     return screen_image
 
@@ -215,5 +215,5 @@ def register_hotkey(hotkey, callback, description=""):
         logger.info(f"Atajo {desc_str} '{hotkey}' registrado (Protegido).")
         return True
     except Exception as exc:
-        logger.error(f"Error al registrar atajo {description} '{hotkey}': {exc}")
+        logger.exception(f"Error al registrar atajo {description} '{hotkey}': {exc}")
         return False

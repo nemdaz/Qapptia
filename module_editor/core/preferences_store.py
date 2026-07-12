@@ -29,7 +29,7 @@ class EditorStateStore:
             logger.warning(f"Editor state is invalid JSON at {path}: {exc}")
             return EditorPreferences()
         except OSError as exc:
-            logger.error(f"Unable to read editor state from {path}: {exc}")
+            logger.exception(f"Unable to read editor state from {path}: {exc}")
             return EditorPreferences()
 
         return EditorPreferences.from_dict(loaded_state)
@@ -42,7 +42,7 @@ class EditorStateStore:
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(payload, f, indent=4)
         except OSError as exc:
-            logger.error(f"Unable to save editor state to {path}: {exc}")
+            logger.exception(f"Unable to save editor state to {path}: {exc}")
 
     def mutate(self, mutator):
         state = self.load()

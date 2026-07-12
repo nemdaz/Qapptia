@@ -241,7 +241,7 @@ class MainWindow(QMainWindow):
                 self.sidebar.select_path(self._controller.current_image_path)
             QTimer.singleShot(0, self.reset_zoom)
         except Exception as exc:
-            logger.error(f"Error show_image para '{path}': {exc}")
+            logger.exception(f"Error show_image para '{path}': {exc}")
             show_toast(self, constants.TOAST_MESSAGES["open_error"], kind="error")
 
     def rotate_image(self):
@@ -265,7 +265,7 @@ class MainWindow(QMainWindow):
             self._refresh_save_action()
             show_toast(self, constants.TOAST_MESSAGES["save_success"], kind="success")
         except Exception as exc:
-            logger.error(f"Error save_image: {exc}")
+            logger.exception(f"Error save_image: {exc}")
             show_toast(self, constants.TOAST_MESSAGES["save_error"], kind="error")
 
     def copy_to_clipboard(self):
@@ -313,7 +313,7 @@ class MainWindow(QMainWindow):
             self.sidebar.select_path(image_path)
             QTimer.singleShot(0, self.reset_zoom)
         except Exception as exc:
-            logger.error(f"Error restoring last image: {exc}")
+            logger.exception(f"Error restoring last image: {exc}")
 
     def _refresh_save_action(self):
         self.act_save.setEnabled(self._controller.has_pending_save)

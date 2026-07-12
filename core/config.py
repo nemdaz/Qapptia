@@ -58,7 +58,7 @@ def load_config():
                 loaded = json.load(f)
                 current_config = _build_config_from_defaults(loaded)
         except Exception as e:
-            logger.error(f"Error loading config: {e}")
+            logger.exception(f"Error loading config: {e}")
     else:
         save_config()  # Create default file
 
@@ -67,7 +67,7 @@ def save_config():
         with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
             json.dump(current_config, f, indent=4)
     except Exception as e:
-        logger.error(f"Error saving config: {e}")
+        logger.exception(f"Error saving config: {e}")
 
 def get(key):
     return current_config.get(key, DEFAULT_CONFIG.get(key))

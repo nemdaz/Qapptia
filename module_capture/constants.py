@@ -59,6 +59,10 @@ WINDOW_TEXT = {
             ]
         ),
     },
+    "footer": {
+        "save_success": "Guardado.",
+        "save_error_path": "La ruta no existe.",
+    },
 }
 
 WINDOW_LAYOUT = {

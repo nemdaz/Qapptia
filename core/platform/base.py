@@ -83,6 +83,10 @@ class DesktopService(ABC):
         pass
 
     @abstractmethod
+    def show_error_message(self, title, message):
+        pass
+
+    @abstractmethod
     def get_dpi_scaling(self):
         pass
 

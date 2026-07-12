@@ -45,7 +45,7 @@ class VectorStore:
                 with open(path, "r", encoding="utf-8") as f:
                     return [VectorShape.from_dict(item) for item in json.load(f)]
             except Exception as exc:
-                logger.error(f"Error loading vectors from {path}: {exc}")
+                logger.exception(f"Error loading vectors from {path}: {exc}")
         return []
 
     def _migrate_legacy_json(self, image_path):
@@ -62,14 +62,14 @@ class VectorStore:
                 os.remove(old_path)
                 logger.debug(f"Migracion: eliminado JSON legado '{old_path}' (prevalece '{new_path}')")
             except OSError as exc:
-                logger.error(f"Migracion: error al eliminar JSON legado '{old_path}': {exc}")
+                logger.exception(f"Migracion: error al eliminar JSON legado '{old_path}': {exc}")
         else:
             try:
                 os.makedirs(os.path.dirname(new_path), exist_ok=True)
                 shutil.move(old_path, new_path)
                 logger.debug(f"Migracion: movido JSON legado '{old_path}' -> '{new_path}'")
             except (OSError, shutil.Error) as exc:
-                logger.error(f"Migracion: error al mover JSON legado '{old_path}' -> '{new_path}': {exc}")
+                logger.exception(f"Migracion: error al mover JSON legado '{old_path}' -> '{new_path}': {exc}")
 
     def save(self, image_path, vectors):
         path = self.get_json_path(image_path)
@@ -83,7 +83,7 @@ class VectorStore:
             with open(path, "w", encoding="utf-8") as f:
                 json.dump([vector.to_dict() for vector in vectors], f, indent=4)
         except Exception as exc:
-            logger.error(f"Error saving vectors to {path}: {exc}")
+            logger.exception(f"Error saving vectors to {path}: {exc}")
 
     def delete(self, image_path):
         path = self.get_json_path(image_path)
@@ -92,7 +92,7 @@ class VectorStore:
         try:
             os.remove(path)
         except OSError as exc:
-            logger.error(f"Error deleting vectors from {path}: {exc}")
+            logger.exception(f"Error deleting vectors from {path}: {exc}")
 
 
 vector_store = VectorStore()
