@@ -9,8 +9,10 @@ from PySide6.QtCore import QtMsgType, qInstallMessageHandler
 from PySide6.QtWidgets import QApplication
 
 from core import assets, ipc
+from core.constants import APP_NAME, VERSION
 from core.logger import logger, build_daily_log_path
 from core.platform import get_platform_services
+from core.theme import apply_dark_theme
 from module_editor.ui.main_window import MainWindow
 
 _crash_log_file = None
@@ -76,7 +78,7 @@ def run_editor():
     atexit.register(_cleanup_crash_logging)
 
     app = QApplication.instance() or QApplication(sys.argv)
-    app.setStyle("Fusion")
+    apply_dark_theme(app)
     app_icon = assets.create_app_window_icon()
     app.setWindowIcon(app_icon)
     
@@ -84,7 +86,7 @@ def run_editor():
     window.setWindowIcon(app_icon)
     window.show()
     
-    logger.info(f"Editor iniciado (pid={os.getpid()})")
+    logger.info(f"=== {APP_NAME} v{VERSION} === Editor iniciado (pid={os.getpid()})")
     sys.exit(app.exec())
 
 if __name__ == "__main__":

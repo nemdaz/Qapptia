@@ -1,6 +1,6 @@
 import os
 
-from PySide6.QtCore import QEvent, QMetaObject, Qt, Slot
+from PySide6.QtCore import QEvent, QMetaObject, Qt, QTimer, Slot
 from PySide6.QtWidgets import QCheckBox, QDialog, QFileDialog, QFormLayout, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton, QSpinBox, QTabWidget, QVBoxLayout, QWidget
 
 from module_capture import constants
@@ -109,12 +109,23 @@ class CaptureConfigWindow(QDialog):
 
         layout.addWidget(self.tabs)
 
+        self.footer_label = QLabel("")
+        self.footer_label.setObjectName("footerMessage")
+
         button_row = QHBoxLayout()
+        button_row.addWidget(self.footer_label)
         button_row.addStretch(1)
-        self.save_button = QPushButton(constants.WINDOW_TEXT["buttons"]["save_close"])
-        self.save_button.clicked.connect(self._save_and_close)
+        self.save_button = QPushButton(constants.WINDOW_TEXT["buttons"]["save"])
+        self.save_button.clicked.connect(self._save)
+        self.close_button = QPushButton(constants.WINDOW_TEXT["buttons"]["close"])
+        self.close_button.clicked.connect(self._close)
         button_row.addWidget(self.save_button)
+        button_row.addWidget(self.close_button)
         layout.addLayout(button_row)
+
+        self._footer_timer = QTimer(self)
+        self._footer_timer.setSingleShot(True)
+        self._footer_timer.timeout.connect(self._clear_footer)
 
     def _build_general_tab(self):
         layout = QVBoxLayout(self.general_tab)
@@ -188,18 +199,22 @@ class CaptureConfigWindow(QDialog):
             constants.CAPTURE_DEFAULTS["manual_timer"]["max"],
         )
         self.timer_spin.setSuffix(constants.WINDOW_LAYOUT["timer_suffix"])
+        self.copy_clipboard_screen_check = QCheckBox(constants.WINDOW_TEXT["checkboxes"]["copy_to_clipboard_screen"])
         grid.addWidget(QLabel(constants.WINDOW_TEXT["labels"]["shortcut"]), 0, 0)
         grid.addWidget(self.shortcut_screen_edit, 0, 1)
         grid.addWidget(QLabel(constants.WINDOW_TEXT["labels"]["timer"]), 1, 0)
         grid.addWidget(self.timer_spin, 1, 1)
+        grid.addWidget(self.copy_clipboard_screen_check, 2, 0, 1, 2)
         return group
 
     def _build_area_group(self):
         group = QGroupBox(constants.WINDOW_TEXT["groups"]["area_mode"])
         grid = QGridLayout(group)
         self.shortcut_area_edit = ShortcutLineEdit(3)
+        self.copy_clipboard_area_check = QCheckBox(constants.WINDOW_TEXT["checkboxes"]["copy_to_clipboard_area"])
         grid.addWidget(QLabel(constants.WINDOW_TEXT["labels"]["shortcut"]), 0, 0)
         grid.addWidget(self.shortcut_area_edit, 0, 1)
+        grid.addWidget(self.copy_clipboard_area_check, 1, 0, 1, 2)
         return group
 
     def _build_flow_group(self):
@@ -208,11 +223,14 @@ class CaptureConfigWindow(QDialog):
         self.shortcut_flow_edit = ShortcutLineEdit(3)
         self.shortcut_pause_edit = ShortcutLineEdit(2)
         self.scroll_check = QCheckBox(constants.WINDOW_TEXT["checkboxes"]["enable_scroll_capture"])
+        self.scroll_check.setChecked(False)
+        self.scroll_check.setDisabled(True)
         grid.addWidget(QLabel(constants.WINDOW_TEXT["labels"]["shortcut"]), 0, 0)
         grid.addWidget(self.shortcut_flow_edit, 0, 1)
         grid.addWidget(QLabel(constants.WINDOW_TEXT["labels"]["pause"]), 1, 0)
         grid.addWidget(self.shortcut_pause_edit, 1, 1)
         grid.addWidget(self.scroll_check, 2, 0, 1, 2)
+        group.setDisabled(True)
         return group
 
     def _load_values(self):
@@ -230,6 +248,8 @@ class CaptureConfigWindow(QDialog):
         self.shortcut_flow_edit.setText(self._settings.shortcut_flow.upper())
         self.shortcut_pause_edit.setText(self._settings.shortcut_flow_pause.upper())
         self.scroll_check.setChecked(self._settings.enable_scroll_capture)
+        self.copy_clipboard_screen_check.setChecked(self._settings.copy_to_clipboard_screen)
+        self.copy_clipboard_area_check.setChecked(self._settings.copy_to_clipboard_area)
 
     def _browse_path(self):
         selected_path = QFileDialog.getExistingDirectory(self, "Selecciona carpeta", self.path_edit.text() or os.path.expanduser("~"))
@@ -248,8 +268,13 @@ class CaptureConfigWindow(QDialog):
         if not enabled:
             self.highlight_mouse_check.setChecked(False)
 
-    def _save_and_close(self):
-        self._settings.save_path = self.path_edit.text().strip()
+    def _save(self):
+        save_path = self.path_edit.text().strip()
+        if not save_path or not os.path.isdir(os.path.expandvars(save_path)):
+            self._show_footer(constants.WINDOW_TEXT["footer"]["save_error_path"], "error")
+            return
+
+        self._settings.save_path = save_path
         self._settings.filename_format = self.filename_edit.text().strip() or constants.CAPTURE_DEFAULTS["filename_format"]
         self._settings.subfolder_month = self.month_check.isChecked()
         self._settings.subfolder_day = self.day_check.isChecked()
@@ -262,13 +287,29 @@ class CaptureConfigWindow(QDialog):
         self._settings.shortcut_flow = self.shortcut_flow_edit.shortcut_value() or constants.CAPTURE_DEFAULTS["shortcuts"]["shortcut_flow"]
         self._settings.shortcut_flow_pause = self.shortcut_pause_edit.shortcut_value() or constants.CAPTURE_DEFAULTS["shortcuts"]["shortcut_flow_pause"]
         self._settings.enable_scroll_capture = self.scroll_check.isChecked()
+        self._settings.copy_to_clipboard_screen = self.copy_clipboard_screen_check.isChecked()
+        self._settings.copy_to_clipboard_area = self.copy_clipboard_area_check.isChecked()
 
         capture_settings_service.save(self._settings)
+        self._show_footer(constants.WINDOW_TEXT["footer"]["save_success"], "success")
 
         if self._on_close_callback:
             self._on_close_callback()
 
-        self.accept()
+    def _show_footer(self, text, kind):
+        self.footer_label.setText(text)
+        if kind == "success":
+            self.footer_label.setStyleSheet("color: #16a34a; font-weight: bold;")
+            self._footer_timer.start(5000)
+        else:
+            self.footer_label.setStyleSheet("color: #dc2626; font-weight: bold;")
+            self._footer_timer.stop()
+
+    def _clear_footer(self):
+        self.footer_label.setText("")
+
+    def _close(self):
+        self.reject()
 
     def _wrap_layout(self, layout):
         container = QWidget()

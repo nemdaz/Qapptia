@@ -43,12 +43,12 @@ class DrawingTool:
         painter.setPen(pen)
         painter.setBrush(Qt.NoBrush)
 
-        if v_type == "rect":
+        if v_type == constants.TOOL_TYPE_RECT:
             rect = QRectF(min(x1, x2), min(y1, y2), abs(x2 - x1), abs(y2 - y1))
             painter.drawRoundedRect(rect, 2, 2)
-        elif v_type == "line":
+        elif v_type == constants.TOOL_TYPE_LINE:
             painter.drawLine(QLineF(x1, y1, x2, y2))
-        elif v_type == "arrow":
+        elif v_type == constants.TOOL_TYPE_ARROW:
             dx, dy = x2 - x1, y2 - y1
             arrow_wing_len = constants.VECTOR_STYLE["arrow_wing_len"]
             if math.hypot(dx, dy) < max(arrow_wing_len * 0.35, width * 2):
@@ -60,12 +60,12 @@ class DrawingTool:
                 wx = x2 - wlen * math.cos(ang - a)
                 wy = y2 - wlen * math.sin(ang - a)
                 painter.drawLine(QLineF(x2, y2, wx, wy))
-        elif v_type == "highlighter":
+        elif v_type == constants.TOOL_TYPE_HIGHLIGHTER:
             q_color.setAlpha(constants.HIGHLIGHTER_ALPHA)
             painter.setPen(Qt.NoPen)
             painter.setBrush(QBrush(q_color))
             painter.drawRect(QRectF(min(x1, x2), min(y1, y2), abs(x2 - x1), abs(y2 - y1)))
-        elif v_type == "text":
+        elif v_type == constants.TOOL_TYPE_TEXT:
             text_payload = payload or {}
             normalized_text = text_support.normalize_text(text_payload["text"])
             font = text_support.build_qt_font(text_payload["text_size"])
@@ -85,11 +85,11 @@ class DrawingTool:
         x1, y1, x2, y2 = (value * scale for value in coords)
         scaled_width = max(1, int(round(width * scale)))
         
-        if v_type == "rect":
+        if v_type == constants.TOOL_TYPE_RECT:
             DrawingTool._pil_draw_round_line(draw, [(x1, y1), (x2, y1), (x2, y2), (x1, y2), (x1, y1)], color, scaled_width)
-        elif v_type == "line":
+        elif v_type == constants.TOOL_TYPE_LINE:
             DrawingTool._pil_draw_round_line(draw, [(x1, y1), (x2, y2)], color, scaled_width)
-        elif v_type == "arrow":
+        elif v_type == constants.TOOL_TYPE_ARROW:
             dx, dy = x2 - x1, y2 - y1
             arrow_wing_len = constants.VECTOR_STYLE["arrow_wing_len"] * scale
             if math.hypot(dx, dy) < max(arrow_wing_len * 0.35, scaled_width * 2):
@@ -100,11 +100,11 @@ class DrawingTool:
             for a in [-math.pi / 6, math.pi / 6]:
                 wx, wy = x2 - wlen * math.cos(ang - a), y2 - wlen * math.sin(ang - a)
                 DrawingTool._pil_draw_round_line(draw, [(x2, y2), (wx, wy)], color, scaled_width)
-        elif v_type == "highlighter":
+        elif v_type == constants.TOOL_TYPE_HIGHLIGHTER:
             r, g, b = int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)
             draw.rectangle([min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2)],
                            fill=(r, g, b, constants.HIGHLIGHTER_ALPHA))
-        elif v_type == "text":
+        elif v_type == constants.TOOL_TYPE_TEXT:
             text_payload = payload or {}
             normalized_text = text_support.normalize_text(text_payload["text"])
             scaled_text_size = max(1, int(round(text_payload["text_size"] * scale)))

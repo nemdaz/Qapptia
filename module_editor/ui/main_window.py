@@ -65,7 +65,7 @@ class MainWindow(QMainWindow):
         central = QWidget()
         self.setCentralWidget(central)
         layout = QVBoxLayout(central)
-        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
         layout.addWidget(self._create_toolbar())
@@ -141,11 +141,11 @@ class MainWindow(QMainWindow):
         self._add_action(toolbar, "image_real_size", "image_real_size", self.reset_zoom)
 
         toolbar.addSeparator()
-        self.act_line = self._add_action(toolbar, "line", "line", lambda: self.set_tool("line"), checkable=True)
-        self.act_arrow = self._add_action(toolbar, "arrow", "arrow", lambda: self.set_tool("arrow"), checkable=True)
-        self.act_rect = self._add_action(toolbar, "rect", "rect", lambda: self.set_tool("rect"), checkable=True)
-        self.act_high = self._add_action(toolbar, "highlighter", "highlighter", lambda: self.set_tool("highlighter"), checkable=True)
-        self.act_text = self._add_action(toolbar, "text", "text", lambda: self.set_tool("text"), checkable=True)
+        self.act_line = self._add_action(toolbar, "line", "line", lambda: self.set_tool(constants.TOOL_TYPE_LINE), checkable=True)
+        self.act_arrow = self._add_action(toolbar, "arrow", "arrow", lambda: self.set_tool(constants.TOOL_TYPE_ARROW), checkable=True)
+        self.act_rect = self._add_action(toolbar, "rect", "rect", lambda: self.set_tool(constants.TOOL_TYPE_RECT), checkable=True)
+        self.act_high = self._add_action(toolbar, "highlighter", "highlighter", lambda: self.set_tool(constants.TOOL_TYPE_HIGHLIGHTER), checkable=True)
+        self.act_text = self._add_action(toolbar, "text", "text", lambda: self.set_tool(constants.TOOL_TYPE_TEXT), checkable=True)
 
         toolbar.addSeparator()
         self._populate_color_actions(toolbar)
@@ -153,8 +153,10 @@ class MainWindow(QMainWindow):
 
     def _populate_color_actions(self, toolbar):
         for name, hex_val in constants.FAVORITE_COLORS.items():
-            action = toolbar.addAction(self._make_color_icon(hex_val, name == self._controller.current_color_name), "")
+            action = toolbar.addAction(self._make_color_icon(hex_val), "")
             action.setToolTip(f"{constants.TOOLTIPS['color_prefix']}{constants.FAVORITE_COLOR_NAMES.get(name, name)}")
+            action.setCheckable(True)
+            action.setChecked(name == self._controller.current_color_name)
             action.triggered.connect(lambda chk=False, n=name: self.set_active_color(n))
             self._color_btns[name] = action
 
@@ -185,40 +187,27 @@ class MainWindow(QMainWindow):
             return base_tooltip
         return f"{base_tooltip} ({shortcut_text})"
 
-    def _make_color_icon(self, hex_color, active=False):
+    def _make_color_icon(self, hex_color):
         swatch = constants.COLOR_SWATCH_STYLE
         icon_size = swatch["icon_size"]
         pix = QPixmap(icon_size, icon_size)
         pix.fill(Qt.transparent)
         painter = QPainter(pix)
         painter.setRenderHint(QPainter.Antialiasing, True)
-
-        outer_ring = QColor(swatch["outer_ring_active"])
-        color_fill = QColor(hex_color)
-        padding = swatch["outer_padding"]
-
-        if active:
-            painter.setBrush(Qt.NoBrush)
-            painter.setPen(QPen(outer_ring, 2))
-            painter.drawEllipse(padding, padding, icon_size - (padding * 2), icon_size - (padding * 2))
-            fill_padding = 4
-        else:
-            fill_padding = 2
-
         painter.setPen(Qt.NoPen)
-        painter.setBrush(color_fill)
-        painter.drawEllipse(fill_padding, fill_padding, icon_size - (fill_padding * 2), icon_size - (fill_padding * 2))
+        painter.setBrush(QColor(hex_color))
+        painter.drawEllipse(2, 2, icon_size - 4, icon_size - 4)
         painter.end()
         return QIcon(pix)
 
     def _apply_toolbar_state(self, state):
         for swatch_name, action in self._color_btns.items():
-            action.setIcon(self._make_color_icon(constants.FAVORITE_COLORS[swatch_name], swatch_name == state.color_name))
-        self.act_line.setChecked(state.active_tool == "line")
-        self.act_arrow.setChecked(state.active_tool == "arrow")
-        self.act_rect.setChecked(state.active_tool == "rect")
-        self.act_high.setChecked(state.active_tool == "highlighter")
-        self.act_text.setChecked(state.active_tool == "text")
+            action.setChecked(swatch_name == state.color_name)
+        self.act_line.setChecked(state.active_tool == constants.TOOL_TYPE_LINE)
+        self.act_arrow.setChecked(state.active_tool == constants.TOOL_TYPE_ARROW)
+        self.act_rect.setChecked(state.active_tool == constants.TOOL_TYPE_RECT)
+        self.act_high.setChecked(state.active_tool == constants.TOOL_TYPE_HIGHLIGHTER)
+        self.act_text.setChecked(state.active_tool == constants.TOOL_TYPE_TEXT)
         self.scene.set_active_color(state.color_hex)
         self.scene.set_draw_mode(state.draw_mode)
         self.canvas.set_draw_cursor_active(state.draw_cursor_active)
@@ -252,7 +241,7 @@ class MainWindow(QMainWindow):
                 self.sidebar.select_path(self._controller.current_image_path)
             QTimer.singleShot(0, self.reset_zoom)
         except Exception as exc:
-            logger.error(f"Error show_image para '{path}': {exc}")
+            logger.exception(f"Error show_image para '{path}': {exc}")
             show_toast(self, constants.TOAST_MESSAGES["open_error"], kind="error")
 
     def rotate_image(self):
@@ -276,7 +265,7 @@ class MainWindow(QMainWindow):
             self._refresh_save_action()
             show_toast(self, constants.TOAST_MESSAGES["save_success"], kind="success")
         except Exception as exc:
-            logger.error(f"Error save_image: {exc}")
+            logger.exception(f"Error save_image: {exc}")
             show_toast(self, constants.TOAST_MESSAGES["save_error"], kind="error")
 
     def copy_to_clipboard(self):
@@ -324,7 +313,7 @@ class MainWindow(QMainWindow):
             self.sidebar.select_path(image_path)
             QTimer.singleShot(0, self.reset_zoom)
         except Exception as exc:
-            logger.error(f"Error restoring last image: {exc}")
+            logger.exception(f"Error restoring last image: {exc}")
 
     def _refresh_save_action(self):
         self.act_save.setEnabled(self._controller.has_pending_save)

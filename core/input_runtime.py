@@ -49,7 +49,7 @@ def restore_global_input_hooks_in_process(
             input_service.hook_mouse(mouse_callback)
         except Exception as exc:
             mouse_ok = False
-            logger.error(f"No se pudo reenganchar hook global de mouse: {exc}")
+            logger.exception(f"No se pudo reenganchar hook global de mouse: {exc}")
 
         if hotkeys_ok and mouse_ok:
             if attempt > 1:

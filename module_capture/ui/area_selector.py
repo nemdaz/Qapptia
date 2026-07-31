@@ -1,5 +1,6 @@
 import datetime
 import os
+import threading
 
 from PIL import ImageQt
 from PySide6.QtCore import QEventLoop, QRect, Qt, QTimer, Signal
@@ -115,7 +116,7 @@ class AreaSelectorWindow(QWidget):
         self._current_y = point.y()
         if self._selection_origin is not None:
             self._selection_end = point
-        self.update()
+            self.update()
 
     def mouseReleaseEvent(self, event):
         if event.button() != Qt.LeftButton or self._selection_origin is None:
@@ -173,7 +174,7 @@ class AreaSelectorWindow(QWidget):
 
     def _save_selection(self, selection):
         try:
-            utils.play_beep_async()
+            utils.play_shutter_async()
 
             scale = utils.get_dpi_scaling()
             global_x1 = self._monitor_x + selection.x()
@@ -186,25 +187,35 @@ class AreaSelectorWindow(QWidget):
             image_x2 = global_x2 - self._virtual_x
             image_y2 = global_y2 - self._virtual_y
 
-            cropped_image = self._full_screenshot.crop(
-                (
-                    int(image_x1 * scale),
-                    int(image_y1 * scale),
-                    int(image_x2 * scale),
-                    int(image_y2 * scale),
-                )
-            )
-            self._save_capture(cropped_image, int(image_x1 * scale), int(image_y1 * scale))
-        except Exception as exc:
-            logger.error(constants.CAPTURE_MESSAGES["area_crop_error"].format(error=exc))
-            _platform.desktop.show_info_message(APP_NAME, constants.CAPTURE_MESSAGES["capture_user_error"])
+            full_screenshot = self._full_screenshot.copy()
+            mouse_pos = self._mouse_pos
+            cursor_data = self._cursor_data
+            callback = self._on_capture_callback
 
-    def _save_capture(self, image, x_offset, y_offset):
+            def _worker():
+                try:
+                    cropped_image = full_screenshot.crop(
+                        (
+                            int(image_x1 * scale),
+                            int(image_y1 * scale),
+                            int(image_x2 * scale),
+                            int(image_y2 * scale),
+                        )
+                    )
+                    self._save_capture_async(cropped_image, int(image_x1 * scale), int(image_y1 * scale), mouse_pos, cursor_data, callback)
+                except Exception as exc:
+                    logger.exception(constants.CAPTURE_MESSAGES["area_crop_error"].format(error=exc))
+
+            threading.Thread(target=_worker, daemon=True).start()
+        except Exception as exc:
+            logger.exception(constants.CAPTURE_MESSAGES["area_crop_error"].format(error=exc))
+
+    def _save_capture_async(self, image, x_offset, y_offset, mouse_pos, cursor_data, callback):
         try:
             now = datetime.datetime.now()
 
-            if config.get("show_mouse") and self._mouse_pos:
-                mouse_x, mouse_y = self._mouse_pos
+            if config.get("show_mouse") and mouse_pos:
+                mouse_x, mouse_y = mouse_pos
                 scale = utils.get_dpi_scaling()
                 physical_x = mouse_x * scale
                 physical_y = mouse_y * scale
@@ -215,7 +226,7 @@ class AreaSelectorWindow(QWidget):
                         physical_x - x_offset,
                         physical_y - y_offset,
                         config.get("highlight_mouse"),
-                        cursor_data=self._cursor_data,
+                        cursor_data=cursor_data,
                         highlight_style=constants.CURSOR_HIGHLIGHT_STYLE,
                     )
 
@@ -224,13 +235,15 @@ class AreaSelectorWindow(QWidget):
             output_path = os.path.join(save_directory, filename)
             image.save(output_path, "PNG")
 
-            if self._on_capture_callback:
-                self._on_capture_callback(output_path)
+            if callback:
+                app = QApplication.instance()
+                if app:
+                    QTimer.singleShot(0, app, lambda: callback(output_path))
 
             logger.success(constants.CAPTURE_MESSAGES["area_save_success"].format(path=output_path))
         except Exception as exc:
-            logger.error(constants.CAPTURE_MESSAGES["area_save_error"].format(error=exc))
-            _platform.desktop.show_info_message(APP_NAME, constants.CAPTURE_MESSAGES["capture_user_error"])
+            logger.exception(constants.CAPTURE_MESSAGES["area_save_error"].format(error=exc))
+            _platform.desktop.show_error_message(APP_NAME, constants.CAPTURE_MESSAGES["capture_user_error"])
 
 
 def run_area_selector(on_capture_callback=None):
@@ -245,4 +258,3 @@ def run_area_selector(on_capture_callback=None):
     selector.activateWindow()
     selector.raise_()
     event_loop.exec()
-

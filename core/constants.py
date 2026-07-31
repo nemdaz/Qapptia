@@ -10,6 +10,7 @@ INTERNAL_CONFIG = {
     "shortcut_copy_clipboard": "ctrl+c",
     "editor_tool_text_default_width": 240,
     "editor_tool_text_default_height": 28,
+    "shutter_sound": os.path.join("core", "assets", "sounds", "shutter_a.wav"),
 }
 
 # Hotkeys configurables por usuario y otros valores por defecto
@@ -26,7 +27,9 @@ DEFAULT_CONFIG = {
     "shortcut_area": "ctrl+shift+a",
     "shortcut_flow": "ctrl+shift+f",
     "shortcut_flow_pause": "ctrl+shift",
-    "enable_scroll_capture": True
+    "enable_scroll_capture": True,
+    "copy_to_clipboard_screen": False,
+    "copy_to_clipboard_area": False,
 }
 
 

@@ -16,6 +16,8 @@ class CaptureSettings:
     shortcut_flow: str
     shortcut_flow_pause: str
     enable_scroll_capture: bool
+    copy_to_clipboard_screen: bool
+    copy_to_clipboard_area: bool
 
     def to_config_payload(self):
         return {
@@ -30,6 +32,8 @@ class CaptureSettings:
             "shortcut_screen": self.shortcut_screen,
             "shortcut_area": self.shortcut_area,
             "shortcut_flow": self.shortcut_flow,
-            "shortcut_flow_pause": self.shortcut_flow_pause,
-            "enable_scroll_capture": self.enable_scroll_capture,
-        }
+        "shortcut_flow_pause": self.shortcut_flow_pause,
+        "enable_scroll_capture": self.enable_scroll_capture,
+        "copy_to_clipboard_screen": self.copy_to_clipboard_screen,
+        "copy_to_clipboard_area": self.copy_to_clipboard_area,
+    }

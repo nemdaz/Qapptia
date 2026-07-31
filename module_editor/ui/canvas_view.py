@@ -1,14 +1,15 @@
 import math
 
 from PIL import ImageQt
-from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsPixmapItem
 from PySide6.QtCore import Qt, QRectF, Signal, QTimer, QPointF
 from PySide6.QtGui import QPixmap, QColor, QPainter, QCursor
+from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsPixmapItem
 
 from core.constants import INTERNAL_CONFIG
 from module_editor import constants
 from module_editor.ui.toolbar.canvas_item import CanvasItem
-from module_editor.ui.toolbar.text_item import InlineTextEditor, TextCanvasItem
+from module_editor.ui.toolbar.canvas_text_item import CanvasTextItem, _InlineTextEditor
+
 
 class ImageScene(QGraphicsScene):
     content_changed = Signal()
@@ -33,8 +34,8 @@ class ImageScene(QGraphicsScene):
         }
 
     def _create_text_item(self, start_pos, end_pos=None):
-        payload = {"text": "", "text_size": constants.TEXT_STYLE["font_default_px"]}
-        vector = self._document.create_vector("text", start_pos, self._active_color, payload=payload)
+        payload = {"text": constants.TEXT_STYLE["placeholder"], "text_size": constants.TEXT_STYLE["font_default_px"]}
+        vector = self._document.create_vector(constants.TOOL_TYPE_TEXT, start_pos, self._active_color, payload=payload)
         item = self._create_item(vector)
         self.addItem(item)
         item.setSelected(True)
@@ -54,7 +55,7 @@ class ImageScene(QGraphicsScene):
         pix = QPixmap.fromImage(ImageQt.ImageQt(pil_image))
         self.addItem(QGraphicsPixmapItem(pix))
         self.setSceneRect(QRectF(0, 0, pix.width(), pix.height()))
-        
+
         for v in self._document.vectors:
             self.addItem(self._create_item(v))
 
@@ -88,21 +89,21 @@ class ImageScene(QGraphicsScene):
         editing_item = self._find_editing_text_item()
         closed_editing_on_press = False
 
+        if editing_item is not None and editing_item.is_point_on_size_control(pos):
+            event.accept()
+            return
+
         size_control_item = self._find_text_item_for_size_control(pos)
         if size_control_item is not None:
             if not size_control_item.isSelected():
                 self.deselect_all()
                 size_control_item.setSelected(True)
                 size_control_item.update()
-            self._emit_selection_context("editing", size_control_item.data.color)
+                self._emit_selection_context("editing", size_control_item.data.color)
             super().mousePressEvent(event)
             return
 
-        if isinstance(hit, InlineTextEditor):
-            super().mousePressEvent(event)
-            return
-
-        if editing_item is not None and editing_item.is_point_on_size_control(pos):
+        if isinstance(hit, _InlineTextEditor):
             super().mousePressEvent(event)
             return
 
@@ -140,7 +141,7 @@ class ImageScene(QGraphicsScene):
         # 3. Draw mode
         if event.button() == Qt.LeftButton and self._draw_mode:
             self.deselect_all()
-            if self._draw_mode == "text":
+            if self._draw_mode == constants.TOOL_TYPE_TEXT:
                 self._start_text_drag(pos)
                 event.accept()
                 return
@@ -153,7 +154,7 @@ class ImageScene(QGraphicsScene):
             self._emit_selection_context("drawing", item.data.color)
             self._dragging = {
                 "item": item,
-                "grip": "end" if self._draw_mode in ("arrow", "line") else "br",
+                "grip": "end" if self._draw_mode in (constants.TOOL_TYPE_ARROW, constants.TOOL_TYPE_LINE) else "br",
                 "last": pos,
                 "created": True,
                 "origin": (pos.x(), pos.y()),
@@ -194,7 +195,7 @@ class ImageScene(QGraphicsScene):
                 return
             grip = self._dragging["grip"]
             coords = list(item.data.coords)
-            
+
             if grip == "move":
                 coords[0] += delta.x(); coords[1] += delta.y(); coords[2] += delta.x(); coords[3] += delta.y()
             elif grip in ("tl", "start"):
@@ -207,7 +208,7 @@ class ImageScene(QGraphicsScene):
                 coords[0] += delta.x(); coords[3] += delta.y()
 
             item.set_coords(coords)
-            if isinstance(item, TextCanvasItem) and grip != "move" and self._dragging.get("created"):
+            if isinstance(item, CanvasTextItem) and grip != "move" and self._dragging.get("created"):
                 item.recompute_text_size_to_fit()
             event.accept()
         else:
@@ -231,7 +232,7 @@ class ImageScene(QGraphicsScene):
                 x1, y1 = self._dragging["origin"]
                 x2, y2 = item.data.coords[2], item.data.coords[3]
                 distance = math.hypot(x2 - x1, y2 - y1)
-                min_distance = constants.TEXT_STYLE["create_min_distance"] if isinstance(item, TextCanvasItem) else constants.VECTOR_STYLE["draw_min_distance"]
+                min_distance = constants.TEXT_STYLE["create_min_distance"] if isinstance(item, CanvasTextItem) else constants.VECTOR_STYLE["draw_min_distance"]
                 if distance < min_distance:
                     self._document.delete_vector(item.data.shape_id)
                     self.removeItem(item)
@@ -239,7 +240,7 @@ class ImageScene(QGraphicsScene):
                     self._dragging = None
                     event.accept()
                     return
-                if isinstance(item, TextCanvasItem):
+                if isinstance(item, CanvasTextItem):
                     rect = QRectF(min(item.data.coords[0], item.data.coords[2]), min(item.data.coords[1], item.data.coords[3]), abs(item.data.coords[2] - item.data.coords[0]), abs(item.data.coords[3] - item.data.coords[1]))
                     if rect.width() < constants.TEXT_STYLE["min_box_width"] or rect.height() < constants.TEXT_STYLE["min_box_height"]:
                         self._document.delete_vector(item.data.shape_id)
@@ -249,7 +250,7 @@ class ImageScene(QGraphicsScene):
                         event.accept()
                         return
             self._dragging = None
-            if isinstance(dragged_item, TextCanvasItem):
+            if isinstance(dragged_item, CanvasTextItem):
                 QTimer.singleShot(0, dragged_item.start_editing)
                 event.accept()
                 return
@@ -258,7 +259,7 @@ class ImageScene(QGraphicsScene):
 
     def mouseDoubleClickEvent(self, event):
         hit = self.itemAt(event.scenePos(), self.views()[0].transform())
-        if isinstance(hit, TextCanvasItem):
+        if isinstance(hit, CanvasTextItem):
             hit.start_editing()
             event.accept()
             return
@@ -283,11 +284,11 @@ class ImageScene(QGraphicsScene):
 
         changed = False
         for item in selected_items:
-            if isinstance(item, TextCanvasItem):
+            if isinstance(item, CanvasTextItem):
                 item.set_text_color(color)
             else:
                 item.data.color = color
-                item.update()
+            item.update()
             changed = self._document.update_vector_color(item.data.shape_id, color) or changed
         if changed:
             self._persist_vectors()
@@ -314,30 +315,31 @@ class ImageScene(QGraphicsScene):
         return None
 
     def _create_item(self, vector):
-        if vector.shape_type == "text":
+        if vector.shape_type == constants.TOOL_TYPE_TEXT:
             if "text" not in vector.payload:
                 raise ValueError(f"Invalid text payload for vector '{vector.shape_id}': required key text")
             if "text_size" not in vector.payload:
                 vector.payload["text_size"] = constants.TEXT_STYLE["font_default_px"]
-            return TextCanvasItem(vector, self._handle_text_commit, self._handle_text_size_change)
+            return CanvasTextItem(vector, self._handle_text_commit, self._handle_text_size_change)
         return CanvasItem(vector)
 
     def _find_editing_text_item(self):
         for item in self.items():
-            if isinstance(item, TextCanvasItem) and item.is_editing():
+            if isinstance(item, CanvasTextItem) and item.is_editing():
                 return item
         return None
 
     def _find_text_item_for_size_control(self, scene_pos):
         for item in self.items():
-            if isinstance(item, TextCanvasItem) and item.is_point_on_size_control(scene_pos):
+            if isinstance(item, CanvasTextItem) and item.is_point_on_size_control(scene_pos):
                 return item
         return None
 
     def _handle_text_commit(self, item, text, cancelled, text_size):
         previous_text = item.data.payload.get("text", "")
         final_text = previous_text if cancelled else text.replace("\r\n", "\n")
-        if not final_text.strip():
+        is_placeholder = final_text == constants.TEXT_STYLE["placeholder"]
+        if not final_text.strip() or is_placeholder:
             self._document.delete_vector(item.data.shape_id)
             self.removeItem(item)
             self._persist_vectors()
@@ -359,6 +361,7 @@ class ImageScene(QGraphicsScene):
     def _is_over_size_control(self, scene_pos):
         return self._find_text_item_for_size_control(scene_pos) is not None
 
+
 class CanvasView(QGraphicsView):
     def __init__(self, scene, parent=None):
         super().__init__(scene, parent)
@@ -371,6 +374,39 @@ class CanvasView(QGraphicsView):
         self._pan_active = False
         self._pan_last_pos = None
         self._draw_cursor_active = False
+        self.viewport().installEventFilter(self)
+
+    def eventFilter(self, obj, event):
+        if obj is self.viewport():
+            scene = self.scene()
+            if isinstance(scene, ImageScene):
+                editing_item = scene._find_editing_text_item()
+                if editing_item is not None:
+                    is_press = event.type() == event.Type.MouseButtonPress and event.button() == Qt.LeftButton
+                    is_release = event.type() == event.Type.MouseButtonRelease and event.button() == Qt.LeftButton
+                    is_dblclick = event.type() == event.Type.MouseButtonDblClick and event.button() == Qt.LeftButton
+                    if is_press or is_release or is_dblclick:
+                        scene_pos = self.mapToScene(event.position().toPoint())
+                        if editing_item.is_point_on_size_control(scene_pos):
+                            if is_press:
+                                self._handle_size_control_click(editing_item, scene_pos)
+                            return True
+        return super().eventFilter(obj, event)
+
+    def _handle_size_control_click(self, editing_item, scene_pos):
+        proxy = editing_item._size_control_proxy
+        local_pos = proxy.mapFromScene(scene_pos).toPoint()
+        widget = editing_item._size_control
+        minus_rect = widget._minus_btn.geometry()
+        plus_rect = widget._plus_btn.geometry()
+        value_rect = widget._value_edit.geometry()
+        if minus_rect.contains(local_pos):
+            widget._step_value(-1)
+        elif plus_rect.contains(local_pos):
+            widget._step_value(1)
+        elif value_rect.contains(local_pos):
+            widget._value_edit.setFocus()
+            widget._value_edit.selectAll()
 
     def set_zoom_callback(self, cb): self._on_zoom_cb = cb
 
@@ -402,7 +438,7 @@ class CanvasView(QGraphicsView):
             return
 
         hit = self.itemAt(view_pos)
-        if isinstance(hit, InlineTextEditor):
+        if isinstance(hit, _InlineTextEditor):
             self._set_canvas_cursor(Qt.IBeamCursor)
             return
 
@@ -521,7 +557,7 @@ class CanvasView(QGraphicsView):
                 return False
 
         item = self.itemAt(view_pos)
-        return not isinstance(item, (CanvasItem, InlineTextEditor))
+        return not isinstance(item, (CanvasItem, _InlineTextEditor))
 
     def _has_scroll_margin(self):
         h_scroll = self.horizontalScrollBar()
@@ -533,6 +569,6 @@ class CanvasView(QGraphicsView):
             scene = self.scene()
             if scene and hasattr(scene, "delete_selected"):
                 scene.delete_selected()
-                event.accept()
-                return
+            event.accept()
+            return
         super().keyPressEvent(event)

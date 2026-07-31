@@ -7,7 +7,13 @@ from module_editor.core.annotation_renderer import DrawingTool
 
 
 class CanvasItem(QGraphicsItem):
-    GRIP_NAMES = {"rect": ["tl", "tr", "bl", "br"], "highlighter": ["tl", "tr", "bl", "br"], "line": ["start", "end"], "arrow": ["start", "end"], "text": ["tl", "tr", "bl", "br"]}
+    GRIP_NAMES = {
+        constants.TOOL_TYPE_RECT: ["tl", "tr", "bl", "br"],
+        constants.TOOL_TYPE_HIGHLIGHTER: ["tl", "tr", "bl", "br"],
+        constants.TOOL_TYPE_LINE: ["start", "end"],
+        constants.TOOL_TYPE_ARROW: ["start", "end"],
+        constants.TOOL_TYPE_TEXT: ["tl", "tr", "bl", "br"],
+    }
 
     def __init__(self, data):
         super().__init__()
@@ -60,38 +66,38 @@ class CanvasItem(QGraphicsItem):
         stroke_width = constants.VECTOR_STYLE["stroke_width"]
         tolerance = constants.VECTOR_STYLE["selection_tolerance"]
 
-        if self.data.shape_type == "highlighter":
+        if self.data.shape_type == constants.TOOL_TYPE_HIGHLIGHTER:
             path = QPainterPath()
-            path.addRect(rect.adjusted(-tolerance["highlighter"], -tolerance["highlighter"], tolerance["highlighter"], tolerance["highlighter"]))
+            path.addRect(rect.adjusted(-tolerance[constants.TOOL_TYPE_HIGHLIGHTER], -tolerance[constants.TOOL_TYPE_HIGHLIGHTER], tolerance[constants.TOOL_TYPE_HIGHLIGHTER], tolerance[constants.TOOL_TYPE_HIGHLIGHTER]))
             return path
 
-        if self.data.shape_type == "rect":
+        if self.data.shape_type == constants.TOOL_TYPE_RECT:
             border_path = QPainterPath()
             border_path.addRect(rect)
             stroker = QPainterPathStroker()
-            stroker.setWidth(max(stroke_width * 2 + tolerance["rect"], tolerance["rect"]))
+            stroker.setWidth(max(stroke_width * 2 + tolerance[constants.TOOL_TYPE_RECT], tolerance[constants.TOOL_TYPE_RECT]))
             return stroker.createStroke(border_path)
 
-        if self.data.shape_type == "text":
+        if self.data.shape_type == constants.TOOL_TYPE_TEXT:
             path = QPainterPath()
-            text_tolerance = tolerance["text"]
+            text_tolerance = tolerance[constants.TOOL_TYPE_TEXT]
             path.addRect(rect.adjusted(-text_tolerance, -text_tolerance, text_tolerance, text_tolerance))
             return path
 
-        if self.data.shape_type == "arrow":
+        if self.data.shape_type == constants.TOOL_TYPE_ARROW:
             line_path = QPainterPath()
             line_path.moveTo(x1, y1)
             line_path.lineTo(x2, y2)
             stroker = QPainterPathStroker()
-            stroker.setWidth(max(stroke_width * 2 + tolerance["arrow"], tolerance["arrow"]))
+            stroker.setWidth(max(stroke_width * 2 + tolerance[constants.TOOL_TYPE_ARROW], tolerance[constants.TOOL_TYPE_ARROW]))
             return stroker.createStroke(line_path)
 
-        if self.data.shape_type == "line":
+        if self.data.shape_type == constants.TOOL_TYPE_LINE:
             line_path = QPainterPath()
             line_path.moveTo(x1, y1)
             line_path.lineTo(x2, y2)
             stroker = QPainterPathStroker()
-            stroker.setWidth(max(stroke_width * 2 + tolerance["line"], tolerance["line"]))
+            stroker.setWidth(max(stroke_width * 2 + tolerance[constants.TOOL_TYPE_LINE], tolerance[constants.TOOL_TYPE_LINE]))
             return stroker.createStroke(line_path)
 
         fallback = QPainterPath()

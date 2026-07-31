@@ -5,3 +5,4 @@ mouse
 pyinstaller
 loguru
 PySide6
+sounddevice

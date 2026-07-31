@@ -7,6 +7,8 @@ on:
 
 permissions:
   contents: write
+  attestations: write
+  id-token: write
 
 jobs:
   build:
@@ -34,6 +36,11 @@ jobs:
         run: |
           $name = python -c "from core.version import APP_NAME; print(APP_NAME)"
           echo "APP_NAME=$name" >> $env:GITHUB_ENV
+
+      - name: Generate build provenance attestation
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: releases/${{ env.APP_NAME }}-v*.zip
 
       - name: Create Release and Upload Asset
         uses: softprops/action-gh-release@v2

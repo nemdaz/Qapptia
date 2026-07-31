@@ -1,5 +1,6 @@
 import atexit
 import os
+import sys
 import tempfile
 
 import keyboard
@@ -187,11 +188,11 @@ class UnixScreenMixin:
 
 
 class UnixDesktopMixin:
-    def play_beep(self, _sound_path):
-        print("\a", end="", flush=True)
-
     def show_info_message(self, title, message):
         print(f"{title}: {message}", flush=True)
+
+    def show_error_message(self, title, message):
+        print(f"{title}: {message}", file=sys.stderr, flush=True)
 
     def get_dpi_scaling(self):
         app = _ensure_qt_application()

@@ -1,6 +1,6 @@
 import ctypes
 from ctypes import wintypes
-import winsound
+import threading
 import atexit
 
 import keyboard
@@ -114,14 +114,13 @@ class WindowsScreenService(ScreenService):
 
 
 class WindowsDesktopService(DesktopService):
-    def play_beep(self, sound_path):
-        if sound_path:
-            winsound.PlaySound(sound_path, winsound.SND_FILENAME | winsound.SND_ASYNC)
-            return
-        winsound.Beep(1500, 150)
-
     def show_info_message(self, title, message):
         ctypes.windll.user32.MessageBoxW(None, message, title, 0x00000040)
+
+    def show_error_message(self, title, message):
+        user32 = ctypes.windll.user32
+        user32.AllowSetForegroundWindow(-1)
+        user32.MessageBoxW(None, message, title, 0x00040000 | 0x00010000 | 0x00000010 | 0x00002000)
 
     def get_dpi_scaling(self):
         try:

@@ -1,21 +1,77 @@
 import os
 import sys
+import threading
 import time
+import wave
 
+import sounddevice as sd
 from PIL import Image, ImageQt
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QImage, QPainter
+from PySide6.QtWidgets import QApplication
 
 from core import config
-from core.constants import DEFAULT_CONFIG
+from core.constants import DEFAULT_CONFIG, INTERNAL_CONFIG
 from core.input_runtime import remember_hotkey_registration
 from core.logger import logger
 from core.platform import get_platform_services
 
 _platform = get_platform_services()
 
-# Cache global para datos de audio (evita latencia de disco)
 _AUDIO_CACHE = {}
+_audio_lock = threading.Lock()
+_active_audio_stream = None
+
+
+def _play_shutter_sound():
+    global _active_audio_stream
+    try:
+        cached = _AUDIO_CACHE.get("shutter")
+        if cached is None:
+            return
+        with _audio_lock:
+            if _active_audio_stream is not None:
+                try:
+                    _active_audio_stream.stop()
+                    _active_audio_stream.close()
+                except Exception:
+                    pass
+                _active_audio_stream = None
+        stream = sd.RawOutputStream(
+            samplerate=cached["sample_rate"],
+            channels=cached["channels"],
+            dtype=cached["dtype"],
+        )
+        stream.start()
+        stream.write(cached["frames"])
+        with _audio_lock:
+            _active_audio_stream = stream
+    except Exception:
+        pass
+
+
+def play_shutter_async():
+    try:
+        if "shutter" not in _AUDIO_CACHE:
+            sound_path = get_resource_path(INTERNAL_CONFIG["shutter_sound"])
+            if os.path.exists(sound_path):
+                with wave.open(sound_path, "rb") as w:
+                    frames = w.readframes(w.getnframes())
+                    sample_rate = w.getframerate()
+                    channels = w.getnchannels()
+                    sample_width = w.getsampwidth()
+                    dtype_map = {1: "int8", 2: "int16", 4: "int32"}
+                    _AUDIO_CACHE["shutter"] = {
+                        "frames": frames,
+                        "sample_rate": sample_rate,
+                        "channels": channels,
+                        "dtype": dtype_map.get(sample_width, "int16"),
+                    }
+            else:
+                return
+        threading.Thread(target=_play_shutter_sound, daemon=True).start()
+    except Exception:
+        pass
 
 
 def get_resource_path(relative_path):
@@ -42,31 +98,6 @@ def get_save_directory(base_path, now):
     if not os.path.exists(full_path):
         os.makedirs(full_path, exist_ok=True)
     return full_path
-
-
-def play_beep_async():
-    """Reproduce sonido de obturador de forma asincrona."""
-    timestamp = time.strftime("%H:%M:%S")
-    logger.trace(f"[AUDIO] Solicitud de reproduccion a las {timestamp}")
-
-    global _AUDIO_CACHE
-    try:
-        sound_key = "shutter"
-        if sound_key not in _AUDIO_CACHE:
-            sound_path = get_resource_path(os.path.join("core", "assets", "sounds", "shutter_a.wav"))
-            logger.debug(f"[AUDIO] Verificando archivo local: {sound_path}")
-            if os.path.exists(sound_path):
-                _AUDIO_CACHE[sound_key] = sound_path
-                logger.debug("[AUDIO] Ruta de audio referenciada exitosamente.")
-            else:
-                logger.error("[AUDIO] Archivo no encontrado. Ejecutando beep de emergencia.")
-                _platform.desktop.play_beep(None)
-                return
-
-        _platform.desktop.play_beep(_AUDIO_CACHE[sound_key])
-        logger.debug("[AUDIO] Comando de reproduccion enviado al sistema.")
-    except Exception as exc:
-        logger.error(f"[AUDIO] Error al reproducir audio: {exc}")
 
 
 def parse_filename_format(base_format, now_datetime):
@@ -156,7 +187,7 @@ def draw_mouse_overlay(screen_image, mouse_x, mouse_y, highlight=False, cursor_d
         screen_image.paste(cursor_img, (mx - int(hx * scale), my - int(hy * scale)), cursor_img)
         screen_image = screen_image.convert("RGB")
     except Exception as exc:
-        logger.error(f"Error en el dibujo del mouse: {exc}")
+        logger.exception(f"Error en el dibujo del mouse: {exc}")
 
     return screen_image
 
@@ -173,7 +204,7 @@ def register_hotkey(hotkey, callback, description=""):
         time.sleep(0.05)
         if all(_platform.input.is_key_pressed(m) for m in modifiers):
             logger.debug(f"[HOTKEY] Disparando '{description}' ({hotkey})")
-            callback()
+            threading.Thread(target=callback, daemon=True).start()
         else:
             logger.trace(f"[HOTKEY] Ignorada activacion de tecla solitaria: '{hotkey}'")
 
@@ -184,5 +215,5 @@ def register_hotkey(hotkey, callback, description=""):
         logger.info(f"Atajo {desc_str} '{hotkey}' registrado (Protegido).")
         return True
     except Exception as exc:
-        logger.error(f"Error al registrar atajo {description} '{hotkey}': {exc}")
+        logger.exception(f"Error al registrar atajo {description} '{hotkey}': {exc}")
         return False
