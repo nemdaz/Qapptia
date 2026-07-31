@@ -1,25 +1,104 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-.env
-.venv
-.venvqc
-env/
-venv/
-venvqc/
-ENV/
+# =====================================================
+# Qapptia — .NET 8 / Avalonia
+# =====================================================
 
-# PyInstaller / Build
-build/
-dist/
-releases/
-*.spec
-!app.build.spec
+# -----------------------------
+# .NET / Visual Studio / Rider
+# -----------------------------
+## Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+## Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+*.rsuser
+*.aps
+*.fcachemap
+*.opensdf
+*.sdf
+*.cachefile
+*.VC.db
+*.VC.VC.opendb
+*.psess
+*.vsp
+*.vspx
+*.sap
+
+## Rider / VSCode
+.idea/
+*.sln.iml
+.vscode/
+*.code-workspace
+
+## NuGet
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+*.nuget.props
+*.nuget.targets
+project.lock.json
+project.fragment.lock.json
+artifacts/
+publish/
+
+## Build / publish output
+publish-*/
+[Pp]ublish/
+[Bb]uild/
+[Dd]ist/
 *.zip
 !release_assets/*.zip
 
+## Test results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+TestResults/
+coverage*.json
+coverage*.xml
+coverage*.info
+*.coverage
+*.coveragexml
+
+## File system ROX (ReSharper)
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+## Build bundles self-contained
+*.apk
+*.aab
+*.app
+*.dll.config
+*.exe.config
+
+# -----------------------------
+# Avalonia / Skia
+# -----------------------------
+*.avalonia.db
+SkiaSharp.*.so
+SkiaSharp.*.dylib
+
+# -----------------------------
 # OS generated files
+# -----------------------------
 .DS_Store
 .DS_Store?
 ._*
@@ -27,5 +106,36 @@ releases/
 .Trashes
 ehthumbs.db
 Thumbs.db
+desktop.ini
+
+# -----------------------------
+# Secrets / environment
+# -----------------------------
+.env
+.env.*
+!.env.example
+*.pfx
+*.p12
+*.snk
+
+# -----------------------------
+# Legacy Python (era pre-C#)
+# -----------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+.venvqc/
+venv/
+venvqc/
+env/
+ENV/
+*.spec
+!app.build.spec
+
+# -----------------------------
+# Runtime / app config
+# -----------------------------
 config.json
 logs/
+!src/**/logs/
