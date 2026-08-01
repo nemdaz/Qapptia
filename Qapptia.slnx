@@ -1,0 +1,19 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Qapptia.App.Capture/Qapptia.App.Capture.csproj" />
+    <Project Path="src/Qapptia.App.Config/Qapptia.App.Config.csproj" />
+    <Project Path="src/Qapptia.App.Editor/Qapptia.App.Editor.csproj" />
+    <Project Path="src/Qapptia.Capture/Qapptia.Capture.csproj" />
+    <Project Path="src/Qapptia.Core/Qapptia.Core.csproj" />
+    <Project Path="src/Qapptia.Editor/Qapptia.Editor.csproj" />
+    <Project Path="src/Qapptia.Platform.Linux/Qapptia.Platform.Linux.csproj" />
+    <Project Path="src/Qapptia.Platform.MacOS/Qapptia.Platform.MacOS.csproj" />
+    <Project Path="src/Qapptia.Platform.Windows/Qapptia.Platform.Windows.csproj" />
+    <Project Path="src/Qapptia.UI.Shared/Qapptia.UI.Shared.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Qapptia.Capture.Tests/Qapptia.Capture.Tests.csproj" />
+    <Project Path="tests/Qapptia.Core.Tests/Qapptia.Core.Tests.csproj" />
+    <Project Path="tests/Qapptia.Editor.Tests/Qapptia.Editor.Tests.csproj" />
+  </Folder>
+</Solution>
