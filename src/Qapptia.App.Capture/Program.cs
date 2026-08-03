@@ -1,7 +1,4 @@
-using Qapptia.App.Capture;
-
+// Placeholder — la Fase 2 implementará Generic Host + System.CommandLine aquí.
 var builder = Host.CreateApplicationBuilder(args);
-builder.Services.AddHostedService<Worker>();
-
 var host = builder.Build();
-host.Run();
+await host.RunAsync();
