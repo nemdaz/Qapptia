@@ -18,8 +18,4 @@
     <Using Include="FluentAssertions" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\Qapptia.Core\Qapptia.Core.csproj" />
-  </ItemGroup>
-
 </Project>

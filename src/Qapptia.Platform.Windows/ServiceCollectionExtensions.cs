@@ -20,6 +20,9 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<IHotkeyRegistrar, WindowsHotkeyRegistrar>();
         services.TryAddSingleton<IPowerEvents, WindowsPowerEvents>();
         services.TryAddSingleton<IDesktopService, WindowsDesktopService>();
+        services.TryAddSingleton<IShutterSoundService, WindowsShutterSoundService>();
+        services.TryAddSingleton<IClipboardService, WindowsClipboardService>();
+        services.TryAddSingleton<ITrayIconService, WindowsTrayIconService>();
         return services;
     }
 }

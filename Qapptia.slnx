@@ -4,7 +4,6 @@
     <Project Path="src/Qapptia.App.Config/Qapptia.App.Config.csproj" />
     <Project Path="src/Qapptia.App.Editor/Qapptia.App.Editor.csproj" />
     <Project Path="src/Qapptia.Capture/Qapptia.Capture.csproj" />
-    <Project Path="src/Qapptia.Core/Qapptia.Core.csproj" />
     <Project Path="src/Qapptia.Editor/Qapptia.Editor.csproj" />
     <Project Path="src/Qapptia.Platform.Linux/Qapptia.Platform.Linux.csproj" />
     <Project Path="src/Qapptia.Platform.MacOS/Qapptia.Platform.MacOS.csproj" />

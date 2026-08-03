@@ -51,6 +51,12 @@ public sealed class WindowsDesktopService : IDesktopService
             (mi.dwFlags & 1u) != 0);
     }
 
+    public (int X, int Y) GetCursorPosition()
+    {
+        PInvoke.GetCursorPos(out var pt);
+        return (pt.X, pt.Y);
+    }
+
     public (int X, int Y) GetVirtualScreenOrigin()
         => (PInvoke.GetSystemMetrics(SYSTEM_METRICS_INDEX.SM_XVIRTUALSCREEN),
             PInvoke.GetSystemMetrics(SYSTEM_METRICS_INDEX.SM_YVIRTUALSCREEN));

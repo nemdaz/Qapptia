@@ -22,7 +22,6 @@
     <PackageVersion Include="Avalonia.Diagnostics"           Version="12.1.1" />
     <PackageVersion Include="Avalonia.Xaml.Behaviors"        Version="11.3.0.6" />
     <PackageVersion Include="AvaloniaUI.DiagnosticsSupport"  Version="2.2.3" />
-    <PackageVersion Include="H.NotifyIcon.Avalonia"          Version="2.2.0" />
 
     <!-- ============================================================
          MVVM

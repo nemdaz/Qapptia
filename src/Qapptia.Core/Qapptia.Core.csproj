@@ -22,4 +22,8 @@
     <PackageReference Include="System.CommandLine" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\Sounds\shutter_a.wav" />
+  </ItemGroup>
+
 </Project>

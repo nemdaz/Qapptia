@@ -19,6 +19,7 @@ public interface IDesktopService
     void ShowInfo(string title, string message);
     void ShowError(string title, string message);
     MonitorInfo GetMonitorAtCursor();
+    (int X, int Y) GetCursorPosition();
     (int X, int Y) GetVirtualScreenOrigin();
     int GetVirtualScreenWidth();
     int GetVirtualScreenHeight();

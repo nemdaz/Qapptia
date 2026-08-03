@@ -1,0 +1,164 @@
+using System.Diagnostics;
+using System.Runtime.InteropServices;
+using Microsoft.Extensions.Logging;
+using Qapptia.Core.Abstractions;
+using Qapptia.Core.Capture;
+using Qapptia.Core.Configuration;
+using SkiaSharp;
+
+namespace Qapptia.Capture;
+
+public sealed class FullscreenCaptureService : IFullscreenCaptureService
+{
+    private readonly IScreenCapture _screenCapture;
+    private readonly ICursorCapture _cursorCapture;
+    private readonly IClipboardService _clipboard;
+    private readonly IDesktopService _desktop;
+    private readonly IConfigService _config;
+    private readonly ILogger<FullscreenCaptureService> _logger;
+
+    public FullscreenCaptureService(
+        IScreenCapture screenCapture,
+        ICursorCapture cursorCapture,
+        IClipboardService clipboard,
+        IDesktopService desktop,
+        IConfigService config,
+        ILogger<FullscreenCaptureService> logger)
+    {
+        _screenCapture = screenCapture;
+        _cursorCapture = cursorCapture;
+        _clipboard = clipboard;
+        _desktop = desktop;
+        _config = config;
+        _logger = logger;
+    }
+
+    public async Task<CaptureResult> CaptureAsync(CaptureJob job, CancellationToken ct = default)
+    {
+        if (job.DelayMs > 0)
+            await Task.Delay(job.DelayMs, ct);
+
+        var screen = await _screenCapture.CaptureAllScreensAsync(ct);
+
+        using var image = SKBitmap.FromImage(SKImage.FromPixels(
+            new SKImageInfo(screen.Width, screen.Height, SKColorType.Bgra8888, SKAlphaType.Unpremul),
+            new IntPtr(Marshal.UnsafeAddrOfPinnedArrayElement(screen.BgraPixels, 0))));
+
+        if (job.IncludeCursor && _config.Current.ShowMouse)
+        {
+            OverlayCursor(image);
+        }
+
+        if (job.Area is { } area)
+        {
+            using var cropped = new SKBitmap(area.Width, area.Height);
+            image.ExtractSubset(cropped, new SKRectI(area.X - screen.OriginX, area.Y - screen.OriginY,
+                area.X - screen.OriginX + area.Width, area.Y - screen.OriginY + area.Height));
+            using var pngData = cropped.Encode(SKEncodedImageFormat.Png, 100);
+            return await FinalizeAsync(pngData.ToArray(), cropped.Width, cropped.Height, job, ct);
+        }
+
+        using var fullPng = image.Encode(SKEncodedImageFormat.Png, 100);
+        return await FinalizeAsync(fullPng.ToArray(), screen.Width, screen.Height, job, ct);
+    }
+
+    private void OverlayCursor(SKBitmap bitmap)
+    {
+        try
+        {
+            var cursor = _cursorCapture.CaptureCursorAsync().GetAwaiter().GetResult();
+            if (cursor is null) return;
+
+            using var cursorBmp = new SKBitmap();
+            if (!cursorBmp.InstallPixels(
+                    new SKImageInfo(cursor.Width, cursor.Height, SKColorType.Bgra8888, SKAlphaType.Unpremul),
+                    Marshal.UnsafeAddrOfPinnedArrayElement(cursor.BgraPixels, 0),
+                    cursor.Width * 4))
+                return;
+
+            var (cursorX, cursorY) = _desktop.GetCursorPosition();
+            var drawX = cursorX - cursor.HotspotX;
+            var drawY = cursorY - cursor.HotspotY;
+
+            using var canvas = new SKCanvas(bitmap);
+            canvas.DrawBitmap(cursorBmp, drawX, drawY);
+
+            if (_config.Current.HighlightMouse)
+            {
+                using var highlight = new SKPaint
+                {
+                    Color = new SKColor(255, 255, 0, 80),
+                    Style = SKPaintStyle.Fill,
+                    IsAntialias = true,
+                };
+                var radius = Math.Max(cursor.Width, cursor.Height) * 0.6f + 8;
+                canvas.DrawCircle(cursorX, cursorY, radius, highlight);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Fallo overlay cursor");
+        }
+    }
+
+    private async Task<CaptureResult> FinalizeAsync(
+        byte[] pngBytes, int w, int h, CaptureJob job, CancellationToken ct)
+    {
+        var path = BuildFilePath();
+        var dir = Path.GetDirectoryName(path)!;
+        Directory.CreateDirectory(dir);
+        await File.WriteAllBytesAsync(path, pngBytes, ct);
+
+        if (job.Mode == CaptureMode.Fullscreen && _config.Current.CopyToClipboardScreen ||
+            job.Mode == CaptureMode.Area && _config.Current.CopyToClipboardArea)
+        {
+            try { await _clipboard.SetImageAsync(pngBytes, ct); }
+            catch (Exception ex) { _logger.LogWarning(ex, "Fallo clipboard"); }
+        }
+
+        return new CaptureResult(path, pngBytes, w, h);
+    }
+
+    private string BuildFilePath()
+    {
+        var cfg = _config.Current;
+        var baseDir = cfg.SavePath;
+        if (string.IsNullOrWhiteSpace(baseDir))
+            baseDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "Qapptia");
+
+        var now = DateTime.Now;
+        var parts = new List<string> { baseDir };
+
+        if (cfg.SubfolderMonth)
+            parts.Add(now.ToString("yyyy-MM"));
+        if (cfg.SubfolderDay)
+            parts.Add(now.ToString("yyyy-MM-dd"));
+        if (cfg.SubfolderHour)
+            parts.Add(now.ToString("HH"));
+
+        var dir = Path.Combine(parts.ToArray());
+        Directory.CreateDirectory(dir);
+
+        var fmt = cfg.FilenameFormat
+            .Replace("YYYYMMDD", now.ToString("yyyyMMdd"))
+            .Replace("HHmmSS", now.ToString("HHmmss"))
+            .Replace("HHmm", now.ToString("HHmm"))
+            .Replace("YYYY", now.ToString("yyyy"))
+            .Replace("MM", now.ToString("MM"))
+            .Replace("DD", now.ToString("dd"))
+            .Replace("HH", now.ToString("HH"))
+            .Replace("mm", now.ToString("mm"))
+            .Replace("SS", now.ToString("ss"));
+
+        var filename = $"{fmt}.png";
+        var fullPath = Path.Combine(dir, filename);
+        var counter = 1;
+        while (File.Exists(fullPath))
+        {
+            fullPath = Path.Combine(dir, $"{fmt}_{counter++}.png");
+        }
+
+        return fullPath;
+    }
+}

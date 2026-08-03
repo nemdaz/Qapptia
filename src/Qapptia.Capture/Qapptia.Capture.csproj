@@ -5,12 +5,16 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Options" />
+    <PackageReference Include="SkiaSharp" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Qapptia.Core\Qapptia.Core.csproj" />
+    <ProjectReference Include="..\Qapptia.UI.Shared\Qapptia.UI.Shared.csproj" />
   </ItemGroup>
 
 </Project>
