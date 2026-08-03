@@ -36,9 +36,9 @@ public static class LoggingBootstrap
             .WriteTo.Async(a => a.File(
                 path: logPath,
                 outputTemplate: FileOutputTemplate,
-                rollingInterval: RollingInterval.Day,
-                retainedFileCountLimit: 7,
-                fileSizeLimitBytes: 10_000_000,
+                rollingInterval: RollingInterval.Month,
+                retainedFileCountLimit: 12, // Guarda logs de un año
+                fileSizeLimitBytes: 50_000_000,
                 rollOnFileSizeLimit: true,
                 shared: false))
             .CreateLogger();

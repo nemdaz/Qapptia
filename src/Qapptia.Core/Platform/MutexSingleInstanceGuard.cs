@@ -34,14 +34,23 @@ public sealed class MutexSingleInstanceGuard : ISingleInstanceGuard
 
         try
         {
-            _mutex = new Mutex(initiallyOwned: true, name: _mutexName, createdNew: out var createdNew);
-            if (!createdNew)
+            _mutex = new Mutex(initiallyOwned: false, name: _mutexName, createdNew: out var createdNew);
+            try
             {
-                _mutex.Dispose();
-                _mutex = null;
-                return false;
+                // Espera 2s para permitir reinicio limpio mientras la instancia anterior cierra.
+                if (!_mutex.WaitOne(TimeSpan.FromSeconds(2)))
+                {
+                    _mutex.Dispose();
+                    _mutex = null;
+                    return false;
+                }
+                return true;
             }
-            return true;
+            catch (AbandonedMutexException)
+            {
+                // Wait tuvo éxito tras un crash o cierre abrupto de la instancia dueña anterior.
+                return true;
+            }
         }
         catch (UnauthorizedAccessException)
         {

@@ -37,8 +37,11 @@ internal static class Program
             return;
         }
 
-        var exeDir = AppContext.BaseDirectory;
-        using var _log = LoggingBootstrap.ConfigureGlobal(exeDir, LogEventLevel.Information, "capture");
+        // Redirige logs a LocalAppData para evitar errores de permisos.
+        var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var logDir = Path.Combine(appData, "Qapptia");
+        
+        using var _log = LoggingBootstrap.ConfigureGlobal(logDir, LogEventLevel.Information, "capture");
 
         using var host = BuildHost(args);
         var appLogger = host.Services.GetRequiredService<ILogger<AppLoggerMarker>>();

@@ -139,3 +139,6 @@ ENV/
 config.json
 logs/
 !src/**/logs/
+
+# MSBuild logs
+*.binlog
