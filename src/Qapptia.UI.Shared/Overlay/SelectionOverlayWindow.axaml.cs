@@ -5,7 +5,7 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using Qapptia.Core.Capture;
 
-namespace Qapptia.UI.Shared.Overlay;
+namespace Qapptia.UI.Components.Overlay;
 
 public partial class SelectionOverlayWindow : Window
 {
@@ -30,6 +30,13 @@ public partial class SelectionOverlayWindow : Window
         KeyDown += OnKeyDown;
         Closed += (_, _) => _tcs.TrySetResult(null);
     }
+
+#pragma warning disable CS8618 // For XAML previewer
+    public SelectionOverlayWindow()
+    {
+        InitializeComponent();
+    }
+#pragma warning restore CS8618
 
     protected override void OnOpened(EventArgs e)
     {

@@ -4,7 +4,7 @@ using Qapptia.Core.Ipc;
 
 namespace Qapptia.Capture;
 
-public sealed class IpcServerHostedService : IHostedService
+public sealed class IpcServerHostedService : IHostedService, IDisposable
 {
     private readonly QapptiaIpcServer _server;
     private readonly ILogger<IpcServerHostedService> _logger;
@@ -48,15 +48,20 @@ public sealed class IpcServerHostedService : IHostedService
             serverLogger);
     }
 
-    public Task StartAsync(CancellationToken ct)
+    public Task StartAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("Iniciando IPC server (capture)");
-        return _server.StartAsync(ct);
+        return _server.StartAsync(cancellationToken);
     }
 
-    public Task StopAsync(CancellationToken ct)
+    public Task StopAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("Deteniendo IPC server (capture)");
-        return _server.StopAsync(ct);
+        return _server.StopAsync(cancellationToken);
+    }
+
+    public void Dispose()
+    {
+        _server.Dispose();
     }
 }

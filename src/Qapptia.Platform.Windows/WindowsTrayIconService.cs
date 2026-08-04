@@ -35,7 +35,7 @@ public sealed class WindowsTrayIconService : ITrayIconService
 
     public void Initialize(TrayMenuDefinition menu, string iconPath)
     {
-        if (_disposed) throw new ObjectDisposedException(nameof(WindowsTrayIconService));
+        ObjectDisposedException.ThrowIf(_disposed, this);
         
         _initialMenu = menu;
         _initialIconPath = iconPath;

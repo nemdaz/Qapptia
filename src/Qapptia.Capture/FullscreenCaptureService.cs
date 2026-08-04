@@ -131,25 +131,25 @@ public sealed class FullscreenCaptureService : IFullscreenCaptureService
         var parts = new List<string> { baseDir };
 
         if (cfg.SubfolderMonth)
-            parts.Add(now.ToString("yyyy-MM"));
+            parts.Add(now.ToString("yyyy-MM", System.Globalization.CultureInfo.InvariantCulture));
         if (cfg.SubfolderDay)
-            parts.Add(now.ToString("yyyy-MM-dd"));
+            parts.Add(now.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture));
         if (cfg.SubfolderHour)
-            parts.Add(now.ToString("HH"));
+            parts.Add(now.ToString("HH", System.Globalization.CultureInfo.InvariantCulture));
 
         var dir = Path.Combine(parts.ToArray());
         Directory.CreateDirectory(dir);
 
         var fmt = cfg.FilenameFormat
-            .Replace("YYYYMMDD", now.ToString("yyyyMMdd"))
-            .Replace("HHmmSS", now.ToString("HHmmss"))
-            .Replace("HHmm", now.ToString("HHmm"))
-            .Replace("YYYY", now.ToString("yyyy"))
-            .Replace("MM", now.ToString("MM"))
-            .Replace("DD", now.ToString("dd"))
-            .Replace("HH", now.ToString("HH"))
-            .Replace("mm", now.ToString("mm"))
-            .Replace("SS", now.ToString("ss"));
+            .Replace("YYYYMMDD", now.ToString("yyyyMMdd", System.Globalization.CultureInfo.InvariantCulture))
+            .Replace("HHmmSS", now.ToString("HHmmss", System.Globalization.CultureInfo.InvariantCulture))
+            .Replace("HHmm", now.ToString("HHmm", System.Globalization.CultureInfo.InvariantCulture))
+            .Replace("YYYY", now.ToString("yyyy", System.Globalization.CultureInfo.InvariantCulture))
+            .Replace("MM", now.ToString("MM", System.Globalization.CultureInfo.InvariantCulture))
+            .Replace("DD", now.ToString("dd", System.Globalization.CultureInfo.InvariantCulture))
+            .Replace("HH", now.ToString("HH", System.Globalization.CultureInfo.InvariantCulture))
+            .Replace("mm", now.ToString("mm", System.Globalization.CultureInfo.InvariantCulture))
+            .Replace("SS", now.ToString("ss", System.Globalization.CultureInfo.InvariantCulture));
 
         var filename = $"{fmt}.png";
         var fullPath = Path.Combine(dir, filename);

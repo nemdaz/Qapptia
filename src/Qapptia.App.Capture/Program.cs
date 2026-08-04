@@ -10,7 +10,7 @@ using Qapptia.Core.Ipc;
 using Qapptia.Core.Logging;
 using Qapptia.Core.Platform;
 using Qapptia.Core.Abstractions;
-using Qapptia.UI.Shared;
+
 using Serilog;
 using Serilog.Events;
 using System.Diagnostics;

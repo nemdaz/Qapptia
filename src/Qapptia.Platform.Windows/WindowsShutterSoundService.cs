@@ -12,7 +12,7 @@ public sealed class WindowsShutterSoundService : IShutterSoundService, IDisposab
     private const string ResourceName = "Qapptia.Core.Assets.Sounds.shutter_a.wav";
     private readonly ILogger<WindowsShutterSoundService> _logger;
     
-    private readonly IWavePlayer? _waveOut;
+    private readonly WaveOutEvent? _waveOut;
     private readonly MixingSampleProvider? _mixer;
     private readonly float[]? _cachedAudioSamples;
     private readonly WaveFormat? _waveFormat;
@@ -99,7 +99,7 @@ public sealed class WindowsShutterSoundService : IShutterSoundService, IDisposab
     }
     
     // Proveedor que sirve el array de flotantes desde memoria (Thread-safe para el mixer)
-    private class CachedSoundSampleProvider : ISampleProvider
+    private sealed class CachedSoundSampleProvider : ISampleProvider
     {
         private readonly float[] _audioData;
         private int _position;

@@ -80,7 +80,7 @@ public sealed class WindowsDesktopService : IDesktopService
         }
         finally
         {
-            PInvoke.ReleaseDC(HWND.Null, hdc);
+            _ = PInvoke.ReleaseDC(HWND.Null, hdc);
         }
     }
 }

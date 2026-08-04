@@ -49,7 +49,7 @@ public sealed class WindowsHotkeyRegistrar : IHotkeyRegistrar, IDisposable
 
     public IHotkeyHandle Register(HotkeyModifiers modifiers, uint virtualKey, Action callback)
     {
-        if (!_running) throw new ObjectDisposedException(nameof(WindowsHotkeyRegistrar));
+        ObjectDisposedException.ThrowIf(!_running, this);
 
         var id = Interlocked.Increment(ref _nextId);
         var req = new RegisterRequest(id, modifiers, virtualKey, callback, this);

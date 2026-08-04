@@ -32,10 +32,11 @@ public static class LoggingBootstrap
             .MinimumLevel.Override("System", LogEventLevel.Warning)
             .Enrich.FromLogContext()
             .Enrich.WithProperty("App", "Qapptia")
-            .WriteTo.Async(a => a.Console(outputTemplate: ConsoleOutputTemplate))
+            .WriteTo.Async(a => a.Console(outputTemplate: ConsoleOutputTemplate, formatProvider: System.Globalization.CultureInfo.InvariantCulture))
             .WriteTo.Async(a => a.File(
                 path: logPath,
                 outputTemplate: FileOutputTemplate,
+                formatProvider: System.Globalization.CultureInfo.InvariantCulture,
                 rollingInterval: RollingInterval.Month,
                 retainedFileCountLimit: 12, // Guarda logs de un año
                 fileSizeLimitBytes: 50_000_000,

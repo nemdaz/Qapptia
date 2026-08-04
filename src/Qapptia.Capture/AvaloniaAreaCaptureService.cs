@@ -1,6 +1,6 @@
 using Avalonia.Threading;
 using Qapptia.Core.Capture;
-using Qapptia.UI.Shared.Overlay;
+using Qapptia.UI.Components.Overlay;
 
 namespace Qapptia.Capture;
 

@@ -27,7 +27,7 @@ public static class IpcWire
 
     public static byte[] Encode(IpcMessage message)
     {
-        var payloadJson = JsonSerializer.SerializeToUtf8Bytes(message, typeof(IpcMessage), s_jsonOpts);
+        var payloadJson = JsonSerializer.SerializeToUtf8Bytes<IpcMessage>(message, s_jsonOpts);
         if (payloadJson.Length > IpcProtocol.MaxPayloadBytes)
         {
             throw new InvalidOperationException(

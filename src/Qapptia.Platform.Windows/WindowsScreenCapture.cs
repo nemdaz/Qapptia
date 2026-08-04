@@ -88,7 +88,7 @@ public sealed class WindowsScreenCapture : IScreenCapture
             }
             finally
             {
-                PInvoke.ReleaseDC(HWND.Null, hdcScreen);
+                _ = PInvoke.ReleaseDC(HWND.Null, hdcScreen);
             }
         }, ct);
     }

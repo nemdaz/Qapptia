@@ -106,7 +106,7 @@ public sealed class WindowsCursorCapture : ICursorCapture
                 }
                 finally
                 {
-                    PInvoke.ReleaseDC(HWND.Null, hdcScreen);
+                    _ = PInvoke.ReleaseDC(HWND.Null, hdcScreen);
                 }
             }
             finally

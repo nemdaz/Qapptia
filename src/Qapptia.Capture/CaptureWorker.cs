@@ -22,9 +22,6 @@ public sealed class CaptureWorker : BackgroundService, ICaptureActionHandler
     private IHotkeyHandle? _hotkeyScreen;
     private IHotkeyHandle? _hotkeyArea;
     private IHotkeyHandle? _hotkeyFlow;
-    private ITrayMenuItem? _captureScreenItem;
-    private ITrayMenuItem? _captureAreaItem;
-    private ITrayMenuItem? _quitItem;
 
     private readonly SemaphoreSlim _captureGate = new(1, 1);
     private DateTime _lastFlowHotkey = DateTime.MinValue;

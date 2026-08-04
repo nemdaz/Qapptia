@@ -45,7 +45,7 @@ GetModuleHandle
 MONITORINFO
 CURSORINFO
 ICONINFO
-POINT
+
 RECT
 BITMAPINFO
 BITMAPINFOHEADER
@@ -71,7 +71,6 @@ NOTIFY_ICON_MESSAGE
 LoadIcon
 LoadImage
 IMAGE_FLAGS
-LOAD_IMAGE_FLAGS
 HICON
 CreateIcon
 DestroyIcon
@@ -88,9 +87,7 @@ GlobalAlloc
 GlobalFree
 GlobalLock
 GlobalUnlock
-GMEM_FLAGS
 CLIPBOARD_FORMAT
-CF_HTML
 
 CreateBitmap
 CreatePopupMenu
