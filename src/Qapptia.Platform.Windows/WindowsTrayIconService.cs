@@ -51,7 +51,12 @@ public sealed class WindowsTrayIconService : ITrayIconService
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             
-            _contextMenu = new ContextMenuStrip();
+            _contextMenu = new ContextMenuStrip
+            {
+                BackColor = Color.FromArgb(249, 249, 249),
+                ForeColor = Color.Black,
+                ShowImageMargin = false
+            };
             
             if (_initialMenu != null)
             {
