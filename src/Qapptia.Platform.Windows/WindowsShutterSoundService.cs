@@ -1,8 +1,9 @@
 using System.IO;
 using System.Reflection;
 using Microsoft.Extensions.Logging;
+using NAudio.Wave;
+using NAudio.Wave.SampleProviders;
 using Qapptia.Core.Abstractions;
-using System.Media; // Nativo de Windows
 
 namespace Qapptia.Platform.Windows;
 
@@ -11,7 +12,10 @@ public sealed class WindowsShutterSoundService : IShutterSoundService, IDisposab
     private const string ResourceName = "Qapptia.Core.Assets.Sounds.shutter_a.wav";
     private readonly ILogger<WindowsShutterSoundService> _logger;
     
-    private readonly SoundPlayer? _player;
+    private readonly IWavePlayer? _waveOut;
+    private readonly MixingSampleProvider? _mixer;
+    private readonly float[]? _cachedAudioSamples;
+    private readonly WaveFormat? _waveFormat;
 
     public WindowsShutterSoundService(ILogger<WindowsShutterSoundService> logger)
     {
@@ -28,16 +32,35 @@ public sealed class WindowsShutterSoundService : IShutterSoundService, IDisposab
             var stream = coreAsm.GetManifestResourceStream(ResourceName);
             if (stream is not null)
             {
-                // Copiamos a un MemoryStream en memoria porque SoundPlayer requiere
-                // acceso exclusivo al stream de origen.
-                var ms = new MemoryStream();
-                stream.CopyTo(ms);
-                ms.Position = 0;
-                stream.Dispose();
+                using var reader = new WaveFileReader(stream);
+                
+                // Convertimos a ISampleProvider (IEEE Float 32-bit) que es el estándar del Mixer
+                ISampleProvider sampleProvider = reader.ToSampleProvider();
+                _waveFormat = sampleProvider.WaveFormat;
+                
+                // Leemos absolutamente todos los samples a un array flotante
+                var wholeFile = new List<float>((int)(reader.Length / 4));
+                var readBuffer = new float[reader.WaveFormat.SampleRate * reader.WaveFormat.Channels];
+                int samplesRead;
+                while ((samplesRead = sampleProvider.Read(readBuffer, 0, readBuffer.Length)) > 0)
+                {
+                    wholeFile.AddRange(readBuffer.Take(samplesRead));
+                }
+                _cachedAudioSamples = wholeFile.ToArray();
 
-                _player = new SoundPlayer(ms);
-                // Carga el sonido en memoria de inmediato
-                _player.Load();
+                // Inicializamos el Hot Mixer que nunca se detiene
+                _mixer = new MixingSampleProvider(_waveFormat)
+                {
+                    ReadFully = true // ¡CRÍTICO! Mantiene el stream vivo enviando silencio cuando no hay sonidos
+                };
+                
+                // Inicializamos WaveOutEvent (el driver de audio nativo) y lo mantenemos caliente
+                _waveOut = new WaveOutEvent { DesiredLatency = 100 };
+                _waveOut.Init(_mixer);
+                _waveOut.Play(); // Comienza a reproducir silencio infinito en background
+                
+                _logger.LogInformation("Hot Audio Engine inicializado con {Samples} samples a {Rate}Hz", 
+                    _cachedAudioSamples.Length, _waveFormat.SampleRate);
             }
             else
             {
@@ -46,24 +69,24 @@ public sealed class WindowsShutterSoundService : IShutterSoundService, IDisposab
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error al inicializar el sonido del obturador con SoundPlayer.");
+            _logger.LogError(ex, "Error al inicializar el Hot Audio Engine");
         }
     }
 
     public Task PlayAsync(CancellationToken ct = default)
     {
-        if (_player is null)
+        if (_mixer is null || _cachedAudioSamples is null || _waveFormat is null)
             return Task.CompletedTask;
 
         try
         {
-            // Play() es nativo de Win32 (PlaySound API) y se ejecuta 
-            // de forma totalmente asíncrona en su propio hilo de sistema.
-            _player.Play();
+            // Simplemente inyectamos un clon del sonido al canal del Mixer que ya está corriendo!
+            var provider = new CachedSoundSampleProvider(_cachedAudioSamples, _waveFormat);
+            _mixer.AddMixerInput(provider);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "No se pudo reproducir shutter sound");
+            _logger.LogError(ex, "No se pudo inyectar shutter sound en el mixer");
         }
         
         return Task.CompletedTask;
@@ -71,7 +94,33 @@ public sealed class WindowsShutterSoundService : IShutterSoundService, IDisposab
 
     public void Dispose()
     {
-        _player?.Stream?.Dispose();
-        _player?.Dispose();
+        _waveOut?.Stop();
+        _waveOut?.Dispose();
+    }
+    
+    // Proveedor que sirve el array de flotantes desde memoria (Thread-safe para el mixer)
+    private class CachedSoundSampleProvider : ISampleProvider
+    {
+        private readonly float[] _audioData;
+        private int _position;
+
+        public CachedSoundSampleProvider(float[] audioData, WaveFormat waveFormat)
+        {
+            _audioData = audioData;
+            WaveFormat = waveFormat;
+        }
+
+        public WaveFormat WaveFormat { get; }
+
+        public int Read(float[] buffer, int offset, int count)
+        {
+            var availableSamples = _audioData.Length - _position;
+            var samplesToCopy = Math.Min(availableSamples, count);
+            if (samplesToCopy == 0) return 0;
+            
+            Array.Copy(_audioData, _position, buffer, offset, samplesToCopy);
+            _position += samplesToCopy;
+            return samplesToCopy;
+        }
     }
 }

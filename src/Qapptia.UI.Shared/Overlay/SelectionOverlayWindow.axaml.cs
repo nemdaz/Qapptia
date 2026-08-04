@@ -12,6 +12,7 @@ public partial class SelectionOverlayWindow : Window
     private bool _isDragging;
     private Point _dragStart;
     private Point _dragEnd;
+    private Point _currentPos;
 
     private readonly IBrush _dimBrush = new SolidColorBrush(Color.FromArgb(120, 0, 0, 0));
     private readonly IPen _selectionPen = new Pen(Brushes.White, 2);
@@ -52,8 +53,11 @@ public partial class SelectionOverlayWindow : Window
 
     private void OnPointerMoved(object? sender, PointerEventArgs e)
     {
-        if (!_isDragging) return;
-        _dragEnd = e.GetPosition(this);
+        _currentPos = e.GetPosition(this);
+        if (_isDragging)
+        {
+            _dragEnd = _currentPos;
+        }
         InvalidateVisual();
     }
 
@@ -96,19 +100,50 @@ public partial class SelectionOverlayWindow : Window
         if (!_isDragging)
         {
             context.FillRectangle(_dimBrush, bounds);
-            return;
+        }
+        else
+        {
+            var x = Math.Min(_dragStart.X, _dragEnd.X);
+            var y = Math.Min(_dragStart.Y, _dragEnd.Y);
+            var w = Math.Abs(_dragEnd.X - _dragStart.X);
+            var h = Math.Abs(_dragEnd.Y - _dragStart.Y);
+
+            context.FillRectangle(_dimBrush, new Rect(0, 0, Width, y));
+            context.FillRectangle(_dimBrush, new Rect(0, y + h, Width, Height - y - h));
+            context.FillRectangle(_dimBrush, new Rect(0, y, x, h));
+            context.FillRectangle(_dimBrush, new Rect(x + w, y, Width - x - w, h));
+
+            context.DrawRectangle(_selectionPen, new Rect(x, y, w, h));
         }
 
-        var x = Math.Min(_dragStart.X, _dragEnd.X);
-        var y = Math.Min(_dragStart.Y, _dragEnd.Y);
-        var w = Math.Abs(_dragEnd.X - _dragStart.X);
-        var h = Math.Abs(_dragEnd.Y - _dragStart.Y);
+        // Dibuja la cruz punteada que sigue al cursor.
+        var dottedPen = new Pen(Brushes.White, 1, new DashStyle(new double[] { 4, 4 }, 0));
+        context.DrawLine(dottedPen, new Point(0, _currentPos.Y), new Point(Width, _currentPos.Y));
+        context.DrawLine(dottedPen, new Point(_currentPos.X, 0), new Point(_currentPos.X, Height));
 
-        context.FillRectangle(_dimBrush, new Rect(0, 0, Width, y));
-        context.FillRectangle(_dimBrush, new Rect(0, y + h, Width, Height - y - h));
-        context.FillRectangle(_dimBrush, new Rect(0, y, x, h));
-        context.FillRectangle(_dimBrush, new Rect(x + w, y, Width - x - w, h));
+        // Dibuja las coordenadas X, Y del cursor.
+        var text = $"X: {(int)_currentPos.X}, Y: {(int)_currentPos.Y}";
+        var formattedText = new FormattedText(
+            text,
+            System.Globalization.CultureInfo.CurrentCulture,
+            FlowDirection.LeftToRight,
+            new Typeface("Arial"),
+            14,
+            Brushes.White);
 
-        context.DrawRectangle(_selectionPen, new Rect(x, y, w, h));
+        // Ajusta el cuadrante dinámicamente para no tapar el área iluminada.
+        double offsetX = 15;
+        double offsetY = 15;
+
+        if (_isDragging)
+        {
+            if (_currentPos.X < _dragStart.X)
+                offsetX = -formattedText.Width - 15;
+                
+            if (_currentPos.Y < _dragStart.Y)
+                offsetY = -formattedText.Height - 15;
+        }
+
+        context.DrawText(formattedText, new Point(_currentPos.X + offsetX, _currentPos.Y + offsetY));
     }
 }
