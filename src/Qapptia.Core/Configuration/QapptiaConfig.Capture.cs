@@ -12,7 +12,7 @@ public sealed partial class QapptiaConfig
 
     [JsonPropertyName("save_path")]
     [Required]
-    public string SavePath { get; set; } = string.Empty;
+    public string SavePath { get; set; } = System.IO.Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.MyPictures), "Qapptia");
 
     [JsonPropertyName("filename_format")]
     [Required]
@@ -58,10 +58,10 @@ public sealed partial class QapptiaConfig
     // === Copiado al portapapeles ===
 
     [JsonPropertyName("copy_to_clipboard_screen")]
-    public bool CopyToClipboardScreen { get; set; } = true;
+    public bool CopyToClipboardScreen { get; set; } = false;
 
     [JsonPropertyName("copy_to_clipboard_area")]
-    public bool CopyToClipboardArea { get; set; } = true;
+    public bool CopyToClipboardArea { get; set; } = false;
 
     // === Scroll capture (omitido en esta migracion, conservado por compat) ===
 

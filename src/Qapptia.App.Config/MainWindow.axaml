@@ -2,8 +2,131 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        xmlns:vm="using:Qapptia.App.Config.ViewModels"
+        xmlns:controls="using:Qapptia.App.Config.Controls"
+        mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="500"
+        Width="580" Height="500"
+        WindowStartupLocation="CenterScreen"
+        CanResize="False"
         x:Class="Qapptia.App.Config.MainWindow"
-        Title="Qapptia.App.Config">
-    Welcome to Avalonia!
+        x:DataType="vm:ConfigViewModel"
+        Title="Qapptia - Configuración">
+
+    <Window.Styles>
+        <!-- Reducir tamaño de fuente de los Tabs -->
+        <Style Selector="TabItem">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="MinHeight" Value="32"/>
+        </Style>
+
+        <!-- Footer Message Colors -->
+        <Style Selector="TextBlock.footerMessage">
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#16a34a"/>
+        </Style>
+        <Style Selector="TextBlock.footerMessage.error">
+            <Setter Property="Foreground" Value="#dc2626"/>
+        </Style>
+        
+        <!-- Separadores para las secciones -->
+        <Style Selector="HeaderedContentControl">
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <StackPanel>
+                        <TextBlock Text="{TemplateBinding Header}" FontWeight="Normal" Margin="0,8,0,4" Foreground="#FF0078D7"/>
+                        <Separator Margin="0,0,0,8" Height="1" Background="#44888888"/>
+                        <ContentPresenter Content="{TemplateBinding Content}" />
+                    </StackPanel>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+    </Window.Styles>
+
+    <Grid RowDefinitions="*,Auto" Margin="16">
+        
+        <!-- Tabs -->
+        <TabControl Grid.Row="0" Margin="0,0,0,16">
+            
+            <!-- Pestaña General -->
+            <TabItem Header="General">
+                <StackPanel Spacing="8" Margin="8,8,8,8">
+                    
+                    <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" Margin="0,0,0,8">
+                        <!-- Directorio de guardado -->
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Guardar en:" VerticalAlignment="Center" Margin="0,0,8,0" Width="120" />
+                        <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding SavePath}" Margin="0,0,8,0" />
+                        <Button Grid.Row="0" Grid.Column="2" Content="Examinar..." Command="{Binding BrowsePathCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+                        
+                        <!-- Formato de archivo -->
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Formato archivo:" VerticalAlignment="Center" Margin="0,16,8,0" Width="120" />
+                        <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding FilenameFormat}" Margin="0,16,8,0" PlaceholderText="Ej. Qapptia_YYYYMMDD_HHmmSS" />
+                        <Button Grid.Row="1" Grid.Column="2" Content="?" Width="32" Height="32" Margin="0,16,0,0" Padding="0" HorizontalAlignment="Left" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+                            <Button.Flyout>
+                                <Flyout>
+                                    <TextBlock Text="Usa los siguientes valores para formatear la fecha:&#x0a;&#x0a;YYYY = Año (4 digitos)&#x0a;MM = Mes (2 digitos)&#x0a;DD = Día (2 digitos)&#x0a;HH = Horas&#x0a;mm = Minutos&#x0a;SS = Segundos" />
+                                </Flyout>
+                            </Button.Flyout>
+                        </Button>
+                    </Grid>
+
+                    <!-- Subcarpetas -->
+                    <HeaderedContentControl Header="Subcarpetas de guardado">
+                        <StackPanel Margin="0,4,0,0" Spacing="4">
+                            <CheckBox Content="Crear subcarpeta por Mes" IsChecked="{Binding SubfolderMonth}" />
+                            <CheckBox Content="Crear subcarpeta por Día" IsChecked="{Binding SubfolderDay}" />
+                            <CheckBox Content="Crear subcarpeta por Hora" IsChecked="{Binding SubfolderHour}" />
+                        </StackPanel>
+                    </HeaderedContentControl>
+
+                    <!-- Cursor -->
+                    <HeaderedContentControl Header="Cursor">
+                        <StackPanel Margin="0,4,0,0" Spacing="4">
+                            <CheckBox Content="Capturar" IsChecked="{Binding ShowMouse}" />
+                            <CheckBox Content="Resaltar (Halo)" IsChecked="{Binding HighlightMouse}" IsEnabled="{Binding ShowMouse}" />
+                        </StackPanel>
+                    </HeaderedContentControl>
+
+                </StackPanel>
+            </TabItem>
+            
+            <!-- Pestaña Captura -->
+            <TabItem Header="Capturas">
+                <StackPanel Spacing="8" Margin="8,8,8,8">
+                    
+                    <!-- Modo Pantalla Completa -->
+                    <HeaderedContentControl Header="Modo Pantalla Completa">
+                        <Grid ColumnDefinitions="90,*,110,*" RowDefinitions="Auto,Auto" Margin="0,4,0,0">
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Atajo:" VerticalAlignment="Center" Margin="0,0,8,4" />
+                            <controls:ShortcutTextBox Grid.Row="0" Grid.Column="1" Text="{Binding ShortcutScreen}" Margin="0,0,16,4" />
+                            
+                            <TextBlock Grid.Row="0" Grid.Column="2" Text="Temporizador:" VerticalAlignment="Center" Margin="0,0,8,4" />
+                            <NumericUpDown Grid.Row="0" Grid.Column="3" Value="{Binding ManualTimer}" Minimum="0" Maximum="999" Increment="1" Margin="0,0,0,4" HorizontalAlignment="Stretch" />
+
+                            <CheckBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4" Content="Copiar al portapapeles automáticamente" IsChecked="{Binding CopyToClipboardScreen}" Margin="0,4,0,0" />
+                        </Grid>
+                    </HeaderedContentControl>
+
+                    <!-- Modo Área -->
+                    <HeaderedContentControl Header="Modo Área">
+                        <Grid ColumnDefinitions="90,*,110,*" RowDefinitions="Auto,Auto" Margin="0,4,0,0">
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Atajo:" VerticalAlignment="Center" Margin="0,0,8,4" />
+                            <controls:ShortcutTextBox Grid.Row="0" Grid.Column="1" Text="{Binding ShortcutArea}" Margin="0,0,16,4" />
+                            
+                            <CheckBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4" Content="Copiar al portapapeles automáticamente" IsChecked="{Binding CopyToClipboardArea}" Margin="0,4,0,0" />
+                        </Grid>
+                    </HeaderedContentControl>
+
+                </StackPanel>
+            </TabItem>
+
+        </TabControl>
+
+        <!-- Footer -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto">
+            <TextBlock Grid.Column="0" Text="{Binding FooterMessage}" VerticalAlignment="Center" TextWrapping="Wrap" Classes="footerMessage" Classes.error="{Binding IsFooterError}" />
+            <Button Grid.Column="1" Content="Guardar" Command="{Binding SaveCommand}" Margin="0,0,8,0" Classes="accent" />
+            <Button Grid.Column="2" Content="Cerrar" Command="{Binding CloseCommand}" />
+        </Grid>
+        
+    </Grid>
 </Window>
