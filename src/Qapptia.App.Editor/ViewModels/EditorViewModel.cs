@@ -12,16 +12,22 @@ using System.Globalization;
 
 namespace Qapptia.App.Editor.ViewModels;
 
-public partial class ExplorerFolder : ObservableObject
-{
-    public string Name { get; set; } = string.Empty;
-    public ObservableCollection<ExplorerFile> Files { get; } = new();
-}
-
-public partial class ExplorerFile : ObservableObject
+public abstract class ExplorerNode : ObservableObject
 {
     public string Name { get; set; } = string.Empty;
     public string FullPath { get; set; } = string.Empty;
+}
+
+public partial class ExplorerFolder : ExplorerNode
+{
+    public ObservableCollection<ExplorerNode> Items { get; } = new();
+    
+    // UI Helper for expanding tree nodes (Optional, can be bound in XAML later)
+    public bool IsExpanded { get; set; }
+}
+
+public partial class ExplorerFile : ExplorerNode
+{
 }
 
 public partial class EditorViewModel : ObservableObject
@@ -118,26 +124,67 @@ public partial class EditorViewModel : ObservableObject
     {
         SidebarFolders.Clear();
         
-        var configService = new JsonConfigService("config.json");
+        var configService = new Qapptia.Core.Configuration.JsonConfigService("config.json");
         var savePath = configService.Current.SavePath;
-        
-        if (string.IsNullOrWhiteSpace(savePath) || !Directory.Exists(savePath)) return;
-
-        var files = Directory.GetFiles(savePath, "*.png")
-            .Select(f => new FileInfo(f))
-            .OrderByDescending(f => f.CreationTime)
-            .ToList();
-
-        var grouped = files.GroupBy(f => f.CreationTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
-
-        foreach (var group in grouped)
+        try
         {
-            var folder = new ExplorerFolder { Name = group.Key };
-            foreach (var file in group)
+
+            if (Directory.Exists(savePath))
             {
-                folder.Files.Add(new ExplorerFile { Name = file.Name, FullPath = file.FullName });
+                var rootFolder = new ExplorerFolder 
+                { 
+                    Name = Path.GetFileName(savePath), 
+                    FullPath = savePath,
+                    IsExpanded = true 
+                };
+                
+                if (string.IsNullOrEmpty(rootFolder.Name)) 
+                    rootFolder.Name = savePath;
+
+                PopulateFolder(rootFolder, savePath);
+                
+                SidebarFolders.Add(rootFolder);
             }
-            SidebarFolders.Add(folder);
+        }
+        catch (Exception)
+        {
+            // Si hay error leyendo la config, fallamos silenciosamente
+        }
+    }
+
+    private void PopulateFolder(ExplorerFolder folderNode, string path)
+    {
+        try
+        {
+            // 1. Obtener directorios, omitiendo ocultos (ej. ".annotations")
+            var dirs = Directory.GetDirectories(path)
+                .Where(d => !new DirectoryInfo(d).Name.StartsWith("."));
+
+            foreach (var d in dirs)
+            {
+                var subFolder = new ExplorerFolder { Name = Path.GetFileName(d), FullPath = d };
+                PopulateFolder(subFolder, d);
+                
+                // Agregamos la carpeta solo si tiene contenido util
+                if (subFolder.Items.Count > 0)
+                {
+                    folderNode.Items.Add(subFolder);
+                }
+            }
+
+            // 2. Obtener imágenes (png, jpg, jpeg)
+            var extensions = new[] { ".png", ".jpg", ".jpeg" };
+            var files = Directory.GetFiles(path)
+                .Where(f => extensions.Contains(Path.GetExtension(f).ToLowerInvariant()));
+
+            foreach (var f in files)
+            {
+                folderNode.Items.Add(new ExplorerFile { Name = Path.GetFileName(f), FullPath = f });
+            }
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Ignorar carpetas sin permisos
         }
     }
 }

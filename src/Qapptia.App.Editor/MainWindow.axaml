@@ -141,7 +141,7 @@
                     
                     <TreeView Grid.Row="1" ItemsSource="{Binding SidebarFolders}" Background="Transparent" BorderThickness="0">
                         <TreeView.DataTemplates>
-                            <TreeDataTemplate DataType="vm:ExplorerFolder" ItemsSource="{Binding Files}">
+                            <TreeDataTemplate DataType="vm:ExplorerFolder" ItemsSource="{Binding Items}">
                                 <TextBlock Text="{Binding Name}" Foreground="#d4d4d4" />
                             </TreeDataTemplate>
                             <DataTemplate DataType="vm:ExplorerFile">
