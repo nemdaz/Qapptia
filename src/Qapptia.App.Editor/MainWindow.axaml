@@ -2,8 +2,157 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        xmlns:vm="clr-namespace:Qapptia.App.Editor.ViewModels"
+        xmlns:controls="clr-namespace:Qapptia.App.Editor.Controls"
+        mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
         x:Class="Qapptia.App.Editor.MainWindow"
-        Title="Qapptia.App.Editor">
-    Welcome to Avalonia!
+        x:DataType="vm:EditorViewModel"
+        Title="Qapptia - Editor"
+        Background="#1e1e1e"
+        WindowStartupLocation="CenterScreen">
+
+    <Window.Styles>
+        <!-- Hover para Botones -->
+        <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#3e3e42" />
+        </Style>
+        
+        <!-- Hover para RadioButtons (Herramientas) -->
+        <Style Selector="RadioButton:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#3e3e42" />
+        </Style>
+        
+        <!-- Estado Seleccionado (Checked) -->
+        <Style Selector="RadioButton:checked /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#4d4d4d" />
+        </Style>
+    </Window.Styles>
+
+    <Grid RowDefinitions="Auto, *">
+        
+        <!-- Top Toolbar -->
+        <Border Grid.Row="0" Background="#252526" BorderBrush="#3e3e42" BorderThickness="0,0,0,1" Padding="8">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <!-- Actions -->
+                <Button Command="{Binding SaveCommand}" ToolTip.Tip="Guardar" Background="Transparent" Padding="4">
+                    <PathIcon Data="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z" Foreground="#d4d4d4" Width="16" Height="16"/>
+                </Button>
+                <Button Command="{Binding RotateCommand}" ToolTip.Tip="Rotar imagen" Background="Transparent" Padding="4">
+                    <Path Data="M16.75 22H12.25C8.5 22 7 20.5 7 16.75V12.25C7 8.5 8.5 7 12.25 7H16.75C20.5 7 22 8.5 22 12.25V16.75C22 20.5 20.5 22 16.75 22Z M2 9C2 5.13 5.13 2 9 2L7.95 3.75" 
+                          Stroke="#d4d4d4" StrokeThickness="1.5" StrokeJoin="Round" StrokeLineCap="Round" Fill="Transparent" 
+                          Width="16" Height="16" Stretch="Uniform" />
+                </Button>
+                <Button Command="{Binding CopyFileCommand}" ToolTip.Tip="Copiar archivo" Background="Transparent" Padding="4">
+                    <PathIcon Data="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8V4h5v5h5v11z" Foreground="#d4d4d4" Width="16" Height="16"/>
+                </Button>
+                <Button Command="{Binding CopyCommand}" ToolTip.Tip="Copiar captura al portapapeles" Background="Transparent" Padding="4">
+                    <PathIcon Data="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" Foreground="#d4d4d4" Width="16" Height="16"/>
+                </Button>
+                
+                <Separator Width="1" Background="#3e3e42" Margin="8,0" />
+
+                <!-- Zoom -->
+                <ComboBox Width="75" SelectedIndex="0" Background="#333333" Foreground="#d4d4d4" Padding="8,4" VerticalAlignment="Center" FontSize="12">
+                    <ComboBoxItem>100%</ComboBoxItem>
+                </ComboBox>
+                <Button Command="{Binding FitImageCommand}" ToolTip.Tip="Ajustar imagen" Background="Transparent" Padding="4">
+                    <PathIcon Data="M5 5h4V3H3v6h2V5zm5 14H5v-4H3v6h6v-2zm9-14h-4V3h6v6h-2V5zm-4 14h4v-4h2v6h-6v-2z" Foreground="#d4d4d4" Width="16" Height="16"/>
+                </Button>
+                <Button Command="{Binding RealSizeCommand}" ToolTip.Tip="Ajustar imagen a tamaño real" Background="Transparent" Padding="4">
+                    <PathIcon Data="M15 3l2.3 2.3-2.89 2.87 1.42 1.42L18.7 6.7 21 9V3zM3 9l2.3-2.3 2.87 2.89 1.42-1.42L6.7 5.3 9 3H3zm6 12l-2.3-2.3 2.89-2.87-1.42-1.42L5.3 17.3 3 15v6zm12-6l-2.3 2.3-2.87-2.89-1.42 1.42 2.89 2.87L15 21h6z" Foreground="#d4d4d4" Width="16" Height="16"/>
+                </Button>
+
+                <Separator Width="1" Background="#3e3e42" Margin="8,0" />
+
+                <!-- Herramientas -->
+                <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" Command="{Binding SelectToolCommand}" CommandParameter="Line" GroupName="Tools" Background="Transparent" ToolTip.Tip="Línea" Padding="4">
+                    <PathIcon Data="M3.7,21.7 L22.4,3.0 L20.3,0.9 L1.6,19.6 Z" Foreground="#d4d4d4" Width="16" Height="16"/>
+                </RadioButton>
+                <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" Command="{Binding SelectToolCommand}" CommandParameter="Arrow" GroupName="Tools" IsChecked="True" Background="Transparent" ToolTip.Tip="Flecha" Padding="4">
+                    <PathIcon Data="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z" Foreground="#d4d4d4" Width="16" Height="16">
+                        <PathIcon.RenderTransform>
+                            <RotateTransform Angle="-135" />
+                        </PathIcon.RenderTransform>
+                    </PathIcon>
+                </RadioButton>
+                <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" Command="{Binding SelectToolCommand}" CommandParameter="Rectangle" GroupName="Tools" Background="Transparent" ToolTip.Tip="Rectángulo" Padding="4">
+                    <PathIcon Data="M4 4v16h16V4H4zm14 14H6V6h12v12z" Foreground="#d4d4d4" Width="16" Height="16"/>
+                </RadioButton>
+                <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" Command="{Binding SelectToolCommand}" CommandParameter="Highlighter" GroupName="Tools" Background="Transparent" ToolTip.Tip="Resaltador" Padding="4">
+                    <PathIcon Data="M20.71 5.63l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-3.12 3.12-1.93-1.91-1.41 1.41 1.42 1.42L3 16.25V21h4.75l8.92-8.92 1.42 1.42 1.41-1.41-1.92-1.92 3.12-3.12c.4-.4.4-1.03.01-1.42zM6.92 19L5 17.08l8.06-8.06 1.92 1.92L6.92 19z" Foreground="#d4d4d4" Width="16" Height="16"/>
+                </RadioButton>
+                <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" Command="{Binding SelectToolCommand}" CommandParameter="Text" GroupName="Tools" Background="Transparent" ToolTip.Tip="Texto" Padding="4">
+                    <PathIcon Data="M5 4v3h5.5v12h3V7H19V4z" Foreground="#d4d4d4" Width="16" Height="16"/>
+                </RadioButton>
+                
+                <Separator Width="1" Background="#3e3e42" Margin="8,0" />
+                
+                <!-- Colores -->
+                <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" Command="{Binding SelectColorCommand}" CommandParameter="Green" GroupName="Colors" IsChecked="True" Background="Transparent" Padding="4">
+                    <Ellipse Width="16" Height="16" Fill="Lime" />
+                </RadioButton>
+                <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" Command="{Binding SelectColorCommand}" CommandParameter="Red" GroupName="Colors" Background="Transparent" Padding="4">
+                    <Ellipse Width="16" Height="16" Fill="Red" />
+                </RadioButton>
+                <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" Command="{Binding SelectColorCommand}" CommandParameter="Blue" GroupName="Colors" Background="Transparent" Padding="4">
+                    <Ellipse Width="16" Height="16" Fill="#0078D7" />
+                </RadioButton>
+                <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" Command="{Binding SelectColorCommand}" CommandParameter="Cyan" GroupName="Colors" Background="Transparent" Padding="4">
+                    <Ellipse Width="16" Height="16" Fill="#00B7C3" />
+                </RadioButton>
+                <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" Command="{Binding SelectColorCommand}" CommandParameter="Yellow" GroupName="Colors" Background="Transparent" Padding="4">
+                    <Ellipse Width="16" Height="16" Fill="Yellow" />
+                </RadioButton>
+                <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" Command="{Binding SelectColorCommand}" CommandParameter="Orange" GroupName="Colors" Background="Transparent" Padding="4">
+                    <Ellipse Width="16" Height="16" Fill="Orange" />
+                </RadioButton>
+                <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" Command="{Binding SelectColorCommand}" CommandParameter="White" GroupName="Colors" Background="Transparent" Padding="4">
+                    <Ellipse Width="16" Height="16" Fill="White" Stroke="#3e3e42" StrokeThickness="1" />
+                </RadioButton>
+                <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" Command="{Binding SelectColorCommand}" CommandParameter="Black" GroupName="Colors" Background="Transparent" Padding="4">
+                    <Ellipse Width="16" Height="16" Fill="Black" Stroke="#d4d4d4" StrokeThickness="1" />
+                </RadioButton>
+            </StackPanel>
+        </Border>
+
+        <!-- Main Content Area -->
+        <Grid Grid.Row="1" ColumnDefinitions="*, 250">
+            
+            <!-- Canvas Viewer -->
+            <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <Border Background="#1e1e1e" Padding="32">
+                    <Border Background="White" 
+                            BoxShadow="0 4 16 0 #20000000"
+                            HorizontalAlignment="Center" 
+                            VerticalAlignment="Center">
+                        <!-- Fijo el tamaño temporalmente para la demo -->
+                        <controls:AnnotationCanvas Width="800" Height="600" ViewModel="{Binding}" />
+                    </Border>
+                </Border>
+            </ScrollViewer>
+
+            <!-- Right Sidebar (Explorador) -->
+            <Border Grid.Column="1" Background="#252526" BorderBrush="#3e3e42" BorderThickness="1,0,0,0">
+                <Grid RowDefinitions="Auto, *">
+                    <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="12,12,12,8">
+                        <TextBlock Grid.Column="0" Text="Explorador" Foreground="#d4d4d4" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Content="↻" Command="{Binding LoadSidebarImagesCommand}" Background="Transparent" Padding="4,2" ToolTip.Tip="Recargar" Foreground="White" />
+                    </Grid>
+                    
+                    <TreeView Grid.Row="1" ItemsSource="{Binding SidebarFolders}" Background="Transparent" BorderThickness="0">
+                        <TreeView.DataTemplates>
+                            <TreeDataTemplate DataType="vm:ExplorerFolder" ItemsSource="{Binding Files}">
+                                <TextBlock Text="{Binding Name}" Foreground="#d4d4d4" />
+                            </TreeDataTemplate>
+                            <DataTemplate DataType="vm:ExplorerFile">
+                                <TextBlock Text="{Binding Name}" Foreground="#cccccc" />
+                            </DataTemplate>
+                        </TreeView.DataTemplates>
+                    </TreeView>
+                </Grid>
+            </Border>
+            
+        </Grid>
+
+    </Grid>
 </Window>

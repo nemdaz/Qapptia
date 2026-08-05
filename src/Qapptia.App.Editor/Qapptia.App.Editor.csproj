@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <RootNamespace>Qapptia.App.Editor</RootNamespace>
@@ -24,6 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Qapptia.Core\Qapptia.Core.csproj" />
     <ProjectReference Include="..\Qapptia.Editor\Qapptia.Editor.csproj" />
     <ProjectReference Include="..\Qapptia.UI.Shared\Qapptia.UI.Shared.csproj" />
   </ItemGroup>
