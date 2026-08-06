@@ -116,7 +116,12 @@
         </Border>
 
         <!-- Main Content Area -->
-        <Grid Grid.Row="1" ColumnDefinitions="*, 250">
+        <Grid Grid.Row="1" x:Name="MainGrid">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="250" />
+            </Grid.ColumnDefinitions>
             
             <!-- Canvas Viewer -->
             <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
@@ -131,8 +136,10 @@
                 </Border>
             </ScrollViewer>
 
+            <GridSplitter Grid.Column="1" Width="4" Background="#3e3e42" ResizeDirection="Columns" />
+
             <!-- Right Sidebar (Explorador) -->
-            <Border Grid.Column="1" Background="#252526" BorderBrush="#3e3e42" BorderThickness="1,0,0,0">
+            <Border Grid.Column="2" Background="#252526" BorderBrush="#3e3e42" BorderThickness="1,0,0,0">
                 <Grid RowDefinitions="Auto, *">
                     <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="12,12,12,8">
                         <TextBlock Grid.Column="0" Text="Explorador" Foreground="#d4d4d4" FontWeight="SemiBold" VerticalAlignment="Center" />
@@ -142,10 +149,10 @@
                     <TreeView Grid.Row="1" ItemsSource="{Binding SidebarFolders}" Background="Transparent" BorderThickness="0">
                         <TreeView.DataTemplates>
                             <TreeDataTemplate DataType="vm:ExplorerFolder" ItemsSource="{Binding Items}">
-                                <TextBlock Text="{Binding Name}" Foreground="#d4d4d4" />
+                                <TextBlock Text="{Binding Name}" Foreground="White" FontWeight="SemiBold" FontSize="13" Padding="0,2" />
                             </TreeDataTemplate>
                             <DataTemplate DataType="vm:ExplorerFile">
-                                <TextBlock Text="{Binding Name}" Foreground="#cccccc" />
+                                <TextBlock Text="{Binding Name}" Foreground="#e0e0e0" FontSize="13" Padding="0,2" />
                             </DataTemplate>
                         </TreeView.DataTemplates>
                     </TreeView>
