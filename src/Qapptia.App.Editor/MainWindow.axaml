@@ -28,7 +28,7 @@
         </Style>
     </Window.Styles>
 
-    <Grid RowDefinitions="Auto, *">
+    <Grid RowDefinitions="Auto, *, Auto">
         
         <!-- Top Toolbar -->
         <Border Grid.Row="0" Background="#252526" BorderBrush="#3e3e42" BorderThickness="0,0,0,1" Padding="8">
@@ -125,15 +125,23 @@
             
             <!-- Canvas Viewer -->
             <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-                <Border Background="#1e1e1e" Padding="32">
+                <Panel Background="#1e1e1e">
+                    <!-- Mensaje si NO hay imagen -->
+                    <TextBlock Text="Selecciona una imagen del Explorador para comenzar a editar." 
+                               Foreground="#808080" FontSize="16" 
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               IsVisible="{Binding HasNoImage}" />
+
+                    <!-- Lienzo con fondo blanco (Visible solo cuando hay imagen) -->
                     <Border Background="White" 
                             BoxShadow="0 4 16 0 #20000000"
                             HorizontalAlignment="Center" 
-                            VerticalAlignment="Center">
-                        <!-- Fijo el tamaño temporalmente para la demo -->
-                        <controls:AnnotationCanvas Width="800" Height="600" ViewModel="{Binding}" />
+                            VerticalAlignment="Center"
+                            Margin="32"
+                            IsVisible="{Binding HasImage}">
+                        <controls:AnnotationCanvas Width="{Binding ImageWidth}" Height="{Binding ImageHeight}" ViewModel="{Binding}" />
                     </Border>
-                </Border>
+                </Panel>
             </ScrollViewer>
 
             <GridSplitter Grid.Column="1" Width="4" Background="#3e3e42" ResizeDirection="Columns" />
@@ -143,16 +151,45 @@
                 <Grid RowDefinitions="Auto, *">
                     <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="12,12,12,8">
                         <TextBlock Grid.Column="0" Text="Explorador" Foreground="#d4d4d4" FontWeight="SemiBold" VerticalAlignment="Center" />
-                        <Button Grid.Column="1" Content="↻" Command="{Binding LoadSidebarImagesCommand}" Background="Transparent" Padding="4,2" ToolTip.Tip="Recargar" Foreground="White" />
+                        <Button Grid.Column="1" Command="{Binding LoadSidebarImagesCommand}" Background="Transparent" Padding="4,2" ToolTip.Tip="Recargar" Foreground="White">
+                            <PathIcon Data="M1.5 2.5C1.5 1.94772 1.94772 1.5 2.5 1.5H5.80556C6.17706 1.5 6.52044 1.70678 6.69722 2.03102L7.54515 3.5H13.5C14.0523 3.5 14.5 3.94772 14.5 4.5V12.5C14.5 13.0523 14.0523 13.5 13.5 13.5H2.5C1.94772 13.5 1.5 13.0523 1.5 12.5V2.5Z" Width="16" Height="16" />
+                        </Button>
                     </Grid>
                     
-                    <TreeView Grid.Row="1" ItemsSource="{Binding SidebarFolders}" Background="Transparent" BorderThickness="0">
+                    <TreeView Grid.Row="1" ItemsSource="{Binding SidebarFolders}" SelectedItem="{Binding SelectedNode}" Background="Transparent" BorderThickness="0">
+                        <TreeView.Styles>
+                            <Style Selector="ToggleButton#PART_ExpandCollapseChevron">
+                                <Setter Property="Width" Value="18" />
+                                <Setter Property="Height" Value="18" />
+                                <Setter Property="Margin" Value="0,0,6,0" />
+                                <Setter Property="Template">
+                                    <ControlTemplate>
+                                        <Border Background="Transparent">
+                                            <PathIcon x:Name="FolderIcon" Classes="folder" Width="16" Height="16" Foreground="#d4d4d4"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter>
+                            </Style>
+                            <Style Selector="ToggleButton#PART_ExpandCollapseChevron /template/ PathIcon.folder">
+                                <!-- Closed Folder (16x16 native) -->
+                                <Setter Property="Data" Value="M1.5 2.5C1.5 1.94772 1.94772 1.5 2.5 1.5H5.80556C6.17706 1.5 6.52044 1.70678 6.69722 2.03102L7.54515 3.5H13.5C14.0523 3.5 14.5 3.94772 14.5 4.5V12.5C14.5 13.0523 14.0523 13.5 13.5 13.5H2.5C1.94772 13.5 1.5 13.0523 1.5 12.5V2.5Z" />
+                            </Style>
+                            <Style Selector="ToggleButton#PART_ExpandCollapseChevron:checked /template/ PathIcon.folder">
+                                <!-- Open Folder (16x16 native) -->
+                                <Setter Property="Data" Value="M1 3.5C1 2.67157 1.67157 2 2.5 2H5.43845C5.83625 2 6.2177 2.15804 6.5 2.44034L7.55966 3.5H13.5C14.3284 3.5 15 4.17157 15 5V12.5C15 13.3284 14.3284 14 13.5 14H2.5C1.67157 14 1 13.3284 1 12.5V3.5ZM2.5 3C2.22386 3 2 3.22386 2 3.5V5H14V5C14 4.44772 13.5523 4 13.5 4H7.14645C6.94752 4 6.75672 3.92098 6.61612 3.78038L5.79289 2.95715C5.69911 2.86337 5.57195 2.81069 5.43934 2.81069H2.5Z" />
+                            </Style>
+                        </TreeView.Styles>
                         <TreeView.DataTemplates>
                             <TreeDataTemplate DataType="vm:ExplorerFolder" ItemsSource="{Binding Items}">
-                                <TextBlock Text="{Binding Name}" Foreground="White" FontWeight="SemiBold" FontSize="13" Padding="0,2" />
+                                <StackPanel Orientation="Horizontal" Spacing="6" Background="Transparent">
+                                    <TextBlock Text="{Binding Name}" Foreground="White" FontWeight="SemiBold" FontSize="13" Padding="0,2" VerticalAlignment="Center" />
+                                </StackPanel>
                             </TreeDataTemplate>
                             <DataTemplate DataType="vm:ExplorerFile">
-                                <TextBlock Text="{Binding Name}" Foreground="#e0e0e0" FontSize="13" Padding="0,2" />
+                                <StackPanel Orientation="Horizontal" Spacing="6" Background="Transparent" Margin="2,0,0,0">
+                                    <PathIcon Data="M2 3.5C2 2.67157 2.67157 2 3.5 2H12.5C13.3284 2 14 2.67157 14 3.5V12.5C14 13.3284 13.3284 14 12.5 14H3.5C2.67157 14 2 13.3284 2 12.5V3.5ZM13 12.5V11.2071L10.3536 8.56066C10.1583 8.3654 9.84171 8.3654 9.64645 8.56066L6.5 11.7071L5.35355 10.5607C5.15829 10.3654 4.84171 10.3654 4.64645 10.5607L3 12.2071V12.5C3 12.7761 3.22386 13 3.5 13H12.5C12.7761 13 13 12.7761 13 12.5Z" Width="14" Height="14" Foreground="#cccccc"/>
+                                    <TextBlock Text="{Binding Name}" Foreground="#e0e0e0" FontSize="13" Padding="0,2" VerticalAlignment="Center" />
+                                </StackPanel>
                             </DataTemplate>
                         </TreeView.DataTemplates>
                     </TreeView>
@@ -161,5 +198,24 @@
             
         </Grid>
 
+        <!-- Status Bar (Footer) -->
+        <Border Grid.Row="2" Background="#2d2d30" BorderBrush="#3e3e42" BorderThickness="0,1,0,0" Padding="12,4">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" IsVisible="{Binding HasImage}" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding ImageWidth}" Foreground="#b0b0b0" FontSize="11" />
+                    <TextBlock Text="x" Foreground="#b0b0b0" FontSize="11" />
+                    <TextBlock Text="{Binding ImageHeight}" Foreground="#b0b0b0" FontSize="11" />
+                    <TextBlock Text="px" Foreground="#b0b0b0" FontSize="11" />
+                </StackPanel>
+                
+                <StackPanel Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                    <TextBlock Text="Listo" Foreground="#b0b0b0" FontSize="11" />
+                    <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding HasImage}">
+                        <TextBlock Text="Archivo:" Foreground="#808080" FontSize="11" />
+                        <TextBlock Text="{Binding SelectedNode.Name}" Foreground="#b0b0b0" FontSize="11" />
+                    </StackPanel>
+                </StackPanel>
+            </DockPanel>
+        </Border>
     </Grid>
 </Window>

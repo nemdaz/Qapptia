@@ -20,6 +20,29 @@ public class AnnotationCanvas : Control
         set => SetValue(ViewModelProperty, value);
     }
 
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        
+        if (change.Property == ViewModelProperty)
+        {
+            if (change.OldValue is EditorViewModel oldVm)
+            {
+                oldVm.ImageLoaded -= OnViewModelImageLoaded;
+            }
+            
+            if (change.NewValue is EditorViewModel newVm)
+            {
+                newVm.ImageLoaded += OnViewModelImageLoaded;
+            }
+        }
+    }
+
+    private void OnViewModelImageLoaded(object? sender, EventArgs e)
+    {
+        InvalidateVisual();
+    }
+
     private Point _lastMousePos;
     private VectorShape? _currentDrawingShape;
     private VectorShape? _selectedShape;

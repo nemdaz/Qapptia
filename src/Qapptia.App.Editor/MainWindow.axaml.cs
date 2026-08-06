@@ -14,6 +14,7 @@ public partial class MainWindow : Window
         DataContext = vm;
         vm.LoadSidebarImagesCommand.Execute(null);
 
+        bool isInitialSizeSet = false;
         this.SizeChanged += (s, e) =>
         {
             var grid = this.FindControl<Grid>("MainGrid");
@@ -24,15 +25,23 @@ public partial class MainWindow : Window
                 sidebarCol.MinWidth = width * 0.10; // Mínimo 10%
                 sidebarCol.MaxWidth = width * 0.50; // Máximo 50%
                 
-                // Si el ancho actual es menor que el mínimo, lo forzamos al mínimo
-                if (sidebarCol.Width.Value < sidebarCol.MinWidth)
+                if (!isInitialSizeSet && width > 0)
                 {
-                    sidebarCol.Width = new GridLength(sidebarCol.MinWidth);
+                    sidebarCol.Width = new GridLength(width * 0.30);
+                    isInitialSizeSet = true;
                 }
-                // Si es mayor que el máximo, lo forzamos al máximo
-                else if (sidebarCol.Width.Value > sidebarCol.MaxWidth)
+                else
                 {
-                    sidebarCol.Width = new GridLength(sidebarCol.MaxWidth);
+                    // Si el ancho actual es menor que el mínimo, lo forzamos al mínimo
+                    if (sidebarCol.Width.Value < sidebarCol.MinWidth)
+                    {
+                        sidebarCol.Width = new GridLength(sidebarCol.MinWidth);
+                    }
+                    // Si es mayor que el máximo, lo forzamos al máximo
+                    else if (sidebarCol.Width.Value > sidebarCol.MaxWidth)
+                    {
+                        sidebarCol.Width = new GridLength(sidebarCol.MaxWidth);
+                    }
                 }
             }
         };

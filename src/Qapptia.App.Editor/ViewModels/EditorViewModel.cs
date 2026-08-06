@@ -45,6 +45,46 @@ public partial class EditorViewModel : ObservableObject
     
     public ObservableCollection<ExplorerFolder> SidebarFolders { get; } = new();
 
+    [ObservableProperty]
+    private ExplorerNode? _selectedNode;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasNoImage))]
+    private bool _hasImage;
+
+    public bool HasNoImage => !HasImage;
+
+    [ObservableProperty]
+    private double _imageWidth = 800;
+
+    [ObservableProperty]
+    private double _imageHeight = 600;
+
+    public event EventHandler? ImageLoaded;
+
+    partial void OnSelectedNodeChanged(ExplorerNode? value)
+    {
+        if (value is ExplorerFile file)
+        {
+            try
+            {
+                var bitmap = new Avalonia.Media.Imaging.Bitmap(file.FullPath);
+                Store.SetBackground(bitmap);
+                Store.Shapes.Clear(); // Limpiar formas anteriores
+                
+                ImageWidth = bitmap.Size.Width;
+                ImageHeight = bitmap.Size.Height;
+                HasImage = true;
+                
+                ImageLoaded?.Invoke(this, EventArgs.Empty);
+            }
+            catch
+            {
+                // Fallar silenciosamente si la imagen no se puede cargar
+            }
+        }
+    }
+
     public ObservableCollection<Color> AvailableColors { get; } = new()
     {
         Colors.Lime, // Green preset
