@@ -52,10 +52,15 @@
                 <Separator Width="1" Background="#3e3e42" Margin="8,0" />
 
                 <!-- Zoom -->
-                <ComboBox Width="75" SelectedIndex="0" Background="#333333" Foreground="#d4d4d4" Padding="8,4" VerticalAlignment="Center" FontSize="12">
-                    <ComboBoxItem>100%</ComboBoxItem>
+                <ComboBox x:Name="ZoomComboBox" Width="95" IsEditable="True" ItemsSource="{Binding ZoomOptions}" SelectedItem="{Binding SelectedZoomString}" Background="#333333" Foreground="#d4d4d4" VerticalAlignment="Center" VerticalContentAlignment="Center">
+                    <ComboBox.Styles>
+                        <Style Selector="TextBox">
+                            <Setter Property="MaxLength" Value="4" />
+                            <Setter Property="VerticalContentAlignment" Value="Center" />
+                        </Style>
+                    </ComboBox.Styles>
                 </ComboBox>
-                <Button Command="{Binding FitImageCommand}" ToolTip.Tip="Ajustar imagen" Background="Transparent" Padding="4">
+                <Button Click="FitImage_Click" ToolTip.Tip="Ajustar imagen" Background="Transparent" Padding="4">
                     <PathIcon Data="M5 5h4V3H3v6h2V5zm5 14H5v-4H3v6h6v-2zm9-14h-4V3h6v6h-2V5zm-4 14h4v-4h2v6h-6v-2z" Foreground="#d4d4d4" Width="16" Height="16"/>
                 </Button>
                 <Button Command="{Binding RealSizeCommand}" ToolTip.Tip="Ajustar imagen a tamaño real" Background="Transparent" Padding="4">
@@ -66,12 +71,16 @@
 
                 <!-- Herramientas -->
                 <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" Command="{Binding SelectToolCommand}" CommandParameter="Line" GroupName="Tools" Background="Transparent" ToolTip.Tip="Línea" Padding="4">
-                    <PathIcon Data="M3.7,21.7 L22.4,3.0 L20.3,0.9 L1.6,19.6 Z" Foreground="#d4d4d4" Width="16" Height="16"/>
+                    <PathIcon Data="M4 11h16v2H4z" Foreground="#d4d4d4" Width="16" Height="16">
+                        <PathIcon.RenderTransform>
+                            <RotateTransform Angle="-45" />
+                        </PathIcon.RenderTransform>
+                    </PathIcon>
                 </RadioButton>
                 <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" Command="{Binding SelectToolCommand}" CommandParameter="Arrow" GroupName="Tools" IsChecked="True" Background="Transparent" ToolTip.Tip="Flecha" Padding="4">
-                    <PathIcon Data="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z" Foreground="#d4d4d4" Width="16" Height="16">
+                    <PathIcon Data="M16.01 11H4v2h12.01v3L20 12l-3.99-4v3z" Foreground="#d4d4d4" Width="16" Height="16">
                         <PathIcon.RenderTransform>
-                            <RotateTransform Angle="-135" />
+                            <RotateTransform Angle="-45" />
                         </PathIcon.RenderTransform>
                     </PathIcon>
                 </RadioButton>
@@ -124,7 +133,7 @@
             </Grid.ColumnDefinitions>
             
             <!-- Canvas Viewer -->
-            <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+            <ScrollViewer Grid.Column="0" x:Name="EditorScrollViewer" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
                 <Panel Background="#1e1e1e">
                     <!-- Mensaje si NO hay imagen -->
                     <TextBlock Text="Selecciona una imagen del Explorador para comenzar a editar." 
@@ -133,14 +142,14 @@
                                IsVisible="{Binding HasNoImage}" />
 
                     <!-- Lienzo con fondo blanco (Visible solo cuando hay imagen) -->
-                    <Border Background="White" 
-                            BoxShadow="0 4 16 0 #20000000"
-                            HorizontalAlignment="Center" 
-                            VerticalAlignment="Center"
-                            Margin="32"
-                            IsVisible="{Binding HasImage}">
-                        <controls:AnnotationCanvas Width="{Binding ImageWidth}" Height="{Binding ImageHeight}" ViewModel="{Binding}" />
-                    </Border>
+                    <LayoutTransformControl HorizontalAlignment="Center" VerticalAlignment="Center" Margin="32" IsVisible="{Binding HasImage}">
+                        <LayoutTransformControl.LayoutTransform>
+                            <ScaleTransform ScaleX="{Binding ZoomLevel}" ScaleY="{Binding ZoomLevel}" />
+                        </LayoutTransformControl.LayoutTransform>
+                        <Border BoxShadow="0 4 16 0 #20000000">
+                            <controls:AnnotationCanvas Width="{Binding ImageWidth}" Height="{Binding ImageHeight}" ViewModel="{Binding}" />
+                        </Border>
+                    </LayoutTransformControl>
                 </Panel>
             </ScrollViewer>
 
@@ -152,7 +161,7 @@
                     <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="12,12,12,8">
                         <TextBlock Grid.Column="0" Text="Explorador" Foreground="#d4d4d4" FontWeight="SemiBold" VerticalAlignment="Center" />
                         <Button Grid.Column="1" Command="{Binding LoadSidebarImagesCommand}" Background="Transparent" Padding="4,2" ToolTip.Tip="Recargar" Foreground="White">
-                            <PathIcon Data="M1.5 2.5C1.5 1.94772 1.94772 1.5 2.5 1.5H5.80556C6.17706 1.5 6.52044 1.70678 6.69722 2.03102L7.54515 3.5H13.5C14.0523 3.5 14.5 3.94772 14.5 4.5V12.5C14.5 13.0523 14.0523 13.5 13.5 13.5H2.5C1.94772 13.5 1.5 13.0523 1.5 12.5V2.5Z" Width="16" Height="16" />
+                            <PathIcon Data="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" Width="14" Height="14" Foreground="#d4d4d4"/>
                         </Button>
                     </Grid>
                     

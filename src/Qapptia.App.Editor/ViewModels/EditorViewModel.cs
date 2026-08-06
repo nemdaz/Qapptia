@@ -41,6 +41,60 @@ public partial class EditorViewModel : ObservableObject
     [ObservableProperty]
     private float _zoomLevel = 1.0f;
     
+    partial void OnZoomLevelChanged(float value)
+    {
+        var newStr = $"{(int)Math.Round(value * 100)}%";
+        if (!ZoomOptions.Contains(newStr))
+        {
+            if (!string.IsNullOrEmpty(_lastCustomZoom) && ZoomOptions.Contains(_lastCustomZoom))
+            {
+                ZoomOptions.Remove(_lastCustomZoom);
+            }
+            
+            // Insertar ordenadamente (opcional) o al final
+            ZoomOptions.Add(newStr);
+            _lastCustomZoom = newStr;
+        }
+        SelectedZoomString = newStr;
+    }
+
+    private string _lastCustomZoom = "";
+
+    public ObservableCollection<string> ZoomOptions { get; } = new()
+    {
+        "25%", "50%", "75%", "100%", "125%", "150%", "200%", "300%", "400%", "500%"
+    };
+
+    [ObservableProperty]
+    private string _selectedZoomString = "100%";
+
+    partial void OnSelectedZoomStringChanged(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return;
+        var digits = new string(value.Where(char.IsDigit).ToArray());
+        if (int.TryParse(digits, out int percentage) && percentage > 0)
+        {
+            var newZoom = percentage / 100.0f;
+            
+            // Limitamos a 500% (5.0f) y 10% (0.1f) para evitar números gigantescos
+            newZoom = Math.Max(0.1f, Math.Min(newZoom, 5.0f));
+            percentage = (int)Math.Round(newZoom * 100);
+
+            if (Math.Abs(newZoom - ZoomLevel) > 0.01f)
+            {
+                ZoomLevel = newZoom;
+            }
+            else if (!value.EndsWith("%") || value != $"{percentage}%")
+            {
+                // Dispatch para asegurar que se actualice la UI después de que termine la edición
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    SelectedZoomString = $"{percentage}%";
+                });
+            }
+        }
+    }
+
     public VectorStore Store { get; } = new VectorStore();
     
     public ObservableCollection<ExplorerFolder> SidebarFolders { get; } = new();
@@ -156,7 +210,7 @@ public partial class EditorViewModel : ObservableObject
     [RelayCommand]
     public void RealSize()
     {
-        // TODO: Implement Real Size
+        ZoomLevel = 1.0f;
     }
 
     [RelayCommand]
