@@ -115,6 +115,7 @@ public partial class EditorViewModel : ObservableObject
     private double _imageHeight = 600;
 
     public event EventHandler? ImageLoaded;
+    public event EventHandler? RequestRedraw;
 
     partial void OnSelectedNodeChanged(ExplorerNode? value)
     {
@@ -175,8 +176,24 @@ public partial class EditorViewModel : ObservableObject
             "Black" => Qapptia.Editor.Core.Constants.ColorBlack,
             _ => Qapptia.Editor.Core.Constants.ColorGreen
         };
+        
+        bool needsRedraw = false;
+        foreach (var shape in Store.Shapes)
+        {
+            if (shape.IsSelected)
+            {
+                shape.Color = ActiveColor;
+                needsRedraw = true;
+            }
+        }
+        
+        if (needsRedraw)
+        {
+            RequestRedraw?.Invoke(this, EventArgs.Empty);
+        }
     }
 
+#pragma warning disable CA1822
     [RelayCommand]
     public void Save()
     {
@@ -206,6 +223,7 @@ public partial class EditorViewModel : ObservableObject
     {
         // TODO: Implement Fit Image
     }
+#pragma warning restore CA1822
 
     [RelayCommand]
     public void RealSize()
@@ -246,13 +264,13 @@ public partial class EditorViewModel : ObservableObject
         }
     }
 
-    private void PopulateFolder(ExplorerFolder folderNode, string path)
+    private static void PopulateFolder(ExplorerFolder folderNode, string path)
     {
         try
         {
             // 1. Obtener directorios, omitiendo ocultos (ej. ".annotations")
             var dirs = Directory.GetDirectories(path)
-                .Where(d => !new DirectoryInfo(d).Name.StartsWith("."));
+                .Where(d => !new DirectoryInfo(d).Name.StartsWith('.'));
 
             foreach (var d in dirs)
             {

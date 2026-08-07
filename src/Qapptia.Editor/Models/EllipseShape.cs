@@ -29,7 +29,7 @@ public class EllipseShape : VectorShape
 
         if (IsSelected)
         {
-            HitTestEngine.DrawHandlesSkia_Centers(canvas, rect);
+            HitTestEngine.DrawHandlesSkiaCenters(canvas, rect);
         }
     }
 
@@ -38,7 +38,7 @@ public class EllipseShape : VectorShape
         var rect = GetBoundingBox();
         if (IsSelected)
         {
-            var handle = HitTestEngine.HitTestHandles_Centers(point, rect);
+            var handle = HitTestEngine.HitTestHandlesCenters(point, rect);
             if (handle != HandleType.None) return handle;
         }
 

@@ -29,11 +29,13 @@ public class AnnotationCanvas : Control
             if (change.OldValue is EditorViewModel oldVm)
             {
                 oldVm.ImageLoaded -= OnViewModelImageLoaded;
+                oldVm.RequestRedraw -= OnViewModelImageLoaded;
             }
             
             if (change.NewValue is EditorViewModel newVm)
             {
                 newVm.ImageLoaded += OnViewModelImageLoaded;
+                newVm.RequestRedraw += OnViewModelImageLoaded;
             }
         }
     }
@@ -70,7 +72,7 @@ public class AnnotationCanvas : Control
         context.Custom(new SkiaCanvasDrawOperation(new Rect(Bounds.Size), ViewModel.Store.Shapes, _currentDrawingShape));
     }
 
-    private class SkiaCanvasDrawOperation : Avalonia.Rendering.SceneGraph.ICustomDrawOperation
+    private sealed class SkiaCanvasDrawOperation : Avalonia.Rendering.SceneGraph.ICustomDrawOperation
     {
         private readonly Rect _bounds;
         private readonly System.Collections.Generic.IEnumerable<VectorShape> _shapes;
@@ -250,6 +252,10 @@ public class AnnotationCanvas : Control
             _lastMousePos = point;
             InvalidateVisual();
         }
+        else if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        {
+            UpdateCursor(point);
+        }
     }
 
     protected override void OnPointerReleased(PointerReleasedEventArgs e)
@@ -277,6 +283,48 @@ public class AnnotationCanvas : Control
             _currentDrawingShape = null;
             InvalidateVisual();
         }
+    }
+
+    private void UpdateCursor(Point point)
+    {
+        if (ViewModel?.Store == null) return;
+
+        if (_selectedShape != null)
+        {
+            var handle = _selectedShape.HitTest(point);
+            if (handle != HandleType.None)
+            {
+                Cursor = GetCursorForHandle(handle);
+                return;
+            }
+        }
+
+        for (int i = ViewModel.Store.Shapes.Count - 1; i >= 0; i--)
+        {
+            var shape = ViewModel.Store.Shapes[i];
+            var handle = shape.HitTest(point);
+            if (handle != HandleType.None)
+            {
+                Cursor = new Cursor(StandardCursorType.SizeAll);
+                return;
+            }
+        }
+
+        Cursor = Cursor.Default;
+    }
+
+    private static Cursor GetCursorForHandle(HandleType handle)
+    {
+        return handle switch
+        {
+            HandleType.Body => new Cursor(StandardCursorType.SizeAll),
+            HandleType.Start or HandleType.End => new Cursor(StandardCursorType.Cross),
+            HandleType.TopLeft or HandleType.BottomRight => new Cursor(StandardCursorType.TopLeftCorner),
+            HandleType.TopRight or HandleType.BottomLeft => new Cursor(StandardCursorType.TopRightCorner),
+            HandleType.TopCenter or HandleType.BottomCenter => new Cursor(StandardCursorType.TopSide),
+            HandleType.LeftCenter or HandleType.RightCenter => new Cursor(StandardCursorType.LeftSide),
+            _ => Cursor.Default
+        };
     }
 
     private static VectorShape? CreateShape(ToolType tool, Point startPos, Color color)

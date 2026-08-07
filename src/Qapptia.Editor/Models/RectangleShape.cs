@@ -25,7 +25,7 @@ public class RectangleShape : VectorShape
 
         if (IsSelected)
         {
-            HitTestEngine.DrawHandlesSkia_Corners(canvas, rect);
+            HitTestEngine.DrawHandlesSkiaCorners(canvas, rect);
         }
     }
 
@@ -34,7 +34,7 @@ public class RectangleShape : VectorShape
         var rect = GetBoundingBox();
         if (IsSelected)
         {
-            var handle = HitTestEngine.HitTestHandles_Corners(point, rect);
+            var handle = HitTestEngine.HitTestHandlesCorners(point, rect);
             if (handle != HandleType.None) return handle;
         }
 

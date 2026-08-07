@@ -23,7 +23,7 @@ public class LineShape : VectorShape
 
         if (IsSelected)
         {
-            HitTestEngine.DrawHandlesSkia_Ends(canvas, Start, End);
+            HitTestEngine.DrawHandlesSkiaEnds(canvas, Start, End);
         }
     }
 
@@ -31,7 +31,7 @@ public class LineShape : VectorShape
     {
         if (IsSelected)
         {
-            var handle = HitTestEngine.HitTestHandles_Ends(point, Start, End);
+            var handle = HitTestEngine.HitTestHandlesEnds(point, Start, End);
             if (handle != HandleType.None) return handle;
         }
         

@@ -34,13 +34,13 @@ public static class HitTestEngine
         canvas.DrawCircle((float)center.X, (float)center.Y, radius, paint);
     }
 
-    public static void DrawHandlesSkia_Ends(SKCanvas canvas, Point start, Point end)
+    public static void DrawHandlesSkiaEnds(SKCanvas canvas, Point start, Point end)
     {
         DrawHandle(canvas, start);
         DrawHandle(canvas, end);
     }
 
-    public static void DrawHandlesSkia_Corners(SKCanvas canvas, Rect boundingBox)
+    public static void DrawHandlesSkiaCorners(SKCanvas canvas, Rect boundingBox)
     {
         DrawHandle(canvas, boundingBox.TopLeft);
         DrawHandle(canvas, boundingBox.TopRight);
@@ -48,7 +48,7 @@ public static class HitTestEngine
         DrawHandle(canvas, boundingBox.BottomRight);
     }
 
-    public static void DrawHandlesSkia_Centers(SKCanvas canvas, Rect boundingBox)
+    public static void DrawHandlesSkiaCenters(SKCanvas canvas, Rect boundingBox)
     {
         DrawHandle(canvas, new Point(boundingBox.Center.X, boundingBox.Top));
         DrawHandle(canvas, new Point(boundingBox.Center.X, boundingBox.Bottom));
@@ -63,14 +63,14 @@ public static class HitTestEngine
         return rect.Contains(pt);
     }
 
-    public static HandleType HitTestHandles_Ends(Point pt, Point start, Point end)
+    public static HandleType HitTestHandlesEnds(Point pt, Point start, Point end)
     {
         if (HitTestHandle(pt, start)) return HandleType.Start;
         if (HitTestHandle(pt, end)) return HandleType.End;
         return HandleType.None;
     }
 
-    public static HandleType HitTestHandles_Corners(Point pt, Rect boundingBox)
+    public static HandleType HitTestHandlesCorners(Point pt, Rect boundingBox)
     {
         if (HitTestHandle(pt, boundingBox.TopLeft)) return HandleType.TopLeft;
         if (HitTestHandle(pt, boundingBox.TopRight)) return HandleType.TopRight;
@@ -79,7 +79,7 @@ public static class HitTestEngine
         return HandleType.None;
     }
 
-    public static HandleType HitTestHandles_Centers(Point pt, Rect boundingBox)
+    public static HandleType HitTestHandlesCenters(Point pt, Rect boundingBox)
     {
         if (HitTestHandle(pt, new Point(boundingBox.Center.X, boundingBox.Top))) return HandleType.TopCenter;
         if (HitTestHandle(pt, new Point(boundingBox.Center.X, boundingBox.Bottom))) return HandleType.BottomCenter;
