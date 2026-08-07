@@ -29,19 +29,25 @@ public class EllipseShape : VectorShape
 
         if (IsSelected)
         {
-            HitTestEngine.DrawHandlesSkia(canvas, rect);
+            HitTestEngine.DrawHandlesSkia_Centers(canvas, rect);
         }
     }
 
-    public override bool HitTest(Point point)
+    public override HandleType HitTest(Point point)
     {
         var rect = GetBoundingBox();
+        if (IsSelected)
+        {
+            var handle = HitTestEngine.HitTestHandles_Centers(point, rect);
+            if (handle != HandleType.None) return handle;
+        }
+
         var center = rect.Center;
         double rx = rect.Width / 2;
         double ry = rect.Height / 2;
         
-        if (rx <= 0 || ry <= 0) return false;
-
+        if (rx <= 0 || ry <= 0) return HandleType.None;
+        
         // Ecuación de la elipse: (x-cx)^2 / rx^2 + (y-cy)^2 / ry^2 = 1
         double dx = point.X - center.X;
         double dy = point.Y - center.Y;
@@ -51,6 +57,10 @@ public class EllipseShape : VectorShape
         // Tolerancia para el hit test del borde
         double tolerance = (StrokeWidth + 5.0) / Math.Max(rx, ry);
         
-        return value >= (1.0 - tolerance) && value <= (1.0 + tolerance);
+        if (value >= (1.0 - tolerance) && value <= (1.0 + tolerance))
+        {
+            return HandleType.Body;
+        }
+        return HandleType.None;
     }
 }

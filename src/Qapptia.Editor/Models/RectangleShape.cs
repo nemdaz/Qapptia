@@ -25,18 +25,28 @@ public class RectangleShape : VectorShape
 
         if (IsSelected)
         {
-            HitTestEngine.DrawHandlesSkia(canvas, rect);
+            HitTestEngine.DrawHandlesSkia_Corners(canvas, rect);
         }
     }
 
-    public override bool HitTest(Point point)
+    public override HandleType HitTest(Point point)
     {
         var rect = GetBoundingBox();
+        if (IsSelected)
+        {
+            var handle = HitTestEngine.HitTestHandles_Corners(point, rect);
+            if (handle != HandleType.None) return handle;
+        }
+
         double tolerance = StrokeWidth + 5.0;
         
         var outerRect = rect.Inflate(tolerance);
         var innerRect = rect.Inflate(-tolerance);
         
-        return outerRect.Contains(point) && !innerRect.Contains(point);
+        if (outerRect.Contains(point) && !innerRect.Contains(point))
+        {
+            return HandleType.Body;
+        }
+        return HandleType.None;
     }
 }

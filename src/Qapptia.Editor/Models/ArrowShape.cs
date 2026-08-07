@@ -26,7 +26,7 @@ public class ArrowShape : VectorShape
 
         if (IsSelected)
         {
-            HitTestEngine.DrawHandlesSkia(canvas, Start, End);
+            HitTestEngine.DrawHandlesSkia_Ends(canvas, Start, End);
         }
     }
 
@@ -65,9 +65,43 @@ public class ArrowShape : VectorShape
         canvas.DrawPath(path, paint);
     }
 
-    public override bool HitTest(Point point)
+    public override HandleType HitTest(Point point)
     {
+        if (IsSelected)
+        {
+            var handle = HitTestEngine.HitTestHandles_Ends(point, Start, End);
+            if (handle != HandleType.None) return handle;
+        }
+
         double tolerance = StrokeWidth + 5.0;
-        return HitTestEngine.PointToLineDistance(point, Start, End, tolerance);
+        
+        // Verifica si toca el cuerpo de la flecha
+        if (HitTestEngine.PointToLineDistance(point, Start, End, tolerance))
+            return HandleType.Body;
+            
+        // Verifica si toca las alas de la flecha
+        double dx = Start.X - End.X;
+        double dy = Start.Y - End.Y;
+        double angle = Math.Atan2(dy, dx);
+        
+        double wing1Angle = angle - Math.PI / 6;
+        Point wing1 = new Point(
+            End.X + Qapptia.Editor.Core.Constants.ArrowWingLen * Math.Cos(wing1Angle),
+            End.Y + Qapptia.Editor.Core.Constants.ArrowWingLen * Math.Sin(wing1Angle)
+        );
+        
+        if (HitTestEngine.PointToLineDistance(point, End, wing1, tolerance))
+            return HandleType.Body;
+            
+        double wing2Angle = angle + Math.PI / 6;
+        Point wing2 = new Point(
+            End.X + Qapptia.Editor.Core.Constants.ArrowWingLen * Math.Cos(wing2Angle),
+            End.Y + Qapptia.Editor.Core.Constants.ArrowWingLen * Math.Sin(wing2Angle)
+        );
+        
+        if (HitTestEngine.PointToLineDistance(point, End, wing2, tolerance))
+            return HandleType.Body;
+            
+        return HandleType.None;
     }
 }

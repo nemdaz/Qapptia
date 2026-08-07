@@ -23,13 +23,22 @@ public class LineShape : VectorShape
 
         if (IsSelected)
         {
-            HitTestEngine.DrawHandlesSkia(canvas, Start, End);
+            HitTestEngine.DrawHandlesSkia_Ends(canvas, Start, End);
         }
     }
 
-    public override bool HitTest(Point point)
+    public override HandleType HitTest(Point point)
     {
-        double tolerance = StrokeWidth + 5.0;
-        return HitTestEngine.PointToLineDistance(point, Start, End, tolerance);
+        if (IsSelected)
+        {
+            var handle = HitTestEngine.HitTestHandles_Ends(point, Start, End);
+            if (handle != HandleType.None) return handle;
+        }
+        
+        if (HitTestEngine.PointToLineDistance(point, Start, End, StrokeWidth + 5.0))
+        {
+            return HandleType.Body;
+        }
+        return HandleType.None;
     }
 }

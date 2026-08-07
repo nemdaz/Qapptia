@@ -23,13 +23,23 @@ public class HighlighterShape : VectorShape
 
         if (IsSelected)
         {
-            HitTestEngine.DrawHandlesSkia(canvas, rect);
+            HitTestEngine.DrawHandlesSkia_Corners(canvas, rect);
         }
     }
 
-    public override bool HitTest(Point point)
+    public override HandleType HitTest(Point point)
     {
         var rect = GetBoundingBox();
-        return rect.Contains(point);
+        if (IsSelected)
+        {
+            var handle = HitTestEngine.HitTestHandles_Corners(point, rect);
+            if (handle != HandleType.None) return handle;
+        }
+        
+        if (rect.Contains(point))
+        {
+            return HandleType.Body;
+        }
+        return HandleType.None;
     }
 }

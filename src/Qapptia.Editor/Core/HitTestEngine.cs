@@ -1,33 +1,91 @@
 using System;
 using Avalonia;
 using Avalonia.Media;
+using SkiaSharp;
+using Qapptia.Editor.Models;
 
 namespace Qapptia.Editor.Core;
 
 public static class HitTestEngine
 {
-    public static void DrawHandlesSkia(SkiaSharp.SKCanvas canvas, Rect boundingBox)
+    private static void DrawHandle(SKCanvas canvas, Point center)
     {
-        using var paint = new SkiaSharp.SKPaint { Color = SkiaSharp.SKColors.Blue, Style = SkiaSharp.SKPaintStyle.Fill };
-        float size = (float)Qapptia.Editor.Core.Constants.GripSize;
-        float half = size / 2.0f;
+        float size = (float)Constants.GripSize * 1.5f * 1.3f; // 30% larger
+        float radius = size / 2.0f;
 
-        // Esquinas
-        canvas.DrawRect(new SkiaSharp.SKRect((float)boundingBox.Left - half, (float)boundingBox.Top - half, (float)boundingBox.Left + half, (float)boundingBox.Top + half), paint);
-        canvas.DrawRect(new SkiaSharp.SKRect((float)boundingBox.Right - half, (float)boundingBox.Top - half, (float)boundingBox.Right + half, (float)boundingBox.Top + half), paint);
-        canvas.DrawRect(new SkiaSharp.SKRect((float)boundingBox.Left - half, (float)boundingBox.Bottom - half, (float)boundingBox.Left + half, (float)boundingBox.Bottom + half), paint);
-        canvas.DrawRect(new SkiaSharp.SKRect((float)boundingBox.Right - half, (float)boundingBox.Bottom - half, (float)boundingBox.Right + half, (float)boundingBox.Bottom + half), paint);
+        using var shadowPaint = new SKPaint
+        {
+            Color = SKColors.Black.WithAlpha(80),
+            Style = SKPaintStyle.Fill,
+            IsAntialias = true,
+            MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 2f)
+        };
+        
+        using var paint = new SKPaint
+        {
+            Color = SKColors.White,
+            Style = SKPaintStyle.Fill,
+            IsAntialias = true
+        };
+
+        // Draw shadow slightly offset
+        canvas.DrawCircle((float)center.X, (float)center.Y + 1f, radius, shadowPaint);
+        // Draw white circle
+        canvas.DrawCircle((float)center.X, (float)center.Y, radius, paint);
     }
 
-    public static void DrawHandlesSkia(SkiaSharp.SKCanvas canvas, Point start, Point end)
+    public static void DrawHandlesSkia_Ends(SKCanvas canvas, Point start, Point end)
     {
-        using var paint = new SkiaSharp.SKPaint { Color = SkiaSharp.SKColors.Blue, Style = SkiaSharp.SKPaintStyle.Fill };
-        float size = (float)Qapptia.Editor.Core.Constants.GripSize;
-        float half = size / 2.0f;
+        DrawHandle(canvas, start);
+        DrawHandle(canvas, end);
+    }
 
-        // Extremos
-        canvas.DrawRect(new SkiaSharp.SKRect((float)start.X - half, (float)start.Y - half, (float)start.X + half, (float)start.Y + half), paint);
-        canvas.DrawRect(new SkiaSharp.SKRect((float)end.X - half, (float)end.Y - half, (float)end.X + half, (float)end.Y + half), paint);
+    public static void DrawHandlesSkia_Corners(SKCanvas canvas, Rect boundingBox)
+    {
+        DrawHandle(canvas, boundingBox.TopLeft);
+        DrawHandle(canvas, boundingBox.TopRight);
+        DrawHandle(canvas, boundingBox.BottomLeft);
+        DrawHandle(canvas, boundingBox.BottomRight);
+    }
+
+    public static void DrawHandlesSkia_Centers(SKCanvas canvas, Rect boundingBox)
+    {
+        DrawHandle(canvas, new Point(boundingBox.Center.X, boundingBox.Top));
+        DrawHandle(canvas, new Point(boundingBox.Center.X, boundingBox.Bottom));
+        DrawHandle(canvas, new Point(boundingBox.Left, boundingBox.Center.Y));
+        DrawHandle(canvas, new Point(boundingBox.Right, boundingBox.Center.Y));
+    }
+
+    private static bool HitTestHandle(Point pt, Point center)
+    {
+        float size = (float)Constants.GripSize * 2.0f * 1.3f; // 30% larger hit area
+        var rect = new Rect(center.X - size / 2, center.Y - size / 2, size, size);
+        return rect.Contains(pt);
+    }
+
+    public static HandleType HitTestHandles_Ends(Point pt, Point start, Point end)
+    {
+        if (HitTestHandle(pt, start)) return HandleType.Start;
+        if (HitTestHandle(pt, end)) return HandleType.End;
+        return HandleType.None;
+    }
+
+    public static HandleType HitTestHandles_Corners(Point pt, Rect boundingBox)
+    {
+        if (HitTestHandle(pt, boundingBox.TopLeft)) return HandleType.TopLeft;
+        if (HitTestHandle(pt, boundingBox.TopRight)) return HandleType.TopRight;
+        if (HitTestHandle(pt, boundingBox.BottomLeft)) return HandleType.BottomLeft;
+        if (HitTestHandle(pt, boundingBox.BottomRight)) return HandleType.BottomRight;
+        return HandleType.None;
+    }
+
+    public static HandleType HitTestHandles_Centers(Point pt, Rect boundingBox)
+    {
+        if (HitTestHandle(pt, new Point(boundingBox.Center.X, boundingBox.Top))) return HandleType.TopCenter;
+        if (HitTestHandle(pt, new Point(boundingBox.Center.X, boundingBox.Bottom))) return HandleType.BottomCenter;
+        if (HitTestHandle(pt, new Point(boundingBox.Left, boundingBox.Center.Y))) return HandleType.LeftCenter;
+        if (HitTestHandle(pt, new Point(boundingBox.Right, boundingBox.Center.Y))) return HandleType.RightCenter;
+        return HandleType.None;
     }
 
     public static bool PointToLineDistance(Point pt, Point lineStart, Point lineEnd, double tolerance)

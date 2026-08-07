@@ -18,7 +18,7 @@ public abstract class VectorShape
     public bool IsSelected { get; set; }
 
     public abstract void RenderSkia(SkiaSharp.SKCanvas canvas);
-    public abstract bool HitTest(Point point);
+    public abstract HandleType HitTest(Point point);
 
     protected Rect GetBoundingBox()
     {
