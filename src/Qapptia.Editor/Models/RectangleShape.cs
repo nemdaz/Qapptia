@@ -8,7 +8,7 @@ public class RectangleShape : VectorShape
 {
     public override void Render(DrawingContext context)
     {
-        var pen = new Pen(new SolidColorBrush(Color), StrokeWidth);
+        var pen = new Pen(new SolidColorBrush(Color), StrokeWidth, lineJoin: PenLineJoin.Round);
         var rect = GetBoundingBox();
         context.DrawRectangle(null, pen, rect);
 

@@ -84,6 +84,9 @@
                         </PathIcon.RenderTransform>
                     </PathIcon>
                 </RadioButton>
+                <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" Command="{Binding SelectToolCommand}" CommandParameter="Ellipse" GroupName="Tools" Background="Transparent" ToolTip.Tip="Elipse" Padding="4">
+                    <PathIcon Data="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" Foreground="#d4d4d4" Width="16" Height="16"/>
+                </RadioButton>
                 <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" Command="{Binding SelectToolCommand}" CommandParameter="Rectangle" GroupName="Tools" Background="Transparent" ToolTip.Tip="Rectángulo" Padding="4">
                     <PathIcon Data="M4 4v16h16V4H4zm14 14H6V6h12v12z" Foreground="#d4d4d4" Width="16" Height="16"/>
                 </RadioButton>
@@ -98,10 +101,10 @@
                 
                 <!-- Colores -->
                 <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" Command="{Binding SelectColorCommand}" CommandParameter="Green" GroupName="Colors" IsChecked="True" Background="Transparent" Padding="4">
-                    <Ellipse Width="16" Height="16" Fill="Lime" />
+                    <Ellipse Width="16" Height="16" Fill="#00FF00" />
                 </RadioButton>
                 <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" Command="{Binding SelectColorCommand}" CommandParameter="Red" GroupName="Colors" Background="Transparent" Padding="4">
-                    <Ellipse Width="16" Height="16" Fill="Red" />
+                    <Ellipse Width="16" Height="16" Fill="#FF0000" />
                 </RadioButton>
                 <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" Command="{Binding SelectColorCommand}" CommandParameter="Blue" GroupName="Colors" Background="Transparent" Padding="4">
                     <Ellipse Width="16" Height="16" Fill="#0078D7" />
@@ -110,16 +113,16 @@
                     <Ellipse Width="16" Height="16" Fill="#00B7C3" />
                 </RadioButton>
                 <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" Command="{Binding SelectColorCommand}" CommandParameter="Yellow" GroupName="Colors" Background="Transparent" Padding="4">
-                    <Ellipse Width="16" Height="16" Fill="Yellow" />
+                    <Ellipse Width="16" Height="16" Fill="#F7EB0C" />
                 </RadioButton>
                 <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" Command="{Binding SelectColorCommand}" CommandParameter="Orange" GroupName="Colors" Background="Transparent" Padding="4">
-                    <Ellipse Width="16" Height="16" Fill="Orange" />
+                    <Ellipse Width="16" Height="16" Fill="#FFA500" />
                 </RadioButton>
                 <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" Command="{Binding SelectColorCommand}" CommandParameter="White" GroupName="Colors" Background="Transparent" Padding="4">
-                    <Ellipse Width="16" Height="16" Fill="White" Stroke="#3e3e42" StrokeThickness="1" />
+                    <Ellipse Width="16" Height="16" Fill="#FFFFFF" Stroke="#3e3e42" StrokeThickness="1" />
                 </RadioButton>
                 <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" Command="{Binding SelectColorCommand}" CommandParameter="Black" GroupName="Colors" Background="Transparent" Padding="4">
-                    <Ellipse Width="16" Height="16" Fill="Black" Stroke="#d4d4d4" StrokeThickness="1" />
+                    <Ellipse Width="16" Height="16" Fill="#000000" Stroke="#d4d4d4" StrokeThickness="1" />
                 </RadioButton>
             </StackPanel>
         </Border>

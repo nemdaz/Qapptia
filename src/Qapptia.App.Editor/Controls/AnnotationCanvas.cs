@@ -146,6 +146,8 @@ public class AnnotationCanvas : Control
         return tool switch
         {
             ToolType.Rectangle => new RectangleShape { Start = startPos, End = startPos, Color = color },
+            ToolType.Ellipse => new EllipseShape { Start = startPos, End = startPos, Color = color },
+            ToolType.Line => new LineShape { Start = startPos, End = startPos, Color = color },
             ToolType.Arrow => new ArrowShape { Start = startPos, End = startPos, Color = color },
             _ => null
         };

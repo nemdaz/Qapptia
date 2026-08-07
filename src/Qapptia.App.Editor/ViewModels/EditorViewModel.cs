@@ -36,7 +36,7 @@ public partial class EditorViewModel : ObservableObject
     private ToolType _activeTool = ToolType.Arrow;
 
     [ObservableProperty]
-    private Color _activeColor = Colors.Green;
+    private Color _activeColor = Qapptia.Editor.Core.Constants.ColorGreen;
 
     [ObservableProperty]
     private float _zoomLevel = 1.0f;
@@ -141,14 +141,14 @@ public partial class EditorViewModel : ObservableObject
 
     public ObservableCollection<Color> AvailableColors { get; } = new()
     {
-        Colors.Lime, // Green preset
-        Colors.Red,
-        Color.Parse("#0078D7"), // Blue
-        Color.Parse("#00B7C3"), // Cyan
-        Colors.Yellow,
-        Colors.Orange,
-        Colors.White,
-        Colors.Black
+        Qapptia.Editor.Core.Constants.ColorGreen,
+        Qapptia.Editor.Core.Constants.ColorRed,
+        Qapptia.Editor.Core.Constants.ColorBlue,
+        Qapptia.Editor.Core.Constants.ColorCyan,
+        Qapptia.Editor.Core.Constants.ColorYellow,
+        Qapptia.Editor.Core.Constants.ColorOrange,
+        Qapptia.Editor.Core.Constants.ColorWhite,
+        Qapptia.Editor.Core.Constants.ColorBlack
     };
 
     [RelayCommand]
@@ -165,15 +165,15 @@ public partial class EditorViewModel : ObservableObject
     {
         ActiveColor = colorName switch
         {
-            "Green" => Colors.Lime,
-            "Red" => Colors.Red,
-            "Blue" => Color.Parse("#0078D7"),
-            "Cyan" => Color.Parse("#00B7C3"),
-            "Yellow" => Colors.Yellow,
-            "Orange" => Colors.Orange,
-            "White" => Colors.White,
-            "Black" => Colors.Black,
-            _ => Colors.Lime
+            "Green" => Qapptia.Editor.Core.Constants.ColorGreen,
+            "Red" => Qapptia.Editor.Core.Constants.ColorRed,
+            "Blue" => Qapptia.Editor.Core.Constants.ColorBlue,
+            "Cyan" => Qapptia.Editor.Core.Constants.ColorCyan,
+            "Yellow" => Qapptia.Editor.Core.Constants.ColorYellow,
+            "Orange" => Qapptia.Editor.Core.Constants.ColorOrange,
+            "White" => Qapptia.Editor.Core.Constants.ColorWhite,
+            "Black" => Qapptia.Editor.Core.Constants.ColorBlack,
+            _ => Qapptia.Editor.Core.Constants.ColorGreen
         };
     }
 
