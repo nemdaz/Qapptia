@@ -117,15 +117,25 @@ public partial class EditorViewModel : ObservableObject
     public event EventHandler? ImageLoaded;
     public event EventHandler? RequestRedraw;
 
+    private string? _currentImagePath;
+
     partial void OnSelectedNodeChanged(ExplorerNode? value)
     {
+        if (!string.IsNullOrEmpty(_currentImagePath))
+        {
+            Store.SaveAnnotations(_currentImagePath);
+            _currentImagePath = null;
+        }
+
         if (value is ExplorerFile file)
         {
             try
             {
                 var bitmap = new Avalonia.Media.Imaging.Bitmap(file.FullPath);
                 Store.SetBackground(bitmap);
-                Store.Shapes.Clear(); // Limpiar formas anteriores
+                
+                Store.LoadAnnotations(file.FullPath);
+                _currentImagePath = file.FullPath;
                 
                 ImageWidth = bitmap.Size.Width;
                 ImageHeight = bitmap.Size.Height;
@@ -136,7 +146,22 @@ public partial class EditorViewModel : ObservableObject
             catch
             {
                 // Fallar silenciosamente si la imagen no se puede cargar
+                Store.Shapes.Clear();
             }
+        }
+        else
+        {
+            Store.Shapes.Clear();
+            Store.SetBackground(null!);
+            HasImage = false;
+        }
+    }
+
+    public void SaveCurrentAnnotations()
+    {
+        if (!string.IsNullOrEmpty(_currentImagePath))
+        {
+            Store.SaveAnnotations(_currentImagePath);
         }
     }
 
@@ -189,6 +214,7 @@ public partial class EditorViewModel : ObservableObject
         
         if (needsRedraw)
         {
+            SaveCurrentAnnotations();
             RequestRedraw?.Invoke(this, EventArgs.Empty);
         }
     }

@@ -261,6 +261,7 @@ public class AnnotationCanvas : Control
     protected override void OnPointerReleased(PointerReleasedEventArgs e)
     {
         base.OnPointerReleased(e);
+        bool shouldSave = false;
         
         if (_currentDrawingShape != null)
         {
@@ -277,11 +278,23 @@ public class AnnotationCanvas : Control
                     ViewModel.Store.ClearSelection();
                     _selectedShape = _currentDrawingShape;
                     _selectedShape.IsSelected = true;
+                    shouldSave = true;
                 }
             }
             
             _currentDrawingShape = null;
             InvalidateVisual();
+        }
+        else if (_activeHandle != HandleType.None)
+        {
+            shouldSave = true;
+        }
+
+        _activeHandle = HandleType.None;
+
+        if (shouldSave)
+        {
+            ViewModel?.SaveCurrentAnnotations();
         }
     }
 
