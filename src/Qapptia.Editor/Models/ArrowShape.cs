@@ -7,27 +7,37 @@ namespace Qapptia.Editor.Models;
 
 public class ArrowShape : VectorShape
 {
-    public override void Render(DrawingContext context)
+    public override void RenderSkia(SkiaSharp.SKCanvas canvas)
     {
-        var pen = new Pen(new SolidColorBrush(Color), StrokeWidth, lineCap: PenLineCap.Round);
-        context.DrawLine(pen, Start, End);
+        using var paint = new SkiaSharp.SKPaint
+        {
+            Color = Color.ToSKColor(),
+            StrokeWidth = (float)StrokeWidth,
+            IsAntialias = true,
+            Style = SkiaSharp.SKPaintStyle.Stroke,
+            StrokeCap = SkiaSharp.SKStrokeCap.Round,
+            StrokeJoin = SkiaSharp.SKStrokeJoin.Round,
+            ImageFilter = SkiaSharp.SKImageFilter.CreateDropShadow(0, 1, 2, 2, SkiaSharp.SKColors.Black.WithAlpha(60))
+        };
+
+        canvas.DrawLine((float)Start.X, (float)Start.Y, (float)End.X, (float)End.Y, paint);
         
-        DrawArrowHead(context, pen, StrokeWidth);
+        DrawArrowHead(canvas, paint, (float)StrokeWidth);
 
         if (IsSelected)
         {
-            HitTestEngine.DrawHandles(context, Start, End);
+            HitTestEngine.DrawHandlesSkia(canvas, Start, End);
         }
     }
 
-    private void DrawArrowHead(DrawingContext context, Pen pen, double width)
+    private void DrawArrowHead(SkiaSharp.SKCanvas canvas, SkiaSharp.SKPaint paint, float width)
     {
         double dx = End.X - Start.X;
         double dy = End.Y - Start.Y;
         
         double arrowWingLen = Qapptia.Editor.Core.Constants.ArrowWingLen;
         
-        // No dibujar si la flecha es demasiado corta
+        // No dibujar si la flecha es muy corta
         if (Math.Sqrt(dx * dx + dy * dy) < Math.Max(arrowWingLen * 0.35, width * 2))
         {
             return;
@@ -36,28 +46,23 @@ public class ArrowShape : VectorShape
         double angle = Math.Atan2(dy, dx);
         
         // Ala 1
-        var w1 = new Point(
-            End.X - arrowWingLen * Math.Cos(angle - Math.PI / 6),
-            End.Y - arrowWingLen * Math.Sin(angle - Math.PI / 6)
+        var w1 = new SkiaSharp.SKPoint(
+            (float)(End.X - arrowWingLen * Math.Cos(angle - Math.PI / 6)),
+            (float)(End.Y - arrowWingLen * Math.Sin(angle - Math.PI / 6))
         );
         
         // Ala 2
-        var w2 = new Point(
-            End.X - arrowWingLen * Math.Cos(angle + Math.PI / 6),
-            End.Y - arrowWingLen * Math.Sin(angle + Math.PI / 6)
+        var w2 = new SkiaSharp.SKPoint(
+            (float)(End.X - arrowWingLen * Math.Cos(angle + Math.PI / 6)),
+            (float)(End.Y - arrowWingLen * Math.Sin(angle + Math.PI / 6))
         );
 
-        var geometry = new StreamGeometry();
-        using (var ctx = geometry.Open())
-        {
-            ctx.BeginFigure(w1, false);
-            ctx.LineTo(End);
-            ctx.LineTo(w2);
-            ctx.EndFigure(false);
-        }
+        using var path = new SkiaSharp.SKPath();
+        path.MoveTo(w1);
+        path.LineTo((float)End.X, (float)End.Y);
+        path.LineTo(w2);
 
-        var arrowPen = new Pen(pen.Brush, pen.Thickness, lineCap: PenLineCap.Round, lineJoin: PenLineJoin.Round);
-        context.DrawGeometry(null, arrowPen, geometry);
+        canvas.DrawPath(path, paint);
     }
 
     public override bool HitTest(Point point)

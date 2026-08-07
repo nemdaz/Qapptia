@@ -5,89 +5,79 @@
   En los .csproj se referencian con <PackageReference Include="X" /> (sin Version).
 -->
 <Project>
-
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
-
   <ItemGroup>
     <!-- ============================================================
          UI / Framework principal
          ============================================================ -->
-    <PackageVersion Include="Avalonia"                       Version="12.1.1" />
-    <PackageVersion Include="Avalonia.Desktop"               Version="12.1.1" />
-    <PackageVersion Include="Avalonia.Themes.Fluent"         Version="12.1.1" />
-    <PackageVersion Include="Avalonia.Fonts.Inter"           Version="12.1.1" />
-    <PackageVersion Include="Avalonia.Diagnostics"           Version="12.1.1" />
-    <PackageVersion Include="Avalonia.Xaml.Behaviors"        Version="11.3.0.6" />
-    <PackageVersion Include="AvaloniaUI.DiagnosticsSupport"  Version="2.2.3" />
-
+    <PackageVersion Include="Avalonia" Version="12.1.1" />
+    <PackageVersion Include="Avalonia.Desktop" Version="12.1.1" />
+    <PackageVersion Include="Avalonia.Skia" Version="12.1.1" />
+    <PackageVersion Include="Avalonia.Themes.Fluent" Version="12.1.1" />
+    <PackageVersion Include="Avalonia.Fonts.Inter" Version="12.1.1" />
+    <PackageVersion Include="Avalonia.Diagnostics" Version="12.1.1" />
+    <PackageVersion Include="Avalonia.Xaml.Behaviors" Version="11.3.0.6" />
+    <PackageVersion Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3" />
     <!-- ============================================================
          MVVM
          ============================================================ -->
-    <PackageVersion Include="CommunityToolkit.Mvvm"          Version="8.3.2" />
-
+    <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.3.2" />
     <!-- ============================================================
          Microsoft.Extensions (Generic Host / DI / Config / Logging)
          ============================================================ -->
-    <PackageVersion Include="Microsoft.Extensions.Hosting"               Version="10.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection"    Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration"          Version="10.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.Json"     Version="10.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.Binder"   Version="10.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Options"               Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Options.DataAnnotations" Version="10.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Logging"               Version="10.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions"  Version="10.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Caching.Memory"        Version="10.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Http"                  Version="10.0.0" />
-
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Caching.Memory" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.0" />
     <!-- ============================================================
          Render (Skia)
          ============================================================ -->
-    <PackageVersion Include="SkiaSharp"                       Version="3.119.4" />
-    <PackageVersion Include="SkiaSharp.Views.Avalonia"        Version="3.119.4" />
-    <PackageVersion Include="SkiaSharp.HarfBuzz"              Version="3.119.4" />
-
+    <PackageVersion Include="SkiaSharp" Version="3.119.4" />
+    <PackageVersion Include="SkiaSharp.Views.Avalonia" Version="3.119.4" />
+    <PackageVersion Include="SkiaSharp.HarfBuzz" Version="3.119.4" />
     <!-- ============================================================
          Logging estructurado
          ============================================================ -->
-    <PackageVersion Include="Serilog"                        Version="4.0.2" />
-    <PackageVersion Include="Serilog.Extensions.Hosting"     Version="8.0.0" />
-    <PackageVersion Include="Serilog.Extensions.Logging"     Version="8.0.0" />
-    <PackageVersion Include="Serilog.Sinks.Console"          Version="6.0.0" />
-    <PackageVersion Include="Serilog.Sinks.File"             Version="6.0.0" />
-    <PackageVersion Include="Serilog.Sinks.Async"            Version="2.0.0" />
-
+    <PackageVersion Include="Serilog" Version="4.0.2" />
+    <PackageVersion Include="Serilog.Extensions.Hosting" Version="8.0.0" />
+    <PackageVersion Include="Serilog.Extensions.Logging" Version="8.0.0" />
+    <PackageVersion Include="Serilog.Sinks.Console" Version="6.0.0" />
+    <PackageVersion Include="Serilog.Sinks.File" Version="6.0.0" />
+    <PackageVersion Include="Serilog.Sinks.Async" Version="2.0.0" />
     <!-- ============================================================
          Interop / P-Invoke
          ============================================================ -->
-    <PackageVersion Include="Microsoft.Windows.CsWin32"      Version="0.3.106" />
-    <PackageVersion Include="Microsoft.Win32.SystemEvents"   Version="10.0.0" />
-    <PackageVersion Include="System.Drawing.Common"          Version="10.0.0" />
-
+    <PackageVersion Include="Microsoft.Windows.CsWin32" Version="0.3.106" />
+    <PackageVersion Include="Microsoft.Win32.SystemEvents" Version="10.0.0" />
+    <PackageVersion Include="System.Drawing.Common" Version="10.0.0" />
     <!-- ============================================================
          CLI parsing
          ============================================================ -->
-    <PackageVersion Include="System.CommandLine"             Version="2.0.0-beta4.22272.1" />
-
+    <PackageVersion Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
     <!-- ============================================================
          Audio
          ============================================================ -->
-    <PackageVersion Include="NAudio"                         Version="2.2.1" />
-
+    <PackageVersion Include="NAudio" Version="2.2.1" />
     <!-- ============================================================
          Testing
          ============================================================ -->
-    <PackageVersion Include="Microsoft.NET.Test.Sdk"         Version="17.14.1" />
-    <PackageVersion Include="xunit"                          Version="2.9.3" />
-    <PackageVersion Include="xunit.runner.visualstudio"      Version="3.1.4" />
-    <PackageVersion Include="FluentAssertions"               Version="6.12.1" />
-    <PackageVersion Include="Moq"                            Version="4.20.72" />
-    <PackageVersion Include="coverlet.collector"             Version="6.0.4" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <PackageVersion Include="FluentAssertions" Version="6.12.1" />
+    <PackageVersion Include="Moq" Version="4.20.72" />
+    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
   </ItemGroup>
-
 </Project>

@@ -22,7 +22,7 @@ public partial class ExplorerFolder : ExplorerNode
 {
     public ObservableCollection<ExplorerNode> Items { get; } = new();
     
-    // UI Helper for expanding tree nodes (Optional, can be bound in XAML later)
+    // Helper para expandir nodos del árbol
     public bool IsExpanded { get; set; }
 }
 

@@ -14,9 +14,10 @@ public abstract class VectorShape
     public Color Color { get; set; } = Qapptia.Editor.Core.Constants.ColorRed;
     public double StrokeWidth { get; set; } = Qapptia.Editor.Core.Constants.DefaultStrokeWidth;
     
+    // Indica si el vector está seleccionado
     public bool IsSelected { get; set; }
 
-    public abstract void Render(DrawingContext context);
+    public abstract void RenderSkia(SkiaSharp.SKCanvas canvas);
     public abstract bool HitTest(Point point);
 
     protected Rect GetBoundingBox()

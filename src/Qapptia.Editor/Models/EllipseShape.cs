@@ -7,19 +7,29 @@ namespace Qapptia.Editor.Models;
 
 public class EllipseShape : VectorShape
 {
-    public override void Render(DrawingContext context)
+    public override void RenderSkia(SkiaSharp.SKCanvas canvas)
     {
-        var pen = new Pen(new SolidColorBrush(Color), StrokeWidth);
-        var rect = GetBoundingBox();
-        var center = rect.Center;
-        double radiusX = rect.Width / 2;
-        double radiusY = rect.Height / 2;
+        using var paint = new SkiaSharp.SKPaint
+        {
+            Color = Color.ToSKColor(),
+            StrokeWidth = (float)StrokeWidth,
+            IsAntialias = true,
+            Style = SkiaSharp.SKPaintStyle.Stroke,
+            ImageFilter = SkiaSharp.SKImageFilter.CreateDropShadow(0, 1, 2, 2, SkiaSharp.SKColors.Black.WithAlpha(60))
+        };
         
-        context.DrawEllipse(null, pen, center, radiusX, radiusY);
+        var rect = GetBoundingBox();
+        
+        float cx = (float)rect.Center.X;
+        float cy = (float)rect.Center.Y;
+        float rx = (float)(rect.Width / 2);
+        float ry = (float)(rect.Height / 2);
+        
+        canvas.DrawOval(cx, cy, rx, ry, paint);
 
         if (IsSelected)
         {
-            HitTestEngine.DrawHandles(context, rect);
+            HitTestEngine.DrawHandlesSkia(canvas, rect);
         }
     }
 

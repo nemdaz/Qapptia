@@ -6,15 +6,26 @@ namespace Qapptia.Editor.Models;
 
 public class RectangleShape : VectorShape
 {
-    public override void Render(DrawingContext context)
+    public override void RenderSkia(SkiaSharp.SKCanvas canvas)
     {
-        var pen = new Pen(new SolidColorBrush(Color), StrokeWidth, lineJoin: PenLineJoin.Round);
+        using var paint = new SkiaSharp.SKPaint
+        {
+            Color = Color.ToSKColor(),
+            StrokeWidth = (float)StrokeWidth,
+            IsAntialias = true,
+            Style = SkiaSharp.SKPaintStyle.Stroke,
+            StrokeJoin = SkiaSharp.SKStrokeJoin.Round,
+            ImageFilter = SkiaSharp.SKImageFilter.CreateDropShadow(0, 1, 2, 2, SkiaSharp.SKColors.Black.WithAlpha(60))
+        };
+        
         var rect = GetBoundingBox();
-        context.DrawRectangle(null, pen, rect);
+        var skRect = new SkiaSharp.SKRect((float)rect.Left, (float)rect.Top, (float)rect.Right, (float)rect.Bottom);
+        
+        canvas.DrawRect(skRect, paint);
 
         if (IsSelected)
         {
-            HitTestEngine.DrawHandles(context, rect);
+            HitTestEngine.DrawHandlesSkia(canvas, rect);
         }
     }
 

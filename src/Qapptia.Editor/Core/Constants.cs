@@ -5,9 +5,10 @@ namespace Qapptia.Editor.Core;
 public static class Constants
 {
     // Metrics
-    public const double DefaultStrokeWidth = 3.0;
+    public const double DefaultStrokeWidth = 4.0;
     public const double ArrowWingLen = 25.0;
     public const double GripSize = 6.0;
+    public const double DrawMinDistance = 8.0;
 
     // Palette Colors matches Legacy App
     public static readonly Color ColorGreen = Color.Parse("#00FF00");
@@ -18,4 +19,10 @@ public static class Constants
     public static readonly Color ColorOrange = Color.Parse("#FFA500");
     public static readonly Color ColorWhite = Color.Parse("#FFFFFF");
     public static readonly Color ColorBlack = Color.Parse("#000000");
+
+    // Convierte el color de Avalonia a SkiaSharp
+    public static SkiaSharp.SKColor ToSKColor(this Color c)
+    {
+        return new SkiaSharp.SKColor(c.R, c.G, c.B, c.A);
+    }
 }

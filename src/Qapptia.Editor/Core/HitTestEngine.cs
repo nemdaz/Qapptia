@@ -6,27 +6,28 @@ namespace Qapptia.Editor.Core;
 
 public static class HitTestEngine
 {
-    public static void DrawHandles(DrawingContext context, Rect boundingBox)
+    public static void DrawHandlesSkia(SkiaSharp.SKCanvas canvas, Rect boundingBox)
     {
-        var brush = new SolidColorBrush(Colors.Blue);
-        double size = 8.0;
-        double half = size / 2.0;
+        using var paint = new SkiaSharp.SKPaint { Color = SkiaSharp.SKColors.Blue, Style = SkiaSharp.SKPaintStyle.Fill };
+        float size = (float)Qapptia.Editor.Core.Constants.GripSize;
+        float half = size / 2.0f;
 
         // Esquinas
-        context.DrawRectangle(brush, null, new Rect(boundingBox.Left - half, boundingBox.Top - half, size, size));
-        context.DrawRectangle(brush, null, new Rect(boundingBox.Right - half, boundingBox.Top - half, size, size));
-        context.DrawRectangle(brush, null, new Rect(boundingBox.Left - half, boundingBox.Bottom - half, size, size));
-        context.DrawRectangle(brush, null, new Rect(boundingBox.Right - half, boundingBox.Bottom - half, size, size));
+        canvas.DrawRect(new SkiaSharp.SKRect((float)boundingBox.Left - half, (float)boundingBox.Top - half, (float)boundingBox.Left + half, (float)boundingBox.Top + half), paint);
+        canvas.DrawRect(new SkiaSharp.SKRect((float)boundingBox.Right - half, (float)boundingBox.Top - half, (float)boundingBox.Right + half, (float)boundingBox.Top + half), paint);
+        canvas.DrawRect(new SkiaSharp.SKRect((float)boundingBox.Left - half, (float)boundingBox.Bottom - half, (float)boundingBox.Left + half, (float)boundingBox.Bottom + half), paint);
+        canvas.DrawRect(new SkiaSharp.SKRect((float)boundingBox.Right - half, (float)boundingBox.Bottom - half, (float)boundingBox.Right + half, (float)boundingBox.Bottom + half), paint);
     }
 
-    public static void DrawHandles(DrawingContext context, Point start, Point end)
+    public static void DrawHandlesSkia(SkiaSharp.SKCanvas canvas, Point start, Point end)
     {
-        var brush = new SolidColorBrush(Colors.Blue);
-        double size = 8.0;
-        double half = size / 2.0;
+        using var paint = new SkiaSharp.SKPaint { Color = SkiaSharp.SKColors.Blue, Style = SkiaSharp.SKPaintStyle.Fill };
+        float size = (float)Qapptia.Editor.Core.Constants.GripSize;
+        float half = size / 2.0f;
 
-        context.DrawRectangle(brush, null, new Rect(start.X - half, start.Y - half, size, size));
-        context.DrawRectangle(brush, null, new Rect(end.X - half, end.Y - half, size, size));
+        // Extremos
+        canvas.DrawRect(new SkiaSharp.SKRect((float)start.X - half, (float)start.Y - half, (float)start.X + half, (float)start.Y + half), paint);
+        canvas.DrawRect(new SkiaSharp.SKRect((float)end.X - half, (float)end.Y - half, (float)end.X + half, (float)end.Y + half), paint);
     }
 
     public static bool PointToLineDistance(Point pt, Point lineStart, Point lineEnd, double tolerance)
