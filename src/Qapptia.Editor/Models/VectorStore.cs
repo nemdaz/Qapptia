@@ -82,10 +82,7 @@ public class VectorStore : IDisposable
                     shape.Start = new Point(dto.Coords[0], dto.Coords[1]);
                     shape.End = new Point(dto.Coords[2], dto.Coords[3]);
                     
-                    if (Color.TryParse(dto.Color, out Color color))
-                    {
-                        shape.Color = color;
-                    }
+                    shape.Color = Qapptia.Editor.Core.Constants.ParseColorName(dto.Color);
                     
                     Shapes.Add(shape);
                 }
@@ -124,7 +121,7 @@ public class VectorStore : IDisposable
             },
             Id = s.Id.ToString(),
             Coords = new System.Collections.Generic.List<double> { s.Start.X, s.Start.Y, s.End.X, s.End.Y },
-            Color = s.Color.ToString()
+            Color = Qapptia.Editor.Core.Constants.GetColorName(s.Color)
         }).ToList();
 
         try

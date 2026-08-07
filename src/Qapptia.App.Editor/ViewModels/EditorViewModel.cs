@@ -36,7 +36,7 @@ public partial class EditorViewModel : ObservableObject
     private ToolType _activeTool = ToolType.Arrow;
 
     [ObservableProperty]
-    private Color _activeColor = Qapptia.Editor.Core.Constants.ColorGreen;
+    private Color _activeColor = Qapptia.Editor.Core.Constants.FavoriteColors[0];
 
     [ObservableProperty]
     private float _zoomLevel = 1.0f;
@@ -165,17 +165,12 @@ public partial class EditorViewModel : ObservableObject
         }
     }
 
-    public ObservableCollection<Color> AvailableColors { get; } = new()
-    {
-        Qapptia.Editor.Core.Constants.ColorGreen,
-        Qapptia.Editor.Core.Constants.ColorRed,
-        Qapptia.Editor.Core.Constants.ColorBlue,
-        Qapptia.Editor.Core.Constants.ColorCyan,
-        Qapptia.Editor.Core.Constants.ColorYellow,
-        Qapptia.Editor.Core.Constants.ColorOrange,
-        Qapptia.Editor.Core.Constants.ColorWhite,
-        Qapptia.Editor.Core.Constants.ColorBlack
-    };
+    public ObservableCollection<SolidColorBrush> AvailableColors { get; } = new(
+        System.Linq.Enumerable.Select(
+            Qapptia.Editor.Core.Constants.FavoriteColors, 
+            c => new SolidColorBrush(c)
+        )
+    );
 
     [RelayCommand]
     public void SelectTool(string toolName)
@@ -187,20 +182,9 @@ public partial class EditorViewModel : ObservableObject
     }
 
     [RelayCommand]
-    public void SelectColor(string colorName)
+    public void SelectColor(SolidColorBrush brush)
     {
-        ActiveColor = colorName switch
-        {
-            "Green" => Qapptia.Editor.Core.Constants.ColorGreen,
-            "Red" => Qapptia.Editor.Core.Constants.ColorRed,
-            "Blue" => Qapptia.Editor.Core.Constants.ColorBlue,
-            "Cyan" => Qapptia.Editor.Core.Constants.ColorCyan,
-            "Yellow" => Qapptia.Editor.Core.Constants.ColorYellow,
-            "Orange" => Qapptia.Editor.Core.Constants.ColorOrange,
-            "White" => Qapptia.Editor.Core.Constants.ColorWhite,
-            "Black" => Qapptia.Editor.Core.Constants.ColorBlack,
-            _ => Qapptia.Editor.Core.Constants.ColorGreen
-        };
+        ActiveColor = brush.Color;
         
         bool needsRedraw = false;
         foreach (var shape in Store.Shapes)

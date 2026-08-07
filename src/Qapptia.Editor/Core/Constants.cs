@@ -1,4 +1,5 @@
 using Avalonia.Media;
+using System.Collections.Generic;
 
 namespace Qapptia.Editor.Core;
 
@@ -11,18 +12,40 @@ public static class Constants
     public const double DrawMinDistance = 8.0;
 
     // Palette Colors matches Legacy App
-    public static readonly Color ColorGreen = Color.Parse("#00FF00");
-    public static readonly Color ColorRed = Color.Parse("#FF0000");
-    public static readonly Color ColorBlue = Color.Parse("#0078D7");
-    public static readonly Color ColorCyan = Color.Parse("#00B7C3");
-    public static readonly Color ColorYellow = Color.Parse("#F7EB0C");
-    public static readonly Color ColorOrange = Color.Parse("#FFA500");
-    public static readonly Color ColorWhite = Color.Parse("#FFFFFF");
-    public static readonly Color ColorBlack = Color.Parse("#000000");
+    public static readonly IReadOnlyList<Color> FavoriteColors = new[]
+    {
+        Color.Parse("#00FF00"), // Green
+        Color.Parse("#FF0000"), // Red
+        Color.Parse("#0078D7"), // Blue
+        Color.Parse("#00B7C3"), // Cyan
+        Color.Parse("#F7EB0C"), // Yellow
+        Color.Parse("#FFA500"), // Orange
+        Color.Parse("#FFFFFF"), // White
+        Color.Parse("#000000")  // Black
+    };
 
     // Convierte el color de Avalonia a SkiaSharp
     public static SkiaSharp.SKColor ToSKColor(this Color c)
     {
         return new SkiaSharp.SKColor(c.R, c.G, c.B, c.A);
+    }
+
+    // GetColorFamily was removed per user request for simpler persistence
+
+    public static string GetColorName(Color c)
+    {
+        return $"#{c.A:X2}{c.R:X2}{c.G:X2}{c.B:X2}";
+    }
+
+    public static Color ParseColorName(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return FavoriteColors[1]; // Red fallback
+
+        if (Color.TryParse(name, out var parsedHex))
+        {
+            return parsedHex;
+        }
+        
+        return FavoriteColors[1]; // Default fallback to Red
     }
 }

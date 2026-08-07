@@ -11,7 +11,7 @@ public abstract class VectorShape
     public Point Start { get; set; }
     public Point End { get; set; }
     
-    public Color Color { get; set; } = Qapptia.Editor.Core.Constants.ColorRed;
+    public Color Color { get; set; } = Qapptia.Editor.Core.Constants.FavoriteColors[1];
     public double StrokeWidth { get; set; } = Qapptia.Editor.Core.Constants.DefaultStrokeWidth;
     
     // Indica si el vector está seleccionado
