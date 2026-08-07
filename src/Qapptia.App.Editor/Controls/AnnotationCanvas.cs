@@ -49,7 +49,6 @@ public class AnnotationCanvas : Control
 
     public AnnotationCanvas()
     {
-        Focusable = true;
         ClipToBounds = true;
     }
 
