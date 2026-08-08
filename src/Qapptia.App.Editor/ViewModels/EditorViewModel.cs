@@ -12,18 +12,18 @@ using System.Globalization;
 
 namespace Qapptia.App.Editor.ViewModels;
 
-public abstract class ExplorerNode : ObservableObject
+public abstract partial class ExplorerNode : ObservableObject
 {
     public string Name { get; set; } = string.Empty;
     public string FullPath { get; set; } = string.Empty;
+    
+    [ObservableProperty]
+    private bool _isExpanded;
 }
 
 public partial class ExplorerFolder : ExplorerNode
 {
     public ObservableCollection<ExplorerNode> Items { get; } = new();
-    
-    // Helper para expandir nodos del árbol
-    public bool IsExpanded { get; set; }
 }
 
 public partial class ExplorerFile : ExplorerNode
@@ -32,11 +32,32 @@ public partial class ExplorerFile : ExplorerNode
 
 public partial class EditorViewModel : ObservableObject
 {
+    private readonly EditorStateStore _stateStore;
+    private readonly string _savePath;
+
+    private static string NormalizePath(string path) => path.Replace('\\', '/');
+
+    public EditorViewModel(EditorStateStore stateStore, string savePath)
+    {
+        _stateStore = stateStore;
+        _savePath = savePath;
+        var state = _stateStore.Load();
+
+        if (Avalonia.Media.Color.TryParse(state.ActiveFavoriteColor, out var color))
+        {
+            _activeColor = color;
+        }
+        else
+        {
+            _activeColor = Qapptia.Editor.Core.Constants.FavoriteColors[0];
+        }
+    }
+
     [ObservableProperty]
     private ToolType _activeTool = ToolType.Arrow;
 
     [ObservableProperty]
-    private Color _activeColor = Qapptia.Editor.Core.Constants.FavoriteColors[0];
+    private Color _activeColor;
 
     [ObservableProperty]
     private float _zoomLevel = 1.0f;
@@ -141,6 +162,10 @@ public partial class EditorViewModel : ObservableObject
                 ImageHeight = bitmap.Size.Height;
                 HasImage = true;
                 
+                var state = _stateStore.Load();
+                state.LastSelectedFile = NormalizePath(file.FullPath);
+                _stateStore.Save(state);
+
                 ImageLoaded?.Invoke(this, EventArgs.Empty);
             }
             catch
@@ -178,6 +203,13 @@ public partial class EditorViewModel : ObservableObject
         if (System.Enum.TryParse<ToolType>(toolName, out var tool))
         {
             ActiveTool = tool;
+            
+            var state = _stateStore.Load();
+            if (state.ToolFavoriteColors.TryGetValue(toolName, out var colorName) && 
+                Avalonia.Media.Color.TryParse(colorName, out var parsedColor))
+            {
+                ActiveColor = parsedColor;
+            }
         }
     }
 
@@ -185,6 +217,12 @@ public partial class EditorViewModel : ObservableObject
     public void SelectColor(SolidColorBrush brush)
     {
         ActiveColor = brush.Color;
+        
+        var state = _stateStore.Load();
+        var colorHex = Qapptia.Editor.Core.Constants.GetColorName(ActiveColor);
+        state.ActiveFavoriteColor = colorHex;
+        state.ToolFavoriteColors[ActiveTool.ToString()] = colorHex;
+        _stateStore.Save(state);
         
         bool needsRedraw = false;
         foreach (var shape in Store.Shapes)
@@ -245,27 +283,39 @@ public partial class EditorViewModel : ObservableObject
     public void LoadSidebarImages()
     {
         SidebarFolders.Clear();
-        
-        var configService = new Qapptia.Core.Configuration.JsonConfigService("config.json");
-        var savePath = configService.Current.SavePath;
+        var expandedFolders = _stateStore.Load().ExpandedFolders;
+
         try
         {
-
-            if (Directory.Exists(savePath))
+            if (Directory.Exists(_savePath))
             {
+                var normalizedSavePath = NormalizePath(_savePath);
                 var rootFolder = new ExplorerFolder 
                 { 
-                    Name = Path.GetFileName(savePath), 
-                    FullPath = savePath,
-                    IsExpanded = true 
+                    Name = Path.GetFileName(_savePath), 
+                    FullPath = normalizedSavePath,
+                    IsExpanded = expandedFolders.Any(p => string.Equals(p, normalizedSavePath, StringComparison.OrdinalIgnoreCase)) || expandedFolders.Count == 0 // Default true if empty
                 };
                 
                 if (string.IsNullOrEmpty(rootFolder.Name)) 
-                    rootFolder.Name = savePath;
+                    rootFolder.Name = normalizedSavePath;
 
-                PopulateFolder(rootFolder, savePath);
+                rootFolder.PropertyChanged += OnFolderExpandedChanged;
+
+                PopulateFolder(rootFolder, _savePath, expandedFolders);
                 
                 SidebarFolders.Add(rootFolder);
+                
+                var state = _stateStore.Load();
+                if (!string.IsNullOrEmpty(state.LastSelectedFile))
+                {
+                    var normalizedLastFile = NormalizePath(state.LastSelectedFile);
+                    var nodeToSelect = FindNodeByPath(SidebarFolders, normalizedLastFile);
+                    if (nodeToSelect != null)
+                    {
+                        SelectedNode = nodeToSelect;
+                    }
+                }
             }
         }
         catch (Exception)
@@ -274,7 +324,24 @@ public partial class EditorViewModel : ObservableObject
         }
     }
 
-    private static void PopulateFolder(ExplorerFolder folderNode, string path)
+    private ExplorerNode? FindNodeByPath(IEnumerable<ExplorerNode> nodes, string path)
+    {
+        foreach (var node in nodes)
+        {
+            if (string.Equals(node.FullPath, path, StringComparison.OrdinalIgnoreCase))
+                return node;
+                
+            if (node is ExplorerFolder folder)
+            {
+                var found = FindNodeByPath(folder.Items, path);
+                if (found != null)
+                    return found;
+            }
+        }
+        return null;
+    }
+
+    private void PopulateFolder(ExplorerFolder folderNode, string path, List<string> expandedFolders)
     {
         try
         {
@@ -284,8 +351,17 @@ public partial class EditorViewModel : ObservableObject
 
             foreach (var d in dirs)
             {
-                var subFolder = new ExplorerFolder { Name = Path.GetFileName(d), FullPath = d };
-                PopulateFolder(subFolder, d);
+                var normalizedD = NormalizePath(d);
+                var subFolder = new ExplorerFolder 
+                { 
+                    Name = Path.GetFileName(d), 
+                    FullPath = normalizedD,
+                    IsExpanded = expandedFolders.Any(p => string.Equals(p, normalizedD, StringComparison.OrdinalIgnoreCase))
+                };
+                
+                subFolder.PropertyChanged += OnFolderExpandedChanged;
+                
+                PopulateFolder(subFolder, d, expandedFolders);
                 
                 // Agregamos la carpeta solo si tiene contenido util
                 if (subFolder.Items.Count > 0)
@@ -301,12 +377,34 @@ public partial class EditorViewModel : ObservableObject
 
             foreach (var f in files)
             {
-                folderNode.Items.Add(new ExplorerFile { Name = Path.GetFileName(f), FullPath = f });
+                folderNode.Items.Add(new ExplorerFile { Name = Path.GetFileName(f), FullPath = NormalizePath(f) });
             }
         }
         catch (UnauthorizedAccessException)
         {
             // Ignorar carpetas sin permisos
+        }
+    }
+
+    private void OnFolderExpandedChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ExplorerNode.IsExpanded) && sender is ExplorerFolder folder)
+        {
+            var state = _stateStore.Load();
+            var normalizedPath = NormalizePath(folder.FullPath);
+            var exists = state.ExpandedFolders.Any(p => string.Equals(p, normalizedPath, StringComparison.OrdinalIgnoreCase));
+            
+            if (folder.IsExpanded)
+            {
+                if (!exists)
+                    state.ExpandedFolders.Add(normalizedPath);
+            }
+            else
+            {
+                if (exists)
+                    state.ExpandedFolders.RemoveAll(p => string.Equals(p, normalizedPath, StringComparison.OrdinalIgnoreCase));
+            }
+            _stateStore.Save(state);
         }
     }
 }

@@ -164,6 +164,11 @@
                     </Grid>
                     
                     <TreeView Grid.Row="1" ItemsSource="{Binding SidebarFolders}" SelectedItem="{Binding SelectedNode}" Background="Transparent" BorderThickness="0">
+                        <TreeView.ItemContainerTheme>
+                            <ControlTheme TargetType="TreeViewItem" BasedOn="{StaticResource {x:Type TreeViewItem}}" x:DataType="vm:ExplorerNode">
+                                <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                            </ControlTheme>
+                        </TreeView.ItemContainerTheme>
                         <TreeView.Styles>
                             <Style Selector="ToggleButton#PART_ExpandCollapseChevron">
                                 <Setter Property="Width" Value="18" />

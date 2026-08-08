@@ -38,8 +38,7 @@ internal static class Program
         }
 
         // Redirige logs a LocalAppData para evitar errores de permisos.
-        var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        var logDir = Path.Combine(appData, "Qapptia");
+        var logDir = Qapptia.Core.AppConstants.DefaultLogDirectory;
         
         using var _log = LoggingBootstrap.ConfigureGlobal(logDir, LogEventLevel.Information, "capture");
 
@@ -86,7 +85,7 @@ internal static class Program
         builder.Logging.ClearProviders();
         builder.Logging.AddSerilog(Log.Logger, dispose: false);
 
-        var configPath = Path.Combine(AppContext.BaseDirectory, "config.json");
+        var configPath = Qapptia.Core.AppConstants.DefaultConfigPath;
         builder.Services.AddSingleton<IConfigService>(_ => new JsonConfigService(configPath));
 
 #if WINDOWS

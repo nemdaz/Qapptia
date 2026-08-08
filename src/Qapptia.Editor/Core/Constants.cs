@@ -10,6 +10,9 @@ public static class Constants
     public const double ArrowWingLen = 25.0;
     public const double GripSize = 6.0;
     public const double DrawMinDistance = 8.0;
+    
+    // Persistence
+    public const string DrawingExtension = ".dibujo";
 
     // Palette Colors matches Legacy App
     public static readonly IReadOnlyList<Color> FavoriteColors = new[]

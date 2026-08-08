@@ -122,10 +122,9 @@ public sealed class FullscreenCaptureService : IFullscreenCaptureService
     private string BuildFilePath()
     {
         var cfg = _config.Current;
-        var baseDir = cfg.SavePath;
-        if (string.IsNullOrWhiteSpace(baseDir))
-            baseDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "Qapptia");
+        string baseDir = string.IsNullOrWhiteSpace(cfg.SavePath)
+            ? Qapptia.Core.AppConstants.DefaultSavePath
+            : cfg.SavePath;
 
         var now = DateTime.Now;
         var parts = new List<string> { baseDir };

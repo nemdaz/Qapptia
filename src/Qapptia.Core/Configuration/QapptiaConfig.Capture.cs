@@ -12,7 +12,7 @@ public sealed partial class QapptiaConfig
 
     [JsonPropertyName("save_path")]
     [Required]
-    public string SavePath { get; set; } = System.IO.Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.MyPictures), "Qapptia");
+    public string SavePath { get; set; } = Qapptia.Core.AppConstants.DefaultSavePath;
 
     [JsonPropertyName("filename_format")]
     [Required]

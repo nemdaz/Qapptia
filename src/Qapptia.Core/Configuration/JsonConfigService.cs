@@ -16,7 +16,8 @@ public sealed class JsonConfigService : IConfigService
     {
         WriteIndented = true,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        PropertyNamingPolicy = null
+        PropertyNamingPolicy = null,
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
 
     private readonly string _path;

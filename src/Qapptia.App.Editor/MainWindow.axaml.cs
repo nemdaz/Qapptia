@@ -12,7 +12,14 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        var vm = new EditorViewModel();
+        
+        var configService = new Qapptia.Core.Configuration.JsonConfigService(Qapptia.Core.AppConstants.DefaultConfigPath);
+        var savePath = string.IsNullOrWhiteSpace(configService.Current.SavePath) ? Qapptia.Core.AppConstants.DefaultSavePath : configService.Current.SavePath;
+        var stateStore = new Qapptia.Editor.Models.EditorStateStore(
+            savePath, 
+            Qapptia.Core.AppConstants.EditorStateFileName);
+        
+        var vm = new EditorViewModel(stateStore, savePath);
         DataContext = vm;
         vm.LoadSidebarImagesCommand.Execute(null);
 
