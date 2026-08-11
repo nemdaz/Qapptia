@@ -168,7 +168,7 @@ public partial class MainWindow : Window
                 rtb.Render(canvas);
                 
                 using var ms = new System.IO.MemoryStream();
-                rtb.Save(ms);
+                rtb.Save(ms, new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
                 
 #if WINDOWS
                 try

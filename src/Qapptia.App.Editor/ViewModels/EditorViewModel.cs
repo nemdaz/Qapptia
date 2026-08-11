@@ -338,6 +338,17 @@ public partial class EditorViewModel : ObservableObject
 
                 rootFolder.PropertyChanged += OnFolderExpandedChanged;
 
+                // Si se expandió por defecto (al estar vacía la lista), forzamos su guardado
+                if (rootFolder.IsExpanded && expandedFolders.Count == 0)
+                {
+                    var stateToUpdate = _stateStore.Load();
+                    if (!stateToUpdate.ExpandedFolders.Contains(normalizedSavePath))
+                    {
+                        stateToUpdate.ExpandedFolders.Add(normalizedSavePath);
+                        _stateStore.Save(stateToUpdate);
+                    }
+                }
+
                 PopulateFolder(rootFolder, _savePath, expandedFolders);
                 
                 SidebarFolders.Add(rootFolder);
