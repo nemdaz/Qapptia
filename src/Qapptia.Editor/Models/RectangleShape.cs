@@ -15,7 +15,7 @@ public class RectangleShape : VectorShape
             IsAntialias = true,
             Style = SkiaSharp.SKPaintStyle.Stroke,
             StrokeJoin = SkiaSharp.SKStrokeJoin.Round,
-            ImageFilter = SkiaSharp.SKImageFilter.CreateDropShadow(0, 1, 2, 2, SkiaSharp.SKColors.Black.WithAlpha(60))
+            ImageFilter = IsBurning ? Constants.CreateBurnedShadow() : Constants.CreateEditingShadow()
         };
         
         var rect = GetBoundingBox();

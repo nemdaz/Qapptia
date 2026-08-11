@@ -39,6 +39,14 @@ public class VectorStore : IDisposable
         }
     }
 
+    public void SetBurningMode(bool isBurning)
+    {
+        foreach (var shape in Shapes)
+        {
+            shape.IsBurning = isBurning;
+        }
+    }
+
     private static readonly JsonSerializerOptions s_jsonOptions = new() 
     { 
         WriteIndented = true,

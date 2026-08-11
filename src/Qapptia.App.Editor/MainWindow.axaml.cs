@@ -174,8 +174,12 @@ public partial class MainWindow : Window
             if (canvas != null && vm.ImageWidth > 0 && vm.ImageHeight > 0)
             {
                 vm.Store.ClearSelection(); // Deseleccionar antes de copiar para ocultar los nodos de edición
+                vm.Store.SetBurningMode(true);
+                canvas.InvalidateVisual();
                 var rtb = new Avalonia.Media.Imaging.RenderTargetBitmap(new PixelSize((int)vm.ImageWidth, (int)vm.ImageHeight));
                 rtb.Render(canvas);
+                vm.Store.SetBurningMode(false);
+                canvas.InvalidateVisual();
                 
                 using var ms = new System.IO.MemoryStream();
                 rtb.Save(ms, new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
@@ -269,6 +273,13 @@ public partial class MainWindow : Window
             }
 
             vm.Store.ClearSelection(); // Deseleccionar antes de guardar para ocultar los nodos de edición
+            
+            var canvas = this.FindControl<Qapptia.App.Editor.Controls.AnnotationCanvas>("MainCanvas");
+            if (canvas != null)
+            {
+                vm.Store.SetBurningMode(true);
+                canvas.InvalidateVisual();
+            }
 
             // 1. Crear backup comprimido (Save State)
             string parentDir = System.IO.Path.GetDirectoryName(filePath) ?? string.Empty;
@@ -294,14 +305,18 @@ public partial class MainWindow : Window
                     await originalStream.CopyToAsync(gzStream);
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                vm.ShowToast("Error creando backup del estado", Qapptia.Editor.Models.NotificationType.Error);
+                vm.ShowToast($"Error al crear backup: {ex.Message}", Qapptia.Editor.Models.NotificationType.Error);
+                if (canvas != null)
+                {
+                    vm.Store.SetBurningMode(false);
+                    canvas.InvalidateVisual();
+                }
                 return; // Abortamos para no destruir la imagen sin backup
             }
 
             // 2. Quemar Canvas
-            var canvas = this.FindControl<Control>("MainCanvas");
             if (canvas != null)
             {
                 try

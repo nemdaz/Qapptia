@@ -16,7 +16,7 @@ public class LineShape : VectorShape
             IsAntialias = true,
             Style = SkiaSharp.SKPaintStyle.Stroke,
             StrokeCap = SkiaSharp.SKStrokeCap.Round,
-            ImageFilter = SkiaSharp.SKImageFilter.CreateDropShadow(0, 1, 2, 2, SkiaSharp.SKColors.Black.WithAlpha(60))
+            ImageFilter = IsBurning ? Constants.CreateBurnedShadow() : Constants.CreateEditingShadow()
         };
         
         canvas.DrawLine((float)Start.X, (float)Start.Y, (float)End.X, (float)End.Y, paint);

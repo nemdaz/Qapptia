@@ -17,6 +17,9 @@ public abstract class VectorShape
     // Indica si el vector está seleccionado
     public bool IsSelected { get; set; }
 
+    // Indica si el vector se está quemando en la imagen (para ajustar sombras)
+    public bool IsBurning { get; set; }
+
     public abstract void RenderSkia(SkiaSharp.SKCanvas canvas);
     public abstract HandleType HitTest(Point point);
 
