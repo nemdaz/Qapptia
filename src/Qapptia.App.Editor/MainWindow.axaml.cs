@@ -25,6 +25,7 @@ public partial class MainWindow : Window
         vm.CopyRequested += Vm_CopyRequested;
         vm.CopyFileRequested += Vm_CopyFileRequested;
         vm.RotateRequested += Vm_RotateRequested;
+        vm.SaveRequested += Vm_SaveRequested;
 
         var copyBinding = new Avalonia.Input.KeyBinding
         {
@@ -172,6 +173,7 @@ public partial class MainWindow : Window
             var canvas = this.FindControl<Qapptia.App.Editor.Controls.AnnotationCanvas>("MainCanvas");
             if (canvas != null && vm.ImageWidth > 0 && vm.ImageHeight > 0)
             {
+                vm.Store.ClearSelection(); // Deseleccionar antes de copiar para ocultar los nodos de edición
                 var rtb = new Avalonia.Media.Imaging.RenderTargetBitmap(new PixelSize((int)vm.ImageWidth, (int)vm.ImageHeight));
                 rtb.Render(canvas);
                 
@@ -250,6 +252,86 @@ public partial class MainWindow : Window
                 vm.ShowToast("Error al copiar el archivo", Qapptia.Editor.Models.NotificationType.Error);
             }
 #endif
+        }
+    }
+
+    private async void Vm_SaveRequested(object? sender, EventArgs e)
+    {
+        if (DataContext is EditorViewModel vm && vm.SelectedNode is ExplorerFile fileNode)
+        {
+            string filePath = fileNode.FullPath;
+            string? guid = vm.CurrentImageId;
+            
+            if (string.IsNullOrEmpty(guid))
+            {
+                // Respaldo por si aún no se inicializó
+                guid = await Qapptia.Core.Services.ImageMetadataService.EnsureImageIdAsync(filePath);
+            }
+
+            vm.Store.ClearSelection(); // Deseleccionar antes de guardar para ocultar los nodos de edición
+
+            // 1. Crear backup comprimido (Save State)
+            string parentDir = System.IO.Path.GetDirectoryName(filePath) ?? string.Empty;
+            string fileName = System.IO.Path.GetFileName(filePath);
+            string dibujoDir = System.IO.Path.Combine(parentDir, Qapptia.Editor.Core.Constants.DrawingExtension);
+            
+            if (!System.IO.Directory.Exists(dibujoDir))
+            {
+                System.IO.Directory.CreateDirectory(dibujoDir);
+                System.IO.File.SetAttributes(dibujoDir, System.IO.File.GetAttributes(dibujoDir) | System.IO.FileAttributes.Hidden);
+            }
+
+            string timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
+            string backupName = $"{fileName}_{guid}_{timestamp}.bak.gz";
+            string backupPath = System.IO.Path.Combine(dibujoDir, backupName);
+
+            try
+            {
+                using (var originalStream = System.IO.File.OpenRead(filePath))
+                using (var backupStream = System.IO.File.Create(backupPath))
+                using (var gzStream = new System.IO.Compression.GZipStream(backupStream, System.IO.Compression.CompressionLevel.Optimal))
+                {
+                    await originalStream.CopyToAsync(gzStream);
+                }
+            }
+            catch (Exception)
+            {
+                vm.ShowToast("Error creando backup del estado", Qapptia.Editor.Models.NotificationType.Error);
+                return; // Abortamos para no destruir la imagen sin backup
+            }
+
+            // 2. Quemar Canvas
+            var canvas = this.FindControl<Control>("MainCanvas");
+            if (canvas != null)
+            {
+                try
+                {
+                    var bounds = canvas.Bounds;
+                    int width = Math.Max(1, (int)bounds.Width);
+                    int height = Math.Max(1, (int)bounds.Height);
+                    var rtb = new Avalonia.Media.Imaging.RenderTargetBitmap(new Avalonia.PixelSize(width, height), new Avalonia.Vector(96, 96));
+                    rtb.Render(canvas);
+
+                    // Escribir a MemoryStream primero para evitar crash en Skia si el archivo está bloqueado
+                    using (var ms = new System.IO.MemoryStream())
+                    {
+                        var options = new Avalonia.Media.Imaging.PngBitmapEncoderOptions();
+                        rtb.Save(ms, options);
+                        System.IO.File.WriteAllBytes(filePath, ms.ToArray()); // Sobrescribe la imagen de forma segura
+                    }
+
+                    // 3. Re-inyectar GUID
+                    await Qapptia.Core.Services.ImageMetadataService.AppendImageIdAsync(filePath, guid);
+
+                    // 4. Limpiar UI y recargar
+                    vm.OnBurnCompleted();
+                    vm.ShowToast("Imagen guardada y quemada", Qapptia.Editor.Models.NotificationType.Success);
+                }
+                catch (Exception)
+                {
+                    vm.ShowToast("Error al quemar la imagen", Qapptia.Editor.Models.NotificationType.Error);
+                }
+            }
         }
     }
 }

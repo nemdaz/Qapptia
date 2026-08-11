@@ -10,6 +10,8 @@ public static class AppConstants
     public const string EditorStateFileName = "editor_state.json";
     public const string ShortcutCopyClipboard = "Ctrl+C";
     public const string DrawingExtension = ".dibujo";
+    public const string MetadataTagStart = "<QapptiaID>";
+    public const string MetadataTagEnd = "</QapptiaID>";
 
     public static string DefaultConfigPath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),

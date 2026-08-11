@@ -140,6 +140,8 @@ public partial class EditorViewModel : ObservableObject
 
     private string? _currentImagePath;
 
+    public string? CurrentImageId { get; private set; }
+
     partial void OnSelectedNodeChanged(ExplorerNode? value)
     {
         if (!string.IsNullOrEmpty(_currentImagePath))
@@ -152,11 +154,18 @@ public partial class EditorViewModel : ObservableObject
         {
             try
             {
-                var bitmap = new Avalonia.Media.Imaging.Bitmap(file.FullPath);
+                byte[] fileBytes = System.IO.File.ReadAllBytes(file.FullPath);
+                var ms = new System.IO.MemoryStream(fileBytes);
+                var bitmap = new Avalonia.Media.Imaging.Bitmap(ms);
                 Store.SetBackground(bitmap);
                 
                 Store.LoadAnnotations(file.FullPath);
                 _currentImagePath = file.FullPath;
+                
+                System.Threading.Tasks.Task.Run(async () =>
+                {
+                    CurrentImageId = await Qapptia.Core.Services.ImageMetadataService.EnsureImageIdAsync(file.FullPath);
+                });
                 
                 ImageWidth = bitmap.Size.Width;
                 ImageHeight = bitmap.Size.Height;
@@ -241,6 +250,7 @@ public partial class EditorViewModel : ObservableObject
         }
     }
 
+    public event EventHandler? SaveRequested;
     public event EventHandler? CopyRequested;
     public event EventHandler? CopyFileRequested;
     public event EventHandler? RotateRequested;
@@ -282,7 +292,29 @@ public partial class EditorViewModel : ObservableObject
     [RelayCommand]
     public void Save()
     {
-        // TODO: Implement Save
+        if (SelectedNode is ExplorerFile)
+        {
+            SaveRequested?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    public void OnBurnCompleted()
+    {
+        if (string.IsNullOrEmpty(_currentImagePath)) return;
+        
+        // Limpiamos los vectores actuales (ya que se quemaron en la imagen original)
+        Store.Shapes.Clear();
+        Store.SaveAnnotations(_currentImagePath);
+        
+        // Forzamos la recarga de la imagen para que Avalonia la lea de nuevo
+        string path = _currentImagePath;
+        SelectedNode = null;
+        
+        var nodeToSelect = FindNodeByPath(SidebarFolders, NormalizePath(path));
+        if (nodeToSelect != null)
+        {
+            SelectedNode = nodeToSelect;
+        }
     }
 
     [RelayCommand]
