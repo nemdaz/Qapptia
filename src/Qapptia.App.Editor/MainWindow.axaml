@@ -4,6 +4,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:Qapptia.App.Editor.ViewModels"
         xmlns:controls="clr-namespace:Qapptia.App.Editor.Controls"
+        xmlns:core="clr-namespace:Qapptia.Core;assembly=Qapptia.Core"
         mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
         x:Class="Qapptia.App.Editor.MainWindow"
         x:DataType="vm:EditorViewModel"
@@ -145,7 +146,7 @@
                             <ScaleTransform ScaleX="{Binding ZoomLevel}" ScaleY="{Binding ZoomLevel}" />
                         </LayoutTransformControl.LayoutTransform>
                         <Border BoxShadow="0 4 16 0 #20000000">
-                            <controls:AnnotationCanvas Width="{Binding ImageWidth}" Height="{Binding ImageHeight}" ViewModel="{Binding}" />
+                            <controls:AnnotationCanvas x:Name="MainCanvas" Width="{Binding ImageWidth}" Height="{Binding ImageHeight}" ViewModel="{Binding}" />
                         </Border>
                     </LayoutTransformControl>
                 </Panel>
@@ -228,6 +229,17 @@
                     </StackPanel>
                 </StackPanel>
             </DockPanel>
+        </Border>
+
+        <!-- Toast Overlay -->
+        <Border Grid.Row="0" Grid.RowSpan="3"
+                HorizontalAlignment="Center" VerticalAlignment="Center"
+                Background="#333333" BorderBrush="{Binding ToastColor}" BorderThickness="2"
+                CornerRadius="8" Padding="20,12"
+                IsVisible="{Binding IsToastVisible}"
+                ZIndex="999"
+                BoxShadow="0 4 12 0 #80000000">
+            <TextBlock Text="{Binding ToastMessage}" Foreground="{Binding ToastColor}" FontSize="16" FontWeight="SemiBold" TextAlignment="Center" />
         </Border>
     </Grid>
 </Window>

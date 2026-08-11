@@ -69,6 +69,7 @@ public sealed class EditorStateStore
             string path = GetStatePath();
             try
             {
+                state.ExpandedFolders.Sort();
                 string json = JsonSerializer.Serialize(state, s_jsonOptions);
                 File.WriteAllText(path, json);
             }

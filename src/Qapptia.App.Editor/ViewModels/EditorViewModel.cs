@@ -205,7 +205,7 @@ public partial class EditorViewModel : ObservableObject
             ActiveTool = tool;
             
             var state = _stateStore.Load();
-            if (state.ToolFavoriteColors.TryGetValue(toolName, out var colorName) && 
+            if (state.ToolFavoriteColors.TryGetValue(toolName.ToLowerInvariant(), out var colorName) && 
                 Avalonia.Media.Color.TryParse(colorName, out var parsedColor))
             {
                 ActiveColor = parsedColor;
@@ -221,7 +221,7 @@ public partial class EditorViewModel : ObservableObject
         var state = _stateStore.Load();
         var colorHex = Qapptia.Editor.Core.Constants.GetColorName(ActiveColor);
         state.ActiveFavoriteColor = colorHex;
-        state.ToolFavoriteColors[ActiveTool.ToString()] = colorHex;
+        state.ToolFavoriteColors[ActiveTool.ToString().ToLowerInvariant()] = colorHex;
         _stateStore.Save(state);
         
         bool needsRedraw = false;
@@ -241,6 +241,42 @@ public partial class EditorViewModel : ObservableObject
         }
     }
 
+    public event EventHandler? CopyRequested;
+    public event EventHandler? RotateRequested;
+
+
+
+    [ObservableProperty]
+    private bool _isToastVisible;
+
+    [ObservableProperty]
+    private string _toastMessage = string.Empty;
+
+    [ObservableProperty]
+    private IBrush _toastColor = Brushes.Green;
+
+    public void ShowToast(string message, NotificationType type)
+    {
+        ToastMessage = message;
+        ToastColor = type switch
+        {
+            NotificationType.Success => Brushes.Green,
+            NotificationType.Error => Brushes.Red,
+            NotificationType.Warning => Brushes.Orange,
+            NotificationType.Info => Brushes.Cyan,
+            _ => Brushes.Green
+        };
+        IsToastVisible = true;
+
+        System.Threading.Tasks.Task.Delay(3000).ContinueWith(_ =>
+        {
+            Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                IsToastVisible = false;
+            });
+        });
+    }
+
 #pragma warning disable CA1822
     [RelayCommand]
     public void Save()
@@ -251,7 +287,7 @@ public partial class EditorViewModel : ObservableObject
     [RelayCommand]
     public void Copy()
     {
-        // TODO: Implement Copy (Image)
+        CopyRequested?.Invoke(this, EventArgs.Empty);
     }
 
     [RelayCommand]
@@ -263,7 +299,7 @@ public partial class EditorViewModel : ObservableObject
     [RelayCommand]
     public void Rotate()
     {
-        // TODO: Implement Rotate
+        RotateRequested?.Invoke(this, EventArgs.Empty);
     }
 
     [RelayCommand]
@@ -324,7 +360,7 @@ public partial class EditorViewModel : ObservableObject
         }
     }
 
-    private ExplorerNode? FindNodeByPath(IEnumerable<ExplorerNode> nodes, string path)
+    private static ExplorerNode? FindNodeByPath(IEnumerable<ExplorerNode> nodes, string path)
     {
         foreach (var node in nodes)
         {

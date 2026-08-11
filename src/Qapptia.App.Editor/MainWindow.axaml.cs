@@ -21,6 +21,17 @@ public partial class MainWindow : Window
         
         var vm = new EditorViewModel(stateStore, savePath);
         DataContext = vm;
+        
+        vm.CopyRequested += Vm_CopyRequested;
+        vm.RotateRequested += Vm_RotateRequested;
+
+        var copyBinding = new Avalonia.Input.KeyBinding
+        {
+            Gesture = Avalonia.Input.KeyGesture.Parse(Qapptia.Core.AppConstants.ShortcutCopyClipboard),
+            Command = vm.CopyCommand
+        };
+        this.KeyBindings.Add(copyBinding);
+
         vm.LoadSidebarImagesCommand.Execute(null);
 
         bool isInitialSizeSet = false;
@@ -143,6 +154,73 @@ public partial class MainWindow : Window
 
             // Mark as handled to prevent the ScrollViewer from scrolling up/down
             e.Handled = true;
+        }
+    }
+
+    private async void Vm_CopyRequested(object? sender, EventArgs e)
+    {
+        if (DataContext is EditorViewModel vm)
+        {
+            var canvas = this.FindControl<Qapptia.App.Editor.Controls.AnnotationCanvas>("MainCanvas");
+            if (canvas != null && vm.ImageWidth > 0 && vm.ImageHeight > 0)
+            {
+                var rtb = new Avalonia.Media.Imaging.RenderTargetBitmap(new PixelSize((int)vm.ImageWidth, (int)vm.ImageHeight));
+                rtb.Render(canvas);
+                
+                using var ms = new System.IO.MemoryStream();
+                rtb.Save(ms);
+                
+#if WINDOWS
+                try
+                {
+                    var clipboardService = new Qapptia.Platform.Windows.WindowsClipboardService(
+                        Microsoft.Extensions.Logging.Abstractions.NullLogger<Qapptia.Platform.Windows.WindowsClipboardService>.Instance);
+                    
+                    await clipboardService.SetImageAsync(ms.ToArray());
+                    vm.ShowToast("Imagen copiada al portapapeles", Qapptia.Editor.Models.NotificationType.Success);
+                }
+                catch (Exception)
+                {
+                    vm.ShowToast("Error al copiar al portapapeles", Qapptia.Editor.Models.NotificationType.Error);
+                }
+#endif
+            }
+        }
+    }
+
+    private void Vm_RotateRequested(object? sender, EventArgs e)
+    {
+        if (DataContext is EditorViewModel vm && vm.Store.BackgroundImage != null)
+        {
+            var oldBmp = vm.Store.BackgroundImage;
+            int w = oldBmp.PixelSize.Width;
+            int h = oldBmp.PixelSize.Height;
+            
+            var rtb = new Avalonia.Media.Imaging.RenderTargetBitmap(new PixelSize(h, w), new Vector(96, 96));
+            
+            using (var ctx = rtb.CreateDrawingContext())
+            {
+                var transform = Matrix.CreateTranslation(0, 0) * Matrix.CreateRotation(Math.PI / 2) * Matrix.CreateTranslation(h, 0);
+                
+                using (ctx.PushTransform(transform))
+                {
+                    ctx.DrawImage(oldBmp, new Rect(0, 0, w, h));
+                }
+            }
+            
+            vm.Store.SetBackground(rtb);
+            vm.ImageWidth = h;
+            vm.ImageHeight = w;
+            
+            foreach (var shape in vm.Store.Shapes)
+            {
+                var start = shape.Start;
+                var end = shape.End;
+                shape.Start = new Point(h - start.Y, start.X);
+                shape.End = new Point(h - end.Y, end.X);
+            }
+            
+            vm.ShowToast("Imagen rotada 90°", Qapptia.Editor.Models.NotificationType.Info);
         }
     }
 }

@@ -15,7 +15,7 @@ public sealed class EditorState
     public string? LastSelectedFile { get; set; }
 
     [JsonPropertyName("tool_fav_colors")]
-    public Dictionary<string, string> ToolFavoriteColors { get; set; } = new();
+    public SortedDictionary<string, string> ToolFavoriteColors { get; set; } = new();
 
     [JsonPropertyName("expanded_folders")]
     public List<string> ExpandedFolders { get; set; } = new();

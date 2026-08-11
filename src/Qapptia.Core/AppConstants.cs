@@ -8,6 +8,7 @@ public static class AppConstants
     public const string AppName = "Qapptia";
     public const string ConfigFileName = "config.json";
     public const string EditorStateFileName = "editor_state.json";
+    public const string ShortcutCopyClipboard = "Ctrl+C";
     public const string DrawingExtension = ".dibujo";
 
     public static string DefaultConfigPath => Path.Combine(
