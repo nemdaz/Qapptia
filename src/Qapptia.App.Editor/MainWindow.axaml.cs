@@ -77,6 +77,18 @@ public partial class MainWindow : Window
         
         // Registrar evento de rueda del ratón con Tunnel para interceptarlo antes que el ScrollViewer
         this.AddHandler(Avalonia.Input.InputElement.PointerWheelChangedEvent, EditorScrollViewer_PointerWheelChanged, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        this.AddHandler(Avalonia.Input.InputElement.KeyDownEvent, (s, e) =>
+        {
+            if (e.Key == Avalonia.Input.Key.Delete && !e.Handled && DataContext is EditorViewModel vm)
+            {
+                vm.Store.RemoveSelected();
+                e.Handled = true;
+                
+                var canvas = this.FindControl<Qapptia.App.Editor.Controls.AnnotationCanvas>("MainCanvas");
+                canvas?.InvalidateVisual();
+                vm.SaveCurrentAnnotations();
+            }
+        }, Avalonia.Interactivity.RoutingStrategies.Bubble);
         
         var zoomCombo = this.FindControl<ComboBox>("ZoomComboBox");
         if (zoomCombo != null)

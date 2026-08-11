@@ -30,6 +30,15 @@ public class VectorStore : IDisposable
     {
         Shapes.Remove(shape);
     }
+
+    public void RemoveSelected()
+    {
+        var selected = Shapes.Where(s => s.IsSelected).ToList();
+        foreach (var shape in selected)
+        {
+            Shapes.Remove(shape);
+        }
+    }
     
     public void ClearSelection()
     {
