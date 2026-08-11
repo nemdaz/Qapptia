@@ -1,0 +1,59 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Qapptia.App.Editor.ViewModels"
+             x:DataType="vm:EditorViewModel"
+             x:Class="Qapptia.App.Editor.Controls.TextEditorWidget">
+    
+    <Grid RowDefinitions="Auto,*">
+        <!-- Floating size control on top -->
+        <Border Grid.Row="0" Background="#CC141414" CornerRadius="4" Padding="2"
+                HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                Margin="0,0,0,4"
+                BoxShadow="0 2 8 0 #40000000">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+                <Button Content="-" Padding="4,2" FontSize="10" Click="DecreaseSize_Click" Background="Transparent" Foreground="White" />
+                <TextBlock Text="{Binding CurrentTextSize}" VerticalAlignment="Center" Foreground="White" MinWidth="20" TextAlignment="Center" />
+                <Button Content="+" Padding="4,2" FontSize="10" Click="IncreaseSize_Click" Background="Transparent" Foreground="White" />
+                
+                <!-- Info Icon -->
+                <PathIcon Data="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"
+                          Width="12" Height="12" Foreground="#888888"
+                          ToolTip.Tip="Usa Shift + Enter para saltos de linea"
+                          Margin="4,0,2,0" />
+            </StackPanel>
+        </Border>
+
+        <!-- Drag Handle / Container -->
+        <Border Grid.Row="1" Background="Transparent" 
+                BorderBrush="#888888"
+                BorderThickness="1"
+                CornerRadius="2"
+                PointerPressed="Container_PointerPressed"
+                PointerMoved="Container_PointerMoved"
+                PointerReleased="Container_PointerReleased">
+            
+            <Grid>
+                <!-- Fake Text Drop Shadow -->
+                <TextBlock Text="{Binding CurrentTextContent}"
+                           FontSize="{Binding CurrentTextSize}"
+                           Foreground="#A0000000"
+                           Margin="2,2,0,0" 
+                           Padding="5,4"
+                           TextWrapping="Wrap" />
+
+                <!-- Main TextBox -->
+                <TextBox Text="{Binding CurrentTextContent, Mode=TwoWay}"
+                         FontSize="{Binding CurrentTextSize}"
+                         Foreground="{Binding ActiveBrush}"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         KeyDown="TextBox_KeyDown"
+                         Padding="4"
+                         MinWidth="100"
+                         MinHeight="30" />
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

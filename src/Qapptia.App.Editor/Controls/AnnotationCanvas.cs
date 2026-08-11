@@ -141,10 +141,25 @@ public class AnnotationCanvas : Control
         if (_selectedShape != null)
         {
             _selectedShape.IsSelected = true;
+            if (_selectedShape is TextShape textShape && ViewModel.ActiveTool == ToolType.Text)
+            {
+                ViewModel.StartTextEditing(textShape);
+            }
         }
         else
         {
-            _currentDrawingShape = CreateShape(ViewModel.ActiveTool, point, ViewModel.ActiveColor);
+            if (ViewModel.ActiveTool == ToolType.Text)
+            {
+                var newTextShape = new TextShape { Start = point, End = point, Color = ViewModel.ActiveColor };
+                ViewModel.Store.AddShape(newTextShape);
+                newTextShape.IsSelected = true;
+                _selectedShape = newTextShape;
+                ViewModel.StartTextEditing(newTextShape);
+            }
+            else
+            {
+                _currentDrawingShape = CreateShape(ViewModel.ActiveTool, point, ViewModel.ActiveColor);
+            }
         }
 
         InvalidateVisual();

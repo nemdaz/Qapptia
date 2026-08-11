@@ -146,8 +146,15 @@
                         <LayoutTransformControl.LayoutTransform>
                             <ScaleTransform ScaleX="{Binding ZoomLevel}" ScaleY="{Binding ZoomLevel}" />
                         </LayoutTransformControl.LayoutTransform>
-                        <Border BoxShadow="0 4 16 0 #20000000">
-                            <controls:AnnotationCanvas x:Name="MainCanvas" Width="{Binding ImageWidth}" Height="{Binding ImageHeight}" ViewModel="{Binding}" />
+                        <Border BoxShadow="0 4 16 0 #20000000" Width="{Binding ImageWidth}" Height="{Binding ImageHeight}">
+                            <Panel>
+                                <controls:AnnotationCanvas x:Name="MainCanvas" ViewModel="{Binding}" />
+                                <Canvas>
+                                    <controls:TextEditorWidget x:Name="TextOverlay" IsVisible="{Binding IsEditingText}"
+                                                               Canvas.Left="{Binding CurrentTextBounds.X}"
+                                                               Canvas.Top="{Binding CurrentTextBounds.Y}" />
+                                </Canvas>
+                            </Panel>
                         </Border>
                     </LayoutTransformControl>
                 </Panel>

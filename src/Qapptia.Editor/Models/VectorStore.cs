@@ -95,6 +95,7 @@ public class VectorStore : IDisposable
                     "ellipse" => new EllipseShape(),
                     "line" => new LineShape(),
                     "highlighter" => new HighlighterShape(),
+                    "text" => new TextShape(),
                     _ => null
                 };
 
@@ -104,6 +105,21 @@ public class VectorStore : IDisposable
                     shape.End = new Point(dto.Coords[2], dto.Coords[3]);
                     
                     shape.Color = Qapptia.Editor.Core.Constants.ParseColorName(dto.Color);
+                    
+                    if (shape is TextShape textShape && dto.Payload != null)
+                    {
+                        if (dto.Payload.TryGetValue("text", out var textVal) && textVal is System.Text.Json.JsonElement textElem && textElem.ValueKind == System.Text.Json.JsonValueKind.String)
+                        {
+                            textShape.Text = textElem.GetString() ?? string.Empty;
+                        }
+                        if (dto.Payload.TryGetValue("text_size", out var sizeVal) && sizeVal is System.Text.Json.JsonElement sizeElem && sizeElem.ValueKind == System.Text.Json.JsonValueKind.Number)
+                        {
+                            if (sizeElem.TryGetInt32(out int size))
+                            {
+                                textShape.TextSize = size;
+                            }
+                        }
+                    }
                     
                     Shapes.Add(shape);
                 }
@@ -138,11 +154,17 @@ public class VectorStore : IDisposable
                 EllipseShape => "ellipse",
                 LineShape => "line",
                 HighlighterShape => "highlighter",
+                TextShape => "text",
                 _ => "unknown"
             },
             Id = s.Id.ToString(),
             Coords = new System.Collections.Generic.List<double> { s.Start.X, s.Start.Y, s.End.X, s.End.Y },
-            Color = Qapptia.Editor.Core.Constants.GetColorName(s.Color)
+            Color = Qapptia.Editor.Core.Constants.GetColorName(s.Color),
+            Payload = s is TextShape ts ? new System.Collections.Generic.Dictionary<string, object>
+            {
+                { "text", ts.Text },
+                { "text_size", ts.TextSize }
+            } : null
         }).ToList();
 
         try

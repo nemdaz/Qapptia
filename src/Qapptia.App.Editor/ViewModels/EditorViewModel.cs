@@ -60,7 +60,29 @@ public partial class EditorViewModel : ObservableObject
     private Color _activeColor;
 
     [ObservableProperty]
+    private SolidColorBrush _activeBrush = new(Avalonia.Media.Colors.Transparent);
+
+    [ObservableProperty]
     private float _zoomLevel = 1.0f;
+
+    [ObservableProperty]
+    private bool _isEditingText;
+
+    [ObservableProperty]
+    private string _currentTextContent = string.Empty;
+
+    [ObservableProperty]
+    private int _currentTextSize = 24;
+
+    [ObservableProperty]
+    private Avalonia.Rect _currentTextBounds;
+
+    public TextShape? EditingTextShape { get; private set; }
+    
+    partial void OnActiveColorChanged(Color value)
+    {
+        ActiveBrush = new SolidColorBrush(value);
+    }
     
     partial void OnZoomLevelChanged(float value)
     {
@@ -197,6 +219,46 @@ public partial class EditorViewModel : ObservableObject
         {
             Store.SaveAnnotations(_currentImagePath);
         }
+    }
+
+    public void StartTextEditing(TextShape shape)
+    {
+        EditingTextShape = shape;
+        CurrentTextContent = shape.Text;
+        CurrentTextSize = shape.TextSize;
+        
+        // Calculate bounds based on shape start point. TextEditorWidget handles overlay layout.
+        CurrentTextBounds = new Avalonia.Rect(shape.Start.X, shape.Start.Y, 200, 50); 
+        IsEditingText = true;
+    }
+
+    [RelayCommand]
+    public void CommitTextEditing()
+    {
+        if (!IsEditingText || EditingTextShape == null) return;
+        
+        EditingTextShape.Text = CurrentTextContent;
+        EditingTextShape.TextSize = CurrentTextSize;
+        IsEditingText = false;
+        EditingTextShape = null;
+        Store.ClearSelection();
+        SaveCurrentAnnotations();
+    }
+
+    [RelayCommand]
+    public void CancelTextEditing()
+    {
+        if (!IsEditingText) return;
+
+        // If the shape is new (empty text), we remove it.
+        if (EditingTextShape != null && string.IsNullOrWhiteSpace(EditingTextShape.Text))
+        {
+            Store.RemoveShape(EditingTextShape);
+        }
+        
+        IsEditingText = false;
+        EditingTextShape = null;
+        Store.ClearSelection();
     }
 
     public ObservableCollection<SolidColorBrush> AvailableColors { get; } = new(
