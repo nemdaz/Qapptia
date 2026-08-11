@@ -264,20 +264,21 @@ public partial class EditorViewModel : ObservableObject
     private string _toastMessage = string.Empty;
 
     [ObservableProperty]
-    private IBrush _toastColor = Brushes.Green;
+    private Qapptia.UI.Shared.Controls.ToastNotificationType _toastType = Qapptia.UI.Shared.Controls.ToastNotificationType.Success;
 
     public void ShowToast(string message, NotificationType type)
     {
         ToastMessage = message;
-        ToastColor = type switch
+        ToastType = type switch
         {
-            NotificationType.Success => Brushes.Green,
-            NotificationType.Error => Brushes.Red,
-            NotificationType.Warning => Brushes.Orange,
-            NotificationType.Info => Brushes.Cyan,
-            _ => Brushes.Green
+            NotificationType.Success => Qapptia.UI.Shared.Controls.ToastNotificationType.Success,
+            NotificationType.Error => Qapptia.UI.Shared.Controls.ToastNotificationType.Error,
+            NotificationType.Warning => Qapptia.UI.Shared.Controls.ToastNotificationType.Warning,
+            NotificationType.Info => Qapptia.UI.Shared.Controls.ToastNotificationType.Info,
+            _ => Qapptia.UI.Shared.Controls.ToastNotificationType.Success
         };
         IsToastVisible = true;
+
 
         System.Threading.Tasks.Task.Delay(3000).ContinueWith(_ =>
         {

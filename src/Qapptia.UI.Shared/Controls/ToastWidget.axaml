@@ -1,0 +1,16 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:Qapptia.UI.Shared.Controls"
+             x:Class="Qapptia.UI.Shared.Controls.ToastWidget">
+    
+    <Border Background="{Binding CurrentBackgroundBrush, RelativeSource={RelativeSource AncestorType=controls:ToastWidget}}" 
+            BorderBrush="{Binding CurrentBorderBrush, RelativeSource={RelativeSource AncestorType=controls:ToastWidget}}" 
+            BorderThickness="1"
+            CornerRadius="4" Padding="16,12"
+            IsVisible="{Binding IsOpen, RelativeSource={RelativeSource AncestorType=controls:ToastWidget}}"
+            BoxShadow="0 4 12 0 #20000000">
+        <TextBlock Text="{Binding Message, RelativeSource={RelativeSource AncestorType=controls:ToastWidget}}" 
+                   Foreground="{Binding CurrentForegroundBrush, RelativeSource={RelativeSource AncestorType=controls:ToastWidget}}" 
+                   FontSize="15" FontWeight="Regular" TextAlignment="Left" />
+    </Border>
+</UserControl>

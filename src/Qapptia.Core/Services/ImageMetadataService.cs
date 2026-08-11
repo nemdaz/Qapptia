@@ -76,7 +76,7 @@ public static class ImageMetadataService
             using var fs = new FileStream(filePath, FileMode.Append, FileAccess.Write, FileShare.Read);
             string payload = $"{AppConstants.MetadataTagStart}{id}{AppConstants.MetadataTagEnd}";
             var bytes = Encoding.UTF8.GetBytes(payload);
-            await fs.WriteAsync(bytes, 0, bytes.Length);
+            await fs.WriteAsync(bytes.AsMemory());
         }
         catch
         {

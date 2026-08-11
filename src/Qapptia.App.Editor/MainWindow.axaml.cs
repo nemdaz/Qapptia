@@ -281,7 +281,7 @@ public partial class MainWindow : Window
                 System.IO.File.SetAttributes(dibujoDir, System.IO.File.GetAttributes(dibujoDir) | System.IO.FileAttributes.Hidden);
             }
 
-            string timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
+            string timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss", System.Globalization.CultureInfo.InvariantCulture);
             string backupName = $"{fileName}_{guid}_{timestamp}.bak.gz";
             string backupPath = System.IO.Path.Combine(dibujoDir, backupName);
 
@@ -325,7 +325,7 @@ public partial class MainWindow : Window
 
                     // 4. Limpiar UI y recargar
                     vm.OnBurnCompleted();
-                    vm.ShowToast("Imagen guardada y quemada", Qapptia.Editor.Models.NotificationType.Success);
+                    vm.ShowToast("Imagen guardada", Qapptia.Editor.Models.NotificationType.Success);
                 }
                 catch (Exception)
                 {
