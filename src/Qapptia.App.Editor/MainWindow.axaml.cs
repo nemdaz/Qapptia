@@ -23,6 +23,7 @@ public partial class MainWindow : Window
         DataContext = vm;
         
         vm.CopyRequested += Vm_CopyRequested;
+        vm.CopyFileRequested += Vm_CopyFileRequested;
         vm.RotateRequested += Vm_RotateRequested;
 
         var copyBinding = new Avalonia.Input.KeyBinding
@@ -31,6 +32,13 @@ public partial class MainWindow : Window
             Command = vm.CopyCommand
         };
         this.KeyBindings.Add(copyBinding);
+
+        var copyFileBinding = new Avalonia.Input.KeyBinding
+        {
+            Gesture = Avalonia.Input.KeyGesture.Parse("Ctrl+F"),
+            Command = vm.CopyFileCommand
+        };
+        this.KeyBindings.Add(copyFileBinding);
 
         vm.LoadSidebarImagesCommand.Execute(null);
 
@@ -221,6 +229,27 @@ public partial class MainWindow : Window
             }
             
             vm.ShowToast("Imagen rotada 90°", Qapptia.Editor.Models.NotificationType.Info);
+        }
+    }
+
+    private async void Vm_CopyFileRequested(object? sender, EventArgs e)
+    {
+        if (DataContext is EditorViewModel vm && vm.SelectedNode is ExplorerFile fileNode)
+        {
+#if WINDOWS
+            try
+            {
+                var clipboardService = new Qapptia.Platform.Windows.WindowsClipboardService(
+                    Microsoft.Extensions.Logging.Abstractions.NullLogger<Qapptia.Platform.Windows.WindowsClipboardService>.Instance);
+                
+                await clipboardService.SetFileDropListAsync(new[] { fileNode.FullPath });
+                vm.ShowToast("Archivo copiado al portapapeles", Qapptia.Editor.Models.NotificationType.Success);
+            }
+            catch (Exception)
+            {
+                vm.ShowToast("Error al copiar el archivo", Qapptia.Editor.Models.NotificationType.Error);
+            }
+#endif
         }
     }
 }

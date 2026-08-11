@@ -242,6 +242,7 @@ public partial class EditorViewModel : ObservableObject
     }
 
     public event EventHandler? CopyRequested;
+    public event EventHandler? CopyFileRequested;
     public event EventHandler? RotateRequested;
 
 
@@ -293,7 +294,10 @@ public partial class EditorViewModel : ObservableObject
     [RelayCommand]
     public void CopyFile()
     {
-        // TODO: Implement Copy File
+        if (SelectedNode is ExplorerFile)
+        {
+            CopyFileRequested?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     [RelayCommand]

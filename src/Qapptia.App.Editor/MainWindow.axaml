@@ -43,10 +43,10 @@
                           Stroke="#d4d4d4" StrokeThickness="1.5" StrokeJoin="Round" StrokeLineCap="Round" Fill="Transparent" 
                           Width="16" Height="16" Stretch="Uniform" />
                 </Button>
-                <Button Command="{Binding CopyFileCommand}" ToolTip.Tip="Copiar archivo" Background="Transparent" Padding="4">
+                <Button Command="{Binding CopyFileCommand}" ToolTip.Tip="Copiar archivo (Ctrl+F)" Background="Transparent" Padding="4">
                     <PathIcon Data="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8V4h5v5h5v11z" Foreground="#d4d4d4" Width="16" Height="16"/>
                 </Button>
-                <Button Command="{Binding CopyCommand}" ToolTip.Tip="Copiar captura al portapapeles" Background="Transparent" Padding="4">
+                <Button Command="{Binding CopyCommand}" ToolTip.Tip="Copiar captura al portapapeles (Ctrl+C)" Background="Transparent" Padding="4">
                     <PathIcon Data="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" Foreground="#d4d4d4" Width="16" Height="16"/>
                 </Button>
                 
