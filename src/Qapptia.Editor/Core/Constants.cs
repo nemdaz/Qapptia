@@ -19,6 +19,15 @@ public static class Constants
     public static readonly Thickness TextToolBorderThickness = new(1.0);
     public const double TextToolOffset = 5.0; // TextToolPadding (4) + TextToolBorderThickness (1)
 
+    // Contornos de texto (8 direcciones 360° - Estándar Legacy)
+    public static readonly Color TextToolDarkContourColor = Color.FromArgb(90, 0, 0, 0); // 35% alpha
+    public static readonly Color TextToolLightContourColor = Color.FromArgb(72, 255, 255, 255); // 28% alpha
+    public static readonly IBrush TextToolDarkContourBrush = new SolidColorBrush(TextToolDarkContourColor);
+    public static readonly IBrush TextToolLightContourBrush = new SolidColorBrush(TextToolLightContourColor);
+
+    public static readonly SkiaSharp.SKColor TextToolDarkContourSKColor = new(0, 0, 0, 90);
+    public static readonly SkiaSharp.SKColor TextToolLightContourSKColor = new(255, 255, 255, 72);
+
     // Persistence
     public const string DrawingExtension = ".dibujo";
 

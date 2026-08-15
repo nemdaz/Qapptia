@@ -10,6 +10,13 @@ public class TextShape : VectorShape
 {
     private static readonly string[] s_lineSeparators = { "\r\n", "\r", "\n" };
 
+    private static readonly (float dx, float dy)[] s_contourOffsets = new[]
+    {
+        (-1f, -1f), (0f, -1f), (1f, -1f),
+        (-1f,  0f),            (1f,  0f),
+        (-1f,  1f), (0f,  1f), (1f,  1f)
+    };
+
     public string Text { get; set; } = string.Empty;
     public int TextSize { get; set; } = 24;
 
@@ -22,23 +29,58 @@ public class TextShape : VectorShape
         font.Edging = SKFontEdging.SubpixelAntialias;
         font.GetFontMetrics(out var metrics);
 
-        using var paint = new SKPaint
+        using var paintLight = new SKPaint
+        {
+            Color = Constants.TextToolLightContourSKColor,
+            IsAntialias = true
+        };
+
+        using var paintDark = new SKPaint
+        {
+            Color = Constants.TextToolDarkContourSKColor,
+            IsAntialias = true
+        };
+
+        using var paintMain = new SKPaint
         {
             Color = new SKColor(Color.R, Color.G, Color.B, Color.A),
-            IsAntialias = true,
-            ImageFilter = IsBurning ? Constants.CreateBurnedShadow() : Constants.CreateEditingShadow()
+            IsAntialias = true
         };
 
         var lines = Text.Split(s_lineSeparators, StringSplitOptions.None);
         
-        // Desfase calibrado unificado
-        float offsetX = (float)(Start.X + Constants.TextToolOffset);
-        float y = (float)(Start.Y + Constants.TextToolOffset - metrics.Ascent);
-        
+        // Coordenadas base
+        float baseOffsetX = (float)(Start.X + Constants.TextToolOffset);
+        float startY = (float)(Start.Y + Constants.TextToolOffset - metrics.Ascent);
+
+        // 1. Contorno claro (8 direcciones para halo suave 360° en fondos oscuros)
+        foreach (var (dx, dy) in s_contourOffsets)
+        {
+            float y = startY + dy;
+            foreach (var line in lines)
+            {
+                canvas.DrawText(line, baseOffsetX + dx, y, SKTextAlign.Left, font, paintLight);
+                y += font.Spacing;
+            }
+        }
+
+        // 2. Contorno oscuro (8 direcciones para nitidez suave 360° en fondos claros)
+        foreach (var (dx, dy) in s_contourOffsets)
+        {
+            float y = startY + dy;
+            foreach (var line in lines)
+            {
+                canvas.DrawText(line, baseOffsetX + dx, y, SKTextAlign.Left, font, paintDark);
+                y += font.Spacing;
+            }
+        }
+
+        // 3. Capa principal de texto
+        float mainY = startY;
         foreach (var line in lines)
         {
-            canvas.DrawText(line, offsetX, y, SKTextAlign.Left, font, paint);
-            y += font.Spacing;
+            canvas.DrawText(line, baseOffsetX, mainY, SKTextAlign.Left, font, paintMain);
+            mainY += font.Spacing;
         }
     }
 
