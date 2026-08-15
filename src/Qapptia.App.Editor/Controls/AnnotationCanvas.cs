@@ -45,7 +45,19 @@ public class AnnotationCanvas : Control
         InvalidateVisual();
     }
 
+    private enum CanvasInteraction
+    {
+        None,
+        CommittingText,
+        DrawingShape,
+        ManipulatingShape,
+        CreatingText
+    }
+
     private Point _lastMousePos;
+    private Point _pointerPressedPoint;
+    private bool _hasDragged;
+    private CanvasInteraction _interaction = CanvasInteraction.None;
     private HandleType _activeHandle = HandleType.None;
     private VectorShape? _currentDrawingShape;
     private VectorShape? _selectedShape;
@@ -123,12 +135,16 @@ public class AnnotationCanvas : Control
         // Confirmar texto al hacer clic fuera
         if (ViewModel.IsEditingText)
         {
-            ViewModel.CommitTextEditingCommand.Execute(null);
+            _interaction = CanvasInteraction.CommittingText;
+            ViewModel.CommitTextEditing();
+            InvalidateVisual();
             return;
         }
 
         var point = e.GetPosition(this);
         _lastMousePos = point;
+        _pointerPressedPoint = point;
+        _hasDragged = false;
         Focus();
 
         HandleType hitHandle = HandleType.None;
@@ -153,25 +169,27 @@ public class AnnotationCanvas : Control
         if (_selectedShape != null)
         {
             _selectedShape.IsSelected = true;
-            // Editar texto con herramienta Texto o doble clic con cualquier herramienta
-            if (_selectedShape is TextShape textShape && (ViewModel.ActiveTool == ToolType.Text || e.ClickCount >= 2))
+            // Doble clic sobre texto con cualquier herramienta abre edición inmediata
+            if (_selectedShape is TextShape textShape && e.ClickCount >= 2)
             {
+                _interaction = CanvasInteraction.None;
                 ViewModel.ActiveTool = ToolType.Text;
                 ViewModel.StartTextEditing(textShape);
+            }
+            else
+            {
+                _interaction = CanvasInteraction.ManipulatingShape;
             }
         }
         else
         {
             if (ViewModel.ActiveTool == ToolType.Text)
             {
-                var newTextShape = new TextShape { Start = point, End = point, Color = ViewModel.ActiveColor };
-                ViewModel.Store.AddShape(newTextShape);
-                newTextShape.IsSelected = true;
-                _selectedShape = newTextShape;
-                ViewModel.StartTextEditing(newTextShape);
+                _interaction = CanvasInteraction.CreatingText;
             }
             else
             {
+                _interaction = CanvasInteraction.DrawingShape;
                 _currentDrawingShape = CreateShape(ViewModel.ActiveTool, point, ViewModel.ActiveColor);
             }
         }
@@ -186,7 +204,18 @@ public class AnnotationCanvas : Control
 
         var point = e.GetPosition(this);
 
-        if (_currentDrawingShape != null)
+        // Detectar si el usuario comenzó a arrastrar
+        if (!_hasDragged && e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        {
+            double distSq = (point.X - _pointerPressedPoint.X) * (point.X - _pointerPressedPoint.X) +
+                            (point.Y - _pointerPressedPoint.Y) * (point.Y - _pointerPressedPoint.Y);
+            if (distSq > 9) // Umbral de 3 píxeles
+            {
+                _hasDragged = true;
+            }
+        }
+
+        if (_interaction == CanvasInteraction.DrawingShape && _currentDrawingShape != null)
         {
             if (e.KeyModifiers.HasFlag(Avalonia.Input.KeyModifiers.Shift) &&
                 (_currentDrawingShape is RectangleShape || _currentDrawingShape is EllipseShape))
@@ -209,7 +238,7 @@ public class AnnotationCanvas : Control
             }
             InvalidateVisual();
         }
-        else if (_selectedShape != null && e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        else if (_interaction == CanvasInteraction.ManipulatingShape && _selectedShape != null && e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
         {
             double dx = point.X - _lastMousePos.X;
             double dy = point.Y - _lastMousePos.Y;
@@ -291,34 +320,73 @@ public class AnnotationCanvas : Control
     {
         base.OnPointerReleased(e);
         bool shouldSave = false;
-        
-        if (_currentDrawingShape != null)
-        {
-            double dx = _currentDrawingShape.End.X - _currentDrawingShape.Start.X;
-            double dy = _currentDrawingShape.End.Y - _currentDrawingShape.Start.Y;
-            double distance = Math.Sqrt(dx * dx + dy * dy);
 
-            if (distance >= Qapptia.Editor.Core.Constants.DrawMinDistance)
-            {
-                ViewModel?.Store.AddShape(_currentDrawingShape);
-                
-                if (ViewModel != null)
+        switch (_interaction)
+        {
+            case CanvasInteraction.DrawingShape:
+                if (_currentDrawingShape != null)
                 {
-                    ViewModel.Store.ClearSelection();
-                    _selectedShape = _currentDrawingShape;
-                    _selectedShape.IsSelected = true;
+                    double dx = _currentDrawingShape.End.X - _currentDrawingShape.Start.X;
+                    double dy = _currentDrawingShape.End.Y - _currentDrawingShape.Start.Y;
+                    double distance = Math.Sqrt(dx * dx + dy * dy);
+
+                    if (distance >= Qapptia.Editor.Core.Constants.DrawMinDistance)
+                    {
+                        ViewModel?.Store.AddShape(_currentDrawingShape);
+                        
+                        if (ViewModel != null)
+                        {
+                            ViewModel.Store.ClearSelection();
+                            _selectedShape = _currentDrawingShape;
+                            _selectedShape.IsSelected = true;
+                            shouldSave = true;
+                        }
+                    }
+                    
+                    _currentDrawingShape = null;
+                    InvalidateVisual();
+                }
+                break;
+
+            case CanvasInteraction.ManipulatingShape:
+                if (!_hasDragged && ViewModel != null)
+                {
+                    // Clic limpio sobre forma existente
+                    if (_selectedShape is TextShape textShape && ViewModel.ActiveTool == ToolType.Text)
+                    {
+                        ViewModel.StartTextEditing(textShape);
+                    }
+                }
+                else if (_hasDragged)
+                {
+                    // Arrastre completado (mover o redimensionar)
                     shouldSave = true;
                 }
-            }
-            
-            _currentDrawingShape = null;
-            InvalidateVisual();
-        }
-        else if (_activeHandle != HandleType.None)
-        {
-            shouldSave = true;
+                break;
+
+            case CanvasInteraction.CreatingText:
+                if (!_hasDragged && ViewModel != null)
+                {
+                    // Clic limpio en área vacía con herramienta Texto
+                    var newTextShape = new TextShape 
+                    { 
+                        Start = _pointerPressedPoint, 
+                        End = _pointerPressedPoint, 
+                        Color = ViewModel.ActiveColor 
+                    };
+                    ViewModel.Store.AddShape(newTextShape);
+                    newTextShape.IsSelected = true;
+                    _selectedShape = newTextShape;
+                    ViewModel.StartTextEditing(newTextShape);
+                }
+                break;
+
+            case CanvasInteraction.CommittingText:
+                // El clic fuera solo cerró la edición previa
+                break;
         }
 
+        _interaction = CanvasInteraction.None;
         _activeHandle = HandleType.None;
 
         if (shouldSave)

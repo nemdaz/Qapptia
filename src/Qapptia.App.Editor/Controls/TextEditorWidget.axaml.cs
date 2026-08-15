@@ -101,20 +101,21 @@ public partial class TextEditorWidget : UserControl
             double dx = currentPoint.X - _dragStartPoint.X;
             double dy = currentPoint.Y - _dragStartPoint.Y;
 
-            var oldBounds = vm.CurrentTextBounds;
-            vm.CurrentTextBounds = new Avalonia.Rect(
-                oldBounds.X + dx,
-                oldBounds.Y + dy,
-                oldBounds.Width,
-                oldBounds.Height);
-
-            // Sincronizar posición del vector
+            // Sincronizar posición del vector y overlay
             if (vm.EditingTextShape != null)
             {
-                vm.EditingTextShape.Start = new Avalonia.Point(
+                var newStart = new Avalonia.Point(
                     vm.EditingTextShape.Start.X + dx,
                     vm.EditingTextShape.Start.Y + dy);
-                vm.EditingTextShape.End = vm.EditingTextShape.Start;
+                
+                vm.EditingTextShape.Start = newStart;
+                vm.EditingTextShape.End = newStart;
+
+                vm.CurrentTextBounds = new Avalonia.Rect(
+                    newStart.X,
+                    newStart.Y - 32,
+                    vm.CurrentTextBounds.Width,
+                    vm.CurrentTextBounds.Height);
             }
 
             _dragStartPoint = currentPoint;

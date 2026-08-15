@@ -262,7 +262,7 @@ public partial class EditorViewModel : ObservableObject
         CurrentTextContent = shape.Text;
         CurrentTextSize = shape.TextSize;
         
-        // Posición del widget (desfase 32px para la barra superior)
+        // Posición del widget (desfase 32px para la barra de herramientas Fila 0)
         CurrentTextBounds = new Avalonia.Rect(shape.Start.X, shape.Start.Y - 32, 200, 50); 
         IsEditingText = true;
         RequestRedraw?.Invoke(this, EventArgs.Empty);

@@ -18,6 +18,8 @@ public class TextShape : VectorShape
         if (string.IsNullOrWhiteSpace(Text)) return;
 
         using var font = new SKFont(SKTypeface.Default, TextSize);
+        font.GetFontMetrics(out var metrics);
+
         using var paint = new SKPaint
         {
             Color = new SKColor(Color.R, Color.G, Color.B, Color.A),
@@ -27,16 +29,14 @@ public class TextShape : VectorShape
 
         var lines = Text.Split(s_lineSeparators, StringSplitOptions.None);
         
-        // Desfase para coincidir con TextBox
+        // Desfase para coincidir con el TextBox (1px borde + 4px padding)
         float offsetX = (float)Start.X + 5f;
-        
-        // Línea base del texto
-        float y = (float)Start.Y + TextSize + 4f; 
+        float y = (float)Start.Y + 5f - metrics.Ascent;
         
         foreach (var line in lines)
         {
             canvas.DrawText(line, offsetX, y, SKTextAlign.Left, font, paint);
-            y += TextSize * 1.25f; // Interlineado
+            y += font.Spacing;
         }
     }
 
@@ -48,14 +48,14 @@ public class TextShape : VectorShape
 
         var lines = Text.Split(s_lineSeparators, StringSplitOptions.None);
         float maxWidth = 0;
-        float totalHeight = 0;
 
         foreach (var line in lines)
         {
             float width = font.MeasureText(line);
             if (width > maxWidth) maxWidth = width;
-            totalHeight += TextSize * 1.25f;
         }
+
+        float totalHeight = lines.Length * font.Spacing;
 
         // Área de selección
         var rect = new Rect(Start.X, Start.Y, maxWidth + 10, totalHeight + 10);
