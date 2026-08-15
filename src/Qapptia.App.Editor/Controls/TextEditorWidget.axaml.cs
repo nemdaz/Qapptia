@@ -18,23 +18,37 @@ public partial class TextEditorWidget : UserControl
         AvaloniaXamlLoader.Load(this);
     }
 
+    protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == IsVisibleProperty && IsVisible)
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                var textBox = this.FindControl<TextBox>("EditTextBox");
+                textBox?.Focus();
+                if (textBox != null && !string.IsNullOrEmpty(textBox.Text))
+                {
+                    textBox.CaretIndex = textBox.Text.Length;
+                }
+            }, Avalonia.Threading.DispatcherPriority.Loaded);
+        }
+    }
+
     private void TextBox_KeyDown(object? sender, KeyEventArgs e)
     {
         if (e.Key == Key.Enter)
         {
             if (e.KeyModifiers.HasFlag(KeyModifiers.Shift))
             {
-                // Shift+Enter: let the TextBox handle the new line
+                // Salto de línea
                 return;
             }
             
-            // Enter alone: Commit text editing
+            // Confirmar edición
             if (DataContext is EditorViewModel vm)
             {
                 vm.CommitTextEditingCommand.Execute(null);
-                
-                var canvas = this.FindLogicalAncestorOfType<AnnotationCanvas>();
-                canvas?.InvalidateVisual();
             }
             e.Handled = true;
         }
@@ -43,23 +57,9 @@ public partial class TextEditorWidget : UserControl
             if (DataContext is EditorViewModel vm)
             {
                 vm.CancelTextEditingCommand.Execute(null);
-                
-                var canvas = this.FindLogicalAncestorOfType<AnnotationCanvas>();
-                canvas?.InvalidateVisual();
             }
             e.Handled = true;
         }
-    }
-    
-    private T? FindLogicalAncestorOfType<T>() where T : class
-    {
-        var current = this.Parent;
-        while (current != null)
-        {
-            if (current is T t) return t;
-            current = current.Parent;
-        }
-        return null;
     }
 
     private void IncreaseSize_Click(object? sender, RoutedEventArgs e)
@@ -108,13 +108,13 @@ public partial class TextEditorWidget : UserControl
                 oldBounds.Width,
                 oldBounds.Height);
 
-            // Update underlying shape so it stays in sync when committed
+            // Sincronizar posición del vector
             if (vm.EditingTextShape != null)
             {
                 vm.EditingTextShape.Start = new Avalonia.Point(
                     vm.EditingTextShape.Start.X + dx,
                     vm.EditingTextShape.Start.Y + dy);
-                vm.EditingTextShape.End = vm.EditingTextShape.Start; // Just to be safe
+                vm.EditingTextShape.End = vm.EditingTextShape.Start;
             }
 
             _dragStartPoint = currentPoint;

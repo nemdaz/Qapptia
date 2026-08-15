@@ -53,6 +53,7 @@ public class AnnotationCanvas : Control
     public AnnotationCanvas()
     {
         ClipToBounds = true;
+        Focusable = true;
     }
 
     public override void Render(DrawingContext context)
@@ -69,7 +70,7 @@ public class AnnotationCanvas : Control
         }
 
         // Delegar el dibujado de vectores a SkiaSharp
-        context.Custom(new SkiaCanvasDrawOperation(new Rect(Bounds.Size), ViewModel.Store.Shapes, _currentDrawingShape));
+        context.Custom(new SkiaCanvasDrawOperation(new Rect(Bounds.Size), ViewModel.Store.Shapes, _currentDrawingShape, ViewModel.EditingTextShape));
     }
 
     private sealed class SkiaCanvasDrawOperation : Avalonia.Rendering.SceneGraph.ICustomDrawOperation
@@ -77,12 +78,14 @@ public class AnnotationCanvas : Control
         private readonly Rect _bounds;
         private readonly System.Collections.Generic.IEnumerable<VectorShape> _shapes;
         private readonly VectorShape? _currentShape;
+        private readonly VectorShape? _editingShape;
 
-        public SkiaCanvasDrawOperation(Rect bounds, System.Collections.Generic.IEnumerable<VectorShape> shapes, VectorShape? currentShape)
+        public SkiaCanvasDrawOperation(Rect bounds, System.Collections.Generic.IEnumerable<VectorShape> shapes, VectorShape? currentShape, VectorShape? editingShape)
         {
             _bounds = bounds;
             _shapes = shapes;
             _currentShape = currentShape;
+            _editingShape = editingShape;
         }
 
         public Rect Bounds => _bounds;
@@ -102,6 +105,7 @@ public class AnnotationCanvas : Control
             
             foreach (var shape in _shapes)
             {
+                if (shape == _editingShape) continue; // Ocultar vector en edición
                 shape.RenderSkia(canvas);
             }
             
@@ -116,8 +120,16 @@ public class AnnotationCanvas : Control
         base.OnPointerPressed(e);
         if (ViewModel == null) return;
 
+        // Confirmar texto al hacer clic fuera
+        if (ViewModel.IsEditingText)
+        {
+            ViewModel.CommitTextEditingCommand.Execute(null);
+            return;
+        }
+
         var point = e.GetPosition(this);
         _lastMousePos = point;
+        Focus();
 
         HandleType hitHandle = HandleType.None;
         VectorShape? hitShape = null;
@@ -141,8 +153,10 @@ public class AnnotationCanvas : Control
         if (_selectedShape != null)
         {
             _selectedShape.IsSelected = true;
-            if (_selectedShape is TextShape textShape && ViewModel.ActiveTool == ToolType.Text)
+            // Editar texto con herramienta Texto o doble clic con cualquier herramienta
+            if (_selectedShape is TextShape textShape && (ViewModel.ActiveTool == ToolType.Text || e.ClickCount >= 2))
             {
+                ViewModel.ActiveTool = ToolType.Text;
                 ViewModel.StartTextEditing(textShape);
             }
         }

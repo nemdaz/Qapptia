@@ -11,6 +11,9 @@ public sealed class EditorState
     [JsonPropertyName("active_fav_color")]
     public string ActiveFavoriteColor { get; set; } = "#00FF00";
 
+    [JsonPropertyName("active_tool")]
+    public string ActiveTool { get; set; } = "Arrow";
+
     [JsonPropertyName("last_selected_file")]
     public string? LastSelectedFile { get; set; }
 

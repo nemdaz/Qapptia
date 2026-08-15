@@ -74,6 +74,15 @@ public partial class MainWindow : Window
                 }
             }
         };
+
+        // Guardar edición pendiente al cerrar ventana
+        this.Closing += (s, e) =>
+        {
+            if (DataContext is EditorViewModel vm && vm.IsEditingText)
+            {
+                vm.CommitTextEditing();
+            }
+        };
         
         // Registrar evento de rueda del ratón con Tunnel para interceptarlo antes que el ScrollViewer
         this.AddHandler(Avalonia.Input.InputElement.PointerWheelChangedEvent, EditorScrollViewer_PointerWheelChanged, Avalonia.Interactivity.RoutingStrategies.Tunnel);
@@ -81,6 +90,8 @@ public partial class MainWindow : Window
         {
             if (e.Key == Avalonia.Input.Key.Delete && !e.Handled && DataContext is EditorViewModel vm)
             {
+                if (vm.IsEditingText) return; // No borrar si está editando texto
+                
                 vm.Store.RemoveSelected();
                 e.Handled = true;
                 
@@ -88,7 +99,7 @@ public partial class MainWindow : Window
                 canvas?.InvalidateVisual();
                 vm.SaveCurrentAnnotations();
             }
-        }, Avalonia.Interactivity.RoutingStrategies.Bubble);
+        }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
         
         var zoomCombo = this.FindControl<ComboBox>("ZoomComboBox");
         if (zoomCombo != null)

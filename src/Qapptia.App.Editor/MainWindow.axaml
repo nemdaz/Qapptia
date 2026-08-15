@@ -72,30 +72,30 @@
                 <Separator Width="1" Background="#3e3e42" Margin="8,0" />
 
                 <!-- Herramientas -->
-                <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" Command="{Binding SelectToolCommand}" CommandParameter="Line" GroupName="Tools" Background="Transparent" ToolTip.Tip="Línea" Padding="4">
+                <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" IsChecked="{Binding IsLineToolActive, Mode=OneWay}" Command="{Binding SelectToolCommand}" CommandParameter="Line" GroupName="Tools" Background="Transparent" ToolTip.Tip="Línea" Padding="4">
                     <PathIcon Data="M4 11h16v2H4z" Foreground="#d4d4d4" Width="16" Height="16">
                         <PathIcon.RenderTransform>
                             <RotateTransform Angle="-45" />
                         </PathIcon.RenderTransform>
                     </PathIcon>
                 </RadioButton>
-                <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" Command="{Binding SelectToolCommand}" CommandParameter="Arrow" GroupName="Tools" IsChecked="True" Background="Transparent" ToolTip.Tip="Flecha" Padding="4">
+                <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" IsChecked="{Binding IsArrowToolActive, Mode=OneWay}" Command="{Binding SelectToolCommand}" CommandParameter="Arrow" GroupName="Tools" Background="Transparent" ToolTip.Tip="Flecha" Padding="4">
                     <PathIcon Data="M16.01 11H4v2h12.01v3L20 12l-3.99-4v3z" Foreground="#d4d4d4" Width="16" Height="16">
                         <PathIcon.RenderTransform>
                             <RotateTransform Angle="-45" />
                         </PathIcon.RenderTransform>
                     </PathIcon>
                 </RadioButton>
-                <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" Command="{Binding SelectToolCommand}" CommandParameter="Ellipse" GroupName="Tools" Background="Transparent" ToolTip.Tip="Elipse" Padding="4">
+                <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" IsChecked="{Binding IsEllipseToolActive, Mode=OneWay}" Command="{Binding SelectToolCommand}" CommandParameter="Ellipse" GroupName="Tools" Background="Transparent" ToolTip.Tip="Elipse" Padding="4">
                     <PathIcon Data="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" Foreground="#d4d4d4" Width="16" Height="16"/>
                 </RadioButton>
-                <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" Command="{Binding SelectToolCommand}" CommandParameter="Rectangle" GroupName="Tools" Background="Transparent" ToolTip.Tip="Rectángulo" Padding="4">
+                <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" IsChecked="{Binding IsRectangleToolActive, Mode=OneWay}" Command="{Binding SelectToolCommand}" CommandParameter="Rectangle" GroupName="Tools" Background="Transparent" ToolTip.Tip="Rectángulo" Padding="4">
                     <PathIcon Data="M4 4v16h16V4H4zm14 14H6V6h12v12z" Foreground="#d4d4d4" Width="16" Height="16"/>
                 </RadioButton>
-                <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" Command="{Binding SelectToolCommand}" CommandParameter="Highlighter" GroupName="Tools" Background="Transparent" ToolTip.Tip="Resaltador" Padding="4">
+                <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" IsChecked="{Binding IsHighlighterToolActive, Mode=OneWay}" Command="{Binding SelectToolCommand}" CommandParameter="Highlighter" GroupName="Tools" Background="Transparent" ToolTip.Tip="Resaltador" Padding="4">
                     <PathIcon Data="M20.71 5.63l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-3.12 3.12-1.93-1.91-1.41 1.41 1.42 1.42L3 16.25V21h4.75l8.92-8.92 1.42 1.42 1.41-1.41-1.92-1.92 3.12-3.12c.4-.4.4-1.03.01-1.42zM6.92 19L5 17.08l8.06-8.06 1.92 1.92L6.92 19z" Foreground="#d4d4d4" Width="16" Height="16"/>
                 </RadioButton>
-                <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" Command="{Binding SelectToolCommand}" CommandParameter="Text" GroupName="Tools" Background="Transparent" ToolTip.Tip="Texto" Padding="4">
+                <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" IsChecked="{Binding IsTextToolActive, Mode=OneWay}" Command="{Binding SelectToolCommand}" CommandParameter="Text" GroupName="Tools" Background="Transparent" ToolTip.Tip="Texto" Padding="4">
                     <PathIcon Data="M5 4v3h5.5v12h3V7H19V4z" Foreground="#d4d4d4" Width="16" Height="16"/>
                 </RadioButton>
                 
@@ -146,10 +146,10 @@
                         <LayoutTransformControl.LayoutTransform>
                             <ScaleTransform ScaleX="{Binding ZoomLevel}" ScaleY="{Binding ZoomLevel}" />
                         </LayoutTransformControl.LayoutTransform>
-                        <Border BoxShadow="0 4 16 0 #20000000" Width="{Binding ImageWidth}" Height="{Binding ImageHeight}">
-                            <Panel>
+                        <Border BoxShadow="0 4 16 0 #20000000" Width="{Binding ImageWidth}" Height="{Binding ImageHeight}" ClipToBounds="False">
+                            <Panel ClipToBounds="False">
                                 <controls:AnnotationCanvas x:Name="MainCanvas" ViewModel="{Binding}" />
-                                <Canvas>
+                                <Canvas ClipToBounds="False">
                                     <controls:TextEditorWidget x:Name="TextOverlay" IsVisible="{Binding IsEditingText}"
                                                                Canvas.Left="{Binding CurrentTextBounds.X}"
                                                                Canvas.Top="{Binding CurrentTextBounds.Y}" />

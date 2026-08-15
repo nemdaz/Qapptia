@@ -26,12 +26,17 @@ public class TextShape : VectorShape
         };
 
         var lines = Text.Split(s_lineSeparators, StringSplitOptions.None);
-        float y = (float)Start.Y + TextSize; // Base line approximation
+        
+        // Desfase para coincidir con TextBox
+        float offsetX = (float)Start.X + 5f;
+        
+        // Línea base del texto
+        float y = (float)Start.Y + TextSize + 4f; 
         
         foreach (var line in lines)
         {
-            canvas.DrawText(line, (float)Start.X, y, SKTextAlign.Left, font, paint);
-            y += TextSize * 1.2f; // line height
+            canvas.DrawText(line, offsetX, y, SKTextAlign.Left, font, paint);
+            y += TextSize * 1.25f; // Interlineado
         }
     }
 
@@ -49,10 +54,11 @@ public class TextShape : VectorShape
         {
             float width = font.MeasureText(line);
             if (width > maxWidth) maxWidth = width;
-            totalHeight += TextSize * 1.2f;
+            totalHeight += TextSize * 1.25f;
         }
 
-        var rect = new Rect(Start.X, Start.Y, maxWidth, totalHeight);
+        // Área de selección
+        var rect = new Rect(Start.X, Start.Y, maxWidth + 10, totalHeight + 10);
         
         if (rect.Contains(point))
         {

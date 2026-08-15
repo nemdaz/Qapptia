@@ -4,26 +4,28 @@
              x:DataType="vm:EditorViewModel"
              x:Class="Qapptia.App.Editor.Controls.TextEditorWidget">
     
-    <Grid RowDefinitions="Auto,*">
-        <!-- Floating size control on top -->
-        <Border Grid.Row="0" Background="#CC141414" CornerRadius="4" Padding="2"
+    <Grid RowDefinitions="Auto,*" ClipToBounds="False">
+        <!-- Control de tamaño -->
+        <Border Grid.Row="0" Background="#1E1E1E" BorderBrush="#3E3E42" BorderThickness="1" CornerRadius="4" Padding="4,2"
                 HorizontalAlignment="Left" VerticalAlignment="Bottom"
                 Margin="0,0,0,4"
-                BoxShadow="0 2 8 0 #40000000">
-            <StackPanel Orientation="Horizontal" Spacing="4">
-                <Button Content="-" Padding="4,2" FontSize="10" Click="DecreaseSize_Click" Background="Transparent" Foreground="White" />
-                <TextBlock Text="{Binding CurrentTextSize}" VerticalAlignment="Center" Foreground="White" MinWidth="20" TextAlignment="Center" />
-                <Button Content="+" Padding="4,2" FontSize="10" Click="IncreaseSize_Click" Background="Transparent" Foreground="White" />
+                BoxShadow="0 2 8 0 #60000000">
+            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <Button Content="-" Padding="6,2" FontSize="11" FontWeight="Bold" Click="DecreaseSize_Click" 
+                        Background="#2D2D30" Foreground="White" CornerRadius="3" MinWidth="22" HorizontalContentAlignment="Center"/>
+                <TextBlock Text="{Binding CurrentTextSize}" VerticalAlignment="Center" Foreground="#E0E0E0" FontSize="11" FontWeight="SemiBold" MinWidth="20" TextAlignment="Center" />
+                <Button Content="+" Padding="6,2" FontSize="11" FontWeight="Bold" Click="IncreaseSize_Click" 
+                        Background="#2D2D30" Foreground="White" CornerRadius="3" MinWidth="22" HorizontalContentAlignment="Center"/>
                 
-                <!-- Info Icon -->
+                <!-- Icono de información -->
                 <PathIcon Data="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"
-                          Width="12" Height="12" Foreground="#888888"
+                          Width="13" Height="13" Foreground="#9E9E9E"
                           ToolTip.Tip="Usa Shift + Enter para saltos de linea"
-                          Margin="4,0,2,0" />
+                          Margin="2,0,2,0" VerticalAlignment="Center" />
             </StackPanel>
         </Border>
 
-        <!-- Drag Handle / Container -->
+        <!-- Contenedor y arrastre -->
         <Border Grid.Row="1" Background="Transparent" 
                 BorderBrush="#888888"
                 BorderThickness="1"
@@ -33,7 +35,7 @@
                 PointerReleased="Container_PointerReleased">
             
             <Grid>
-                <!-- Fake Text Drop Shadow -->
+                <!-- Sombra del texto -->
                 <TextBlock Text="{Binding CurrentTextContent}"
                            FontSize="{Binding CurrentTextSize}"
                            Foreground="#A0000000"
@@ -41,8 +43,9 @@
                            Padding="5,4"
                            TextWrapping="Wrap" />
 
-                <!-- Main TextBox -->
-                <TextBox Text="{Binding CurrentTextContent, Mode=TwoWay}"
+                <!-- Cuadro de texto -->
+                <TextBox x:Name="EditTextBox"
+                         Text="{Binding CurrentTextContent, Mode=TwoWay}"
                          FontSize="{Binding CurrentTextSize}"
                          Foreground="{Binding ActiveBrush}"
                          Background="Transparent"

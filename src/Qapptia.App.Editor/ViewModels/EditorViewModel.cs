@@ -51,10 +51,40 @@ public partial class EditorViewModel : ObservableObject
         {
             _activeColor = Qapptia.Editor.Core.Constants.FavoriteColors[0];
         }
+        
+        _activeBrush = new SolidColorBrush(_activeColor);
+
+        // Cargar última herramienta seleccionada
+        if (System.Enum.TryParse<ToolType>(state.ActiveTool, true, out var savedTool))
+        {
+            _activeTool = savedTool;
+        }
     }
 
     [ObservableProperty]
     private ToolType _activeTool = ToolType.Arrow;
+
+    public bool IsLineToolActive => ActiveTool == ToolType.Line;
+    public bool IsArrowToolActive => ActiveTool == ToolType.Arrow;
+    public bool IsEllipseToolActive => ActiveTool == ToolType.Ellipse;
+    public bool IsRectangleToolActive => ActiveTool == ToolType.Rectangle;
+    public bool IsHighlighterToolActive => ActiveTool == ToolType.Highlighter;
+    public bool IsTextToolActive => ActiveTool == ToolType.Text;
+
+    partial void OnActiveToolChanged(ToolType value)
+    {
+        OnPropertyChanged(nameof(IsLineToolActive));
+        OnPropertyChanged(nameof(IsArrowToolActive));
+        OnPropertyChanged(nameof(IsEllipseToolActive));
+        OnPropertyChanged(nameof(IsRectangleToolActive));
+        OnPropertyChanged(nameof(IsHighlighterToolActive));
+        OnPropertyChanged(nameof(IsTextToolActive));
+
+        // Persistir herramienta activa
+        var state = _stateStore.Load();
+        state.ActiveTool = value.ToString();
+        _stateStore.Save(state);
+    }
 
     [ObservableProperty]
     private Color _activeColor;
@@ -223,13 +253,19 @@ public partial class EditorViewModel : ObservableObject
 
     public void StartTextEditing(TextShape shape)
     {
+        if (IsEditingText)
+        {
+            CommitTextEditing();
+        }
+
         EditingTextShape = shape;
         CurrentTextContent = shape.Text;
         CurrentTextSize = shape.TextSize;
         
-        // Calculate bounds based on shape start point. TextEditorWidget handles overlay layout.
-        CurrentTextBounds = new Avalonia.Rect(shape.Start.X, shape.Start.Y, 200, 50); 
+        // Posición del widget (desfase 32px para la barra superior)
+        CurrentTextBounds = new Avalonia.Rect(shape.Start.X, shape.Start.Y - 32, 200, 50); 
         IsEditingText = true;
+        RequestRedraw?.Invoke(this, EventArgs.Empty);
     }
 
     [RelayCommand]
@@ -239,10 +275,18 @@ public partial class EditorViewModel : ObservableObject
         
         EditingTextShape.Text = CurrentTextContent;
         EditingTextShape.TextSize = CurrentTextSize;
+        
+        // Eliminar si el texto quedó vacío
+        if (string.IsNullOrWhiteSpace(EditingTextShape.Text))
+        {
+            Store.RemoveShape(EditingTextShape);
+        }
+        
         IsEditingText = false;
         EditingTextShape = null;
         Store.ClearSelection();
         SaveCurrentAnnotations();
+        RequestRedraw?.Invoke(this, EventArgs.Empty);
     }
 
     [RelayCommand]
@@ -250,7 +294,7 @@ public partial class EditorViewModel : ObservableObject
     {
         if (!IsEditingText) return;
 
-        // If the shape is new (empty text), we remove it.
+        // Eliminar si el texto está vacío
         if (EditingTextShape != null && string.IsNullOrWhiteSpace(EditingTextShape.Text))
         {
             Store.RemoveShape(EditingTextShape);
@@ -259,6 +303,7 @@ public partial class EditorViewModel : ObservableObject
         IsEditingText = false;
         EditingTextShape = null;
         Store.ClearSelection();
+        RequestRedraw?.Invoke(this, EventArgs.Empty);
     }
 
     public ObservableCollection<SolidColorBrush> AvailableColors { get; } = new(
