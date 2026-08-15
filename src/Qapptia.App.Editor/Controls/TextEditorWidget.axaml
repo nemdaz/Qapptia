@@ -6,7 +6,28 @@
              x:Class="Qapptia.App.Editor.Controls.TextEditorWidget"
              FontFamily="{x:Static core:Constants.TextToolFontFamilyName}"
              FontWeight="Normal"
+             TextOptions.TextRenderingMode="Antialias"
              ClipToBounds="False">
+    
+    <UserControl.Styles>
+        <Style Selector="TextBox#EditTextBox">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FocusAdorner" Value="{x:Null}" />
+        </Style>
+        <Style Selector="TextBox#EditTextBox /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style Selector="TextBox#EditTextBox:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style Selector="TextBox#EditTextBox:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+    </UserControl.Styles>
     
     <Grid RowDefinitions="32,*" ClipToBounds="False">
         <!-- Barra de herramientas y arrastre -->
@@ -51,32 +72,33 @@
                 BorderThickness="{x:Static core:Constants.TextToolBorderThickness}"
                 CornerRadius="2">
             
-            <Grid>
-                <!-- 1. Contorno claro 360° (8 direcciones para halo suave en fondos oscuros) -->
-                <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolLightContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(-1px, -1px)" />
-                <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolLightContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(0px, -1px)" />
-                <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolLightContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(1px, -1px)" />
+            <Grid UseLayoutRounding="False">
+                <!-- 1. Contorno claro 360° homogéneo (Círculo unitario r=1.0) -->
                 <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolLightContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(-1px, 0px)" />
                 <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolLightContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(1px, 0px)" />
-                <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolLightContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(-1px, 1px)" />
+                <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolLightContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(0px, -1px)" />
                 <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolLightContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(0px, 1px)" />
-                <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolLightContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(1px, 1px)" />
+                <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolLightContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(-0.7px, -0.7px)" />
+                <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolLightContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(0.7px, -0.7px)" />
+                <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolLightContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(-0.7px, 0.7px)" />
+                <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolLightContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(0.7px, 0.7px)" />
 
-                <!-- 2. Contorno oscuro 360° (8 direcciones para nitidez suave en fondos claros) -->
-                <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolDarkContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(-1px, -1px)" />
-                <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolDarkContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(0px, -1px)" />
-                <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolDarkContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(1px, -1px)" />
+                <!-- 2. Contorno oscuro 360° homogéneo (Círculo unitario r=1.0) -->
                 <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolDarkContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(-1px, 0px)" />
                 <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolDarkContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(1px, 0px)" />
-                <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolDarkContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(-1px, 1px)" />
+                <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolDarkContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(0px, -1px)" />
                 <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolDarkContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(0px, 1px)" />
-                <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolDarkContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(1px, 1px)" />
+                <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolDarkContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(-0.7px, -0.7px)" />
+                <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolDarkContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(0.7px, -0.7px)" />
+                <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolDarkContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(-0.7px, 0.7px)" />
+                <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolDarkContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(0.7px, 0.7px)" />
 
-                <!-- Cuadro de texto -->
+                <!-- Cuadro de texto con cursor dual blanco/negro -->
                 <TextBox x:Name="EditTextBox"
                          Text="{Binding CurrentTextContent, Mode=TwoWay}"
                          FontSize="{Binding CurrentTextSize}"
                          Foreground="{Binding ActiveBrush}"
+                         CaretBrush="{x:Static core:Constants.TextToolCaretBrush}"
                          Background="Transparent"
                          BorderThickness="0"
                          AcceptsReturn="True"

@@ -28,6 +28,20 @@ public static class Constants
     public static readonly SkiaSharp.SKColor TextToolDarkContourSKColor = new(0, 0, 0, 90);
     public static readonly SkiaSharp.SKColor TextToolLightContourSKColor = new(255, 255, 255, 72);
 
+    // Cursor dual blanco y negro de alto contraste (visible en cualquier fondo)
+    public static readonly IBrush TextToolCaretBrush = new LinearGradientBrush
+    {
+        StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+        EndPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
+        GradientStops = new GradientStops
+        {
+            new GradientStop(Colors.Black, 0.0),
+            new GradientStop(Colors.Black, 0.5),
+            new GradientStop(Colors.White, 0.5),
+            new GradientStop(Colors.White, 1.0)
+        }
+    };
+
     // Persistence
     public const string DrawingExtension = ".dibujo";
 

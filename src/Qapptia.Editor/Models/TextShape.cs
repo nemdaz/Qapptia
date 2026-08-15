@@ -12,9 +12,14 @@ public class TextShape : VectorShape
 
     private static readonly (float dx, float dy)[] s_contourOffsets = new[]
     {
-        (-1f, -1f), (0f, -1f), (1f, -1f),
-        (-1f,  0f),            (1f,  0f),
-        (-1f,  1f), (0f,  1f), (1f,  1f)
+        (-1.0f,  0.0f),
+        ( 1.0f,  0.0f),
+        ( 0.0f, -1.0f),
+        ( 0.0f,  1.0f),
+        (-0.707f, -0.707f),
+        ( 0.707f, -0.707f),
+        (-0.707f,  0.707f),
+        ( 0.707f,  0.707f)
     };
 
     public string Text { get; set; } = string.Empty;
@@ -26,7 +31,7 @@ public class TextShape : VectorShape
 
         using var font = new SKFont(Constants.TextToolTypeface, TextSize);
         font.Subpixel = true;
-        font.Edging = SKFontEdging.SubpixelAntialias;
+        font.Edging = SKFontEdging.Antialias;
         font.GetFontMetrics(out var metrics);
 
         using var paintLight = new SKPaint
