@@ -5,17 +5,33 @@
              x:Class="Qapptia.App.Editor.Controls.TextEditorWidget">
     
     <Grid RowDefinitions="Auto,*" ClipToBounds="False">
-        <!-- Control de tamaño -->
+        <!-- Barra de herramientas y arrastre -->
         <Border Grid.Row="0" Background="#1E1E1E" BorderBrush="#3E3E42" BorderThickness="1" CornerRadius="4" Padding="4,2"
                 HorizontalAlignment="Left" VerticalAlignment="Bottom"
                 Margin="0,0,0,4"
                 BoxShadow="0 2 8 0 #60000000">
-            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                <!-- Icono de arrastre (6 puntos) -->
+                <Border Background="Transparent" 
+                        Cursor="SizeAll" 
+                        Padding="2,0" 
+                        PointerPressed="DragHandle_PointerPressed"
+                        PointerMoved="DragHandle_PointerMoved"
+                        PointerReleased="DragHandle_PointerReleased"
+                        ToolTip.Tip="Arrastrar">
+                    <PathIcon Data="M11 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm-2-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"
+                              Width="14" Height="14" Foreground="#888888" />
+                </Border>
+
+                <!-- Control de tamaño -->
                 <Button Content="-" Padding="6,2" FontSize="11" FontWeight="Bold" Click="DecreaseSize_Click" 
-                        Background="#2D2D30" Foreground="White" CornerRadius="3" MinWidth="22" HorizontalContentAlignment="Center"/>
-                <TextBlock Text="{Binding CurrentTextSize}" VerticalAlignment="Center" Foreground="#E0E0E0" FontSize="11" FontWeight="SemiBold" MinWidth="20" TextAlignment="Center" />
+                        Background="#2D2D30" Foreground="White" CornerRadius="3" MinWidth="22" HorizontalContentAlignment="Center"
+                        ToolTip.Tip="Reducir tamaño" />
+                <TextBlock Text="{Binding CurrentTextSize}" VerticalAlignment="Center" Foreground="#E0E0E0" FontSize="11" FontWeight="SemiBold" MinWidth="20" TextAlignment="Center" 
+                           ToolTip.Tip="Tamaño del texto" />
                 <Button Content="+" Padding="6,2" FontSize="11" FontWeight="Bold" Click="IncreaseSize_Click" 
-                        Background="#2D2D30" Foreground="White" CornerRadius="3" MinWidth="22" HorizontalContentAlignment="Center"/>
+                        Background="#2D2D30" Foreground="White" CornerRadius="3" MinWidth="22" HorizontalContentAlignment="Center"
+                        ToolTip.Tip="Aumentar tamaño" />
                 
                 <!-- Icono de información -->
                 <PathIcon Data="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"
@@ -25,14 +41,11 @@
             </StackPanel>
         </Border>
 
-        <!-- Contenedor y arrastre -->
+        <!-- Cuadro de edición -->
         <Border Grid.Row="1" Background="Transparent" 
                 BorderBrush="#888888"
                 BorderThickness="1"
-                CornerRadius="2"
-                PointerPressed="Container_PointerPressed"
-                PointerMoved="Container_PointerMoved"
-                PointerReleased="Container_PointerReleased">
+                CornerRadius="2">
             
             <Grid>
                 <!-- Sombra del texto -->

@@ -82,7 +82,7 @@ public partial class TextEditorWidget : UserControl
     private bool _isDragging;
     private Avalonia.Point _dragStartPoint;
 
-    private void Container_PointerPressed(object? sender, PointerPressedEventArgs e)
+    private void DragHandle_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
         if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
         {
@@ -93,7 +93,7 @@ public partial class TextEditorWidget : UserControl
         }
     }
 
-    private void Container_PointerMoved(object? sender, PointerEventArgs e)
+    private void DragHandle_PointerMoved(object? sender, PointerEventArgs e)
     {
         if (_isDragging && DataContext is EditorViewModel vm)
         {
@@ -122,7 +122,7 @@ public partial class TextEditorWidget : UserControl
         }
     }
 
-    private void Container_PointerReleased(object? sender, PointerReleasedEventArgs e)
+    private void DragHandle_PointerReleased(object? sender, PointerReleasedEventArgs e)
     {
         if (_isDragging)
         {
