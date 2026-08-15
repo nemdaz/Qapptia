@@ -17,7 +17,9 @@ public class TextShape : VectorShape
     {
         if (string.IsNullOrWhiteSpace(Text)) return;
 
-        using var font = new SKFont(SKTypeface.Default, TextSize);
+        using var font = new SKFont(Constants.TextToolTypeface, TextSize);
+        font.Subpixel = true;
+        font.Edging = SKFontEdging.SubpixelAntialias;
         font.GetFontMetrics(out var metrics);
 
         using var paint = new SKPaint
@@ -29,9 +31,9 @@ public class TextShape : VectorShape
 
         var lines = Text.Split(s_lineSeparators, StringSplitOptions.None);
         
-        // Desfase para coincidir con el TextBox (1px borde + 4px padding)
-        float offsetX = (float)Start.X + 5f;
-        float y = (float)Start.Y + 5f - metrics.Ascent;
+        // Desfase calibrado unificado
+        float offsetX = (float)(Start.X + Constants.TextToolOffset);
+        float y = (float)(Start.Y + Constants.TextToolOffset - metrics.Ascent);
         
         foreach (var line in lines)
         {
@@ -44,7 +46,8 @@ public class TextShape : VectorShape
     {
         if (string.IsNullOrWhiteSpace(Text)) return HandleType.None;
 
-        using var font = new SKFont(SKTypeface.Default, TextSize);
+        using var font = new SKFont(Constants.TextToolTypeface, TextSize);
+        font.GetFontMetrics(out var metrics);
 
         var lines = Text.Split(s_lineSeparators, StringSplitOptions.None);
         float maxWidth = 0;

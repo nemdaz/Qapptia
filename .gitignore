@@ -142,3 +142,9 @@ logs/
 
 # MSBuild logs
 *.binlog
+
+# -----------------------------
+# Agent customizations & skills
+# -----------------------------
+.agents/
+

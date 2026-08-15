@@ -1,8 +1,11 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Qapptia.App.Editor.ViewModels"
+             xmlns:core="using:Qapptia.Editor.Core"
              x:DataType="vm:EditorViewModel"
              x:Class="Qapptia.App.Editor.Controls.TextEditorWidget"
+             FontFamily="{x:Static core:Constants.TextToolFontFamilyName}"
+             FontWeight="Normal"
              ClipToBounds="False">
     
     <Grid RowDefinitions="32,*" ClipToBounds="False">
@@ -45,7 +48,7 @@
         <!-- Cuadro de edición -->
         <Border Grid.Row="1" Background="Transparent" 
                 BorderBrush="#888888"
-                BorderThickness="1"
+                BorderThickness="{x:Static core:Constants.TextToolBorderThickness}"
                 CornerRadius="2">
             
             <Grid>
@@ -54,7 +57,7 @@
                            FontSize="{Binding CurrentTextSize}"
                            Foreground="#A0000000"
                            Margin="2,2,0,0" 
-                           Padding="4"
+                           Padding="{x:Static core:Constants.TextToolPadding}"
                            TextWrapping="Wrap" />
 
                 <!-- Cuadro de texto -->
@@ -67,7 +70,7 @@
                          AcceptsReturn="True"
                          TextWrapping="Wrap"
                          KeyDown="TextBox_KeyDown"
-                         Padding="4"
+                         Padding="{x:Static core:Constants.TextToolPadding}"
                          MinWidth="100"
                          MinHeight="30" />
             </Grid>

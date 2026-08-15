@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Media;
 using System.Collections.Generic;
 
@@ -11,6 +12,13 @@ public static class Constants
     public const double GripSize = 6.0;
     public const double DrawMinDistance = 8.0;
     
+    // Herramienta de texto (Anotaciones)
+    public const string TextToolFontFamilyName = "Segoe UI";
+    public static readonly SkiaSharp.SKTypeface TextToolTypeface = SkiaSharp.SKTypeface.FromFamilyName(TextToolFontFamilyName) ?? SkiaSharp.SKTypeface.Default;
+    public static readonly Thickness TextToolPadding = new(4.0);
+    public static readonly Thickness TextToolBorderThickness = new(1.0);
+    public const double TextToolOffset = 5.0; // TextToolPadding (4) + TextToolBorderThickness (1)
+
     // Persistence
     public const string DrawingExtension = ".dibujo";
 
