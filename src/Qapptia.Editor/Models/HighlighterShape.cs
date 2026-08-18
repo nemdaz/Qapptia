@@ -35,7 +35,7 @@ public class HighlighterShape : VectorShape
             if (handle != HandleType.None) return handle;
         }
         
-        if (rect.Contains(point))
+        if (rect.Inflate(4).Contains(point))
         {
             return HandleType.Body;
         }

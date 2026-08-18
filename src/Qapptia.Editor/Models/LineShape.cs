@@ -35,7 +35,7 @@ public class LineShape : VectorShape
             if (handle != HandleType.None) return handle;
         }
         
-        if (HitTestEngine.PointToLineDistance(point, Start, End, StrokeWidth + 5.0))
+        if (HitTestEngine.PointToLineDistance(point, Start, End, StrokeWidth + 8.0))
         {
             return HandleType.Body;
         }

@@ -73,7 +73,7 @@ public class ArrowShape : VectorShape
             if (handle != HandleType.None) return handle;
         }
 
-        double tolerance = StrokeWidth + 5.0;
+        double tolerance = StrokeWidth + 8.0;
         
         // Verifica si toca el cuerpo de la flecha
         if (HitTestEngine.PointToLineDistance(point, Start, End, tolerance))

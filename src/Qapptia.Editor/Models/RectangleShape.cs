@@ -38,7 +38,7 @@ public class RectangleShape : VectorShape
             if (handle != HandleType.None) return handle;
         }
 
-        double tolerance = StrokeWidth + 5.0;
+        double tolerance = StrokeWidth + 8.0;
         
         var outerRect = rect.Inflate(tolerance);
         var innerRect = rect.Inflate(-tolerance);

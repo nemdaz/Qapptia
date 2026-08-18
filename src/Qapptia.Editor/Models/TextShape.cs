@@ -107,8 +107,8 @@ public class TextShape : VectorShape
 
         float totalHeight = lines.Length * font.Spacing;
 
-        // Área de selección
-        var rect = new Rect(Start.X, Start.Y, maxWidth + 10, totalHeight + 10);
+        // Área de selección con margen perimetral
+        var rect = new Rect(Start.X - 4, Start.Y - 4, maxWidth + 16, totalHeight + 16);
         
         if (rect.Contains(point))
         {

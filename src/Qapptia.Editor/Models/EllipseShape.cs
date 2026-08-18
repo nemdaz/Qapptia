@@ -48,16 +48,17 @@ public class EllipseShape : VectorShape
         
         if (rx <= 0 || ry <= 0) return HandleType.None;
         
-        // Ecuación de la elipse: (x-cx)^2 / rx^2 + (y-cy)^2 / ry^2 = 1
         double dx = point.X - center.X;
         double dy = point.Y - center.Y;
 
-        double value = (dx * dx) / (rx * rx) + (dy * dy) / (ry * ry);
+        // Distancia radial exacta al contorno de la elipse en píxeles
+        double angle = Math.Atan2(dy, dx);
+        double ellipseX = center.X + rx * Math.Cos(angle);
+        double ellipseY = center.Y + ry * Math.Sin(angle);
+        double distSq = (point.X - ellipseX) * (point.X - ellipseX) + (point.Y - ellipseY) * (point.Y - ellipseY);
         
-        // Tolerancia para el hit test del borde
-        double tolerance = (StrokeWidth + 5.0) / Math.Max(rx, ry);
-        
-        if (value >= (1.0 - tolerance) && value <= (1.0 + tolerance))
+        double tolerance = StrokeWidth + 8.0;
+        if (distSq <= tolerance * tolerance)
         {
             return HandleType.Body;
         }

@@ -167,11 +167,10 @@ public class AnnotationCanvas : Control
         if (_selectedShape != null)
         {
             _selectedShape.IsSelected = true;
-            // Doble clic sobre texto con cualquier herramienta abre edición inmediata
+            // Doble clic sobre texto con cualquier herramienta abre edición inmediata sin cambiar ActiveTool
             if (_selectedShape is TextShape textShape && e.ClickCount >= 2)
             {
                 _interaction = CanvasInteraction.None;
-                ViewModel.ActiveTool = ToolType.Text;
                 ViewModel.StartTextEditing(textShape);
             }
             else
@@ -418,7 +417,18 @@ public class AnnotationCanvas : Control
             }
         }
 
-        Cursor = Cursor.Default;
+        Cursor = GetDefaultCursorForTool();
+    }
+
+    private Cursor GetDefaultCursorForTool()
+    {
+        if (ViewModel == null) return Cursor.Default;
+        return ViewModel.ActiveTool switch
+        {
+            ToolType.Text => new Cursor(StandardCursorType.Ibeam),
+            ToolType.Line or ToolType.Arrow or ToolType.Rectangle or ToolType.Ellipse or ToolType.Highlighter => new Cursor(StandardCursorType.Cross),
+            _ => Cursor.Default
+        };
     }
 
     private static Cursor GetCursorForHandle(HandleType handle)
