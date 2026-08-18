@@ -30,6 +30,22 @@ public partial class ExplorerFile : ExplorerNode
 {
 }
 
+public partial class PaletteColorItem : ObservableObject
+{
+    public Color Color { get; }
+    public SolidColorBrush Brush { get; }
+    
+    [ObservableProperty]
+    private bool _isSelected;
+
+    public PaletteColorItem(Color color, bool isSelected = false)
+    {
+        Color = color;
+        Brush = new SolidColorBrush(color);
+        _isSelected = isSelected;
+    }
+}
+
 public partial class EditorViewModel : ObservableObject
 {
     private readonly EditorStateStore _stateStore;
@@ -43,7 +59,19 @@ public partial class EditorViewModel : ObservableObject
         _savePath = savePath;
         var state = _stateStore.Load();
 
-        if (Avalonia.Media.Color.TryParse(state.ActiveFavoriteColor, out var color))
+        // Cargar última herramienta seleccionada
+        if (System.Enum.TryParse<ToolType>(state.ActiveTool, true, out var savedTool))
+        {
+            _activeTool = savedTool;
+        }
+
+        // Cargar color activo: de la herramienta guardada, o global, o primer favorito
+        if (state.ToolFavoriteColors.TryGetValue(_activeTool.ToString().ToLowerInvariant(), out var toolColorHex) &&
+            Avalonia.Media.Color.TryParse(toolColorHex, out var parsedToolColor))
+        {
+            _activeColor = parsedToolColor;
+        }
+        else if (Avalonia.Media.Color.TryParse(state.ActiveFavoriteColor, out var color))
         {
             _activeColor = color;
         }
@@ -51,14 +79,19 @@ public partial class EditorViewModel : ObservableObject
         {
             _activeColor = Qapptia.Editor.Core.Constants.FavoriteColors[0];
         }
+
+        AvailableColors = new ObservableCollection<PaletteColorItem>(
+            Qapptia.Editor.Core.Constants.FavoriteColors.Select(c => new PaletteColorItem(c, c == _activeColor))
+        );
+
+        // Garantizar que siempre haya al menos un color seleccionado
+        if (!AvailableColors.Any(c => c.IsSelected) && AvailableColors.Count > 0)
+        {
+            AvailableColors[0].IsSelected = true;
+            _activeColor = AvailableColors[0].Color;
+        }
         
         _activeBrush = new SolidColorBrush(_activeColor);
-
-        // Cargar última herramienta seleccionada
-        if (System.Enum.TryParse<ToolType>(state.ActiveTool, true, out var savedTool))
-        {
-            _activeTool = savedTool;
-        }
     }
 
     [ObservableProperty]
@@ -130,6 +163,20 @@ public partial class EditorViewModel : ObservableObject
     partial void OnActiveColorChanged(Color value)
     {
         ActiveBrush = new SolidColorBrush(value);
+        if (AvailableColors != null)
+        {
+            bool anyMatch = false;
+            foreach (var item in AvailableColors)
+            {
+                item.IsSelected = (item.Color == value);
+                if (item.IsSelected) anyMatch = true;
+            }
+
+            if (!anyMatch && AvailableColors.Count > 0)
+            {
+                AvailableColors[0].IsSelected = true;
+            }
+        }
         if (EditingTextShape != null)
         {
             EditingTextShape.Color = value;
@@ -329,12 +376,7 @@ public partial class EditorViewModel : ObservableObject
         RequestRedraw?.Invoke(this, EventArgs.Empty);
     }
 
-    public ObservableCollection<SolidColorBrush> AvailableColors { get; } = new(
-        System.Linq.Enumerable.Select(
-            Qapptia.Editor.Core.Constants.FavoriteColors, 
-            c => new SolidColorBrush(c)
-        )
-    );
+    public ObservableCollection<PaletteColorItem> AvailableColors { get; }
 
     [RelayCommand]
     public void SelectTool(string toolName)
@@ -353,9 +395,9 @@ public partial class EditorViewModel : ObservableObject
     }
 
     [RelayCommand]
-    public void SelectColor(SolidColorBrush brush)
+    public void SelectColor(PaletteColorItem item)
     {
-        ActiveColor = brush.Color;
+        ActiveColor = item.Color;
         
         var state = _stateStore.Load();
         var colorHex = Qapptia.Editor.Core.Constants.GetColorName(ActiveColor);

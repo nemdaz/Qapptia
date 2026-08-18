@@ -10,10 +10,9 @@ public class HighlighterShape : VectorShape
     {
         using var paint = new SkiaSharp.SKPaint
         {
-            Color = Color.ToSKColor().WithAlpha(128), // 50% opacity
+            Color = Color.ToSKColor().WithAlpha(Constants.HighlighterAlpha),
             IsAntialias = true,
-            Style = SkiaSharp.SKPaintStyle.Fill,
-            BlendMode = SkiaSharp.SKBlendMode.Multiply
+            Style = SkiaSharp.SKPaintStyle.Fill
         };
         
         var rect = GetBoundingBox();

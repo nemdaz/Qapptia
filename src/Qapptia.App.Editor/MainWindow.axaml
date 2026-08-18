@@ -104,19 +104,19 @@
                 <ItemsControl ItemsSource="{Binding AvailableColors}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <StackPanel Orientation="Horizontal" />
+                            <StackPanel Orientation="Horizontal" Spacing="2" />
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="{x:Type SolidColorBrush}">
+                        <DataTemplate DataType="{x:Type vm:PaletteColorItem}">
                             <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" 
+                                         IsChecked="{Binding IsSelected, Mode=OneWay}"
                                          Command="{Binding $parent[ItemsControl].((vm:EditorViewModel)DataContext).SelectColorCommand}" 
                                          CommandParameter="{Binding}" 
                                          GroupName="Colors" 
                                          Background="Transparent" 
                                          Padding="4">
-                                <!-- No enlazamos IsChecked por ahora, RadioButton manejará la selección visual con GroupName -->
-                                <Ellipse Width="16" Height="16" Fill="{Binding}" Stroke="#d4d4d4" StrokeThickness="1" />
+                                <Ellipse Width="16" Height="16" Fill="{Binding Brush}" Stroke="#d4d4d4" StrokeThickness="1" />
                             </RadioButton>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>

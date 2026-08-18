@@ -84,6 +84,13 @@ public partial class MainWindow : Window
             }
         };
         
+        // Evitar desplazamientos no deseados del ScrollViewer al hacer foco o clic en el lienzo
+        var scrollViewer = this.FindControl<ScrollViewer>("EditorScrollViewer");
+        scrollViewer?.AddHandler(Control.RequestBringIntoViewEvent, (s, e) =>
+        {
+            e.Handled = true;
+        }, Avalonia.Interactivity.RoutingStrategies.Tunnel | Avalonia.Interactivity.RoutingStrategies.Bubble);
+
         // Registrar evento de rueda del ratón con Tunnel para interceptarlo antes que el ScrollViewer
         this.AddHandler(Avalonia.Input.InputElement.PointerWheelChangedEvent, EditorScrollViewer_PointerWheelChanged, Avalonia.Interactivity.RoutingStrategies.Tunnel);
         this.AddHandler(Avalonia.Input.InputElement.KeyDownEvent, (s, e) =>

@@ -11,6 +11,7 @@ public static class Constants
     public const double ArrowWingLen = 25.0;
     public const double GripSize = 6.0;
     public const double DrawMinDistance = 8.0;
+    public const byte HighlighterAlpha = 102; // 40% opacity
     
     // Herramienta de texto (Anotaciones)
     public const string TextToolFontFamilyName = "Segoe UI";
@@ -19,7 +20,7 @@ public static class Constants
     public static readonly Thickness TextToolBorderThickness = new(1.0);
     public const double TextToolOffset = 5.0; // TextToolPadding (4) + TextToolBorderThickness (1)
 
-    // Contornos de texto (8 direcciones 360° - Estándar Legacy)
+    // Contornos de texto (8 direcciones 360°)
     public static readonly Color TextToolDarkContourColor = Color.FromArgb(90, 0, 0, 0); // 35% alpha
     public static readonly Color TextToolLightContourColor = Color.FromArgb(72, 255, 255, 255); // 28% alpha
     public static readonly IBrush TextToolDarkContourBrush = new SolidColorBrush(TextToolDarkContourColor);

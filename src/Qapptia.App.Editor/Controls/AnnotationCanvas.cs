@@ -66,6 +66,7 @@ public class AnnotationCanvas : Control
     {
         ClipToBounds = true;
         Focusable = true;
+        AddHandler(RequestBringIntoViewEvent, (s, e) => e.Handled = true, Avalonia.Interactivity.RoutingStrategies.Tunnel | Avalonia.Interactivity.RoutingStrategies.Bubble);
     }
 
     public override void Render(DrawingContext context)
