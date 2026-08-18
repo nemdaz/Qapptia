@@ -36,7 +36,7 @@ public partial class MainWindow : Window
 
         var copyFileBinding = new Avalonia.Input.KeyBinding
         {
-            Gesture = Avalonia.Input.KeyGesture.Parse("Ctrl+F"),
+            Gesture = Avalonia.Input.KeyGesture.Parse(Qapptia.Core.AppConstants.ShortcutCopyFile),
             Command = vm.CopyFileCommand
         };
         this.KeyBindings.Add(copyFileBinding);
@@ -270,22 +270,26 @@ public partial class MainWindow : Window
 
     private async void Vm_CopyFileRequested(object? sender, EventArgs e)
     {
-        if (DataContext is EditorViewModel vm && vm.SelectedNode is ExplorerFile fileNode)
+        if (DataContext is EditorViewModel vm)
         {
+            string? filePath = (vm.SelectedNode as ExplorerFile)?.FullPath ?? vm.CurrentImagePath;
+            if (!string.IsNullOrEmpty(filePath) && System.IO.File.Exists(filePath))
+            {
 #if WINDOWS
-            try
-            {
-                var clipboardService = new Qapptia.Platform.Windows.WindowsClipboardService(
-                    Microsoft.Extensions.Logging.Abstractions.NullLogger<Qapptia.Platform.Windows.WindowsClipboardService>.Instance);
-                
-                await clipboardService.SetFileDropListAsync(new[] { fileNode.FullPath });
-                vm.ShowToast("Archivo copiado al portapapeles", Qapptia.Editor.Models.NotificationType.Success);
-            }
-            catch (Exception)
-            {
-                vm.ShowToast("Error al copiar el archivo", Qapptia.Editor.Models.NotificationType.Error);
-            }
+                try
+                {
+                    var clipboardService = new Qapptia.Platform.Windows.WindowsClipboardService(
+                        Microsoft.Extensions.Logging.Abstractions.NullLogger<Qapptia.Platform.Windows.WindowsClipboardService>.Instance);
+                    
+                    await clipboardService.SetFileDropListAsync(new[] { filePath });
+                    vm.ShowToast("Archivo copiado al portapapeles", Qapptia.Editor.Models.NotificationType.Success);
+                }
+                catch (Exception)
+                {
+                    vm.ShowToast("Error al copiar el archivo", Qapptia.Editor.Models.NotificationType.Error);
+                }
 #endif
+            }
         }
     }
 

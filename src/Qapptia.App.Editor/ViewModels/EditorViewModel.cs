@@ -46,7 +46,7 @@ public partial class PaletteColorItem : ObservableObject
     }
 }
 
-public partial class EditorViewModel : ObservableObject
+public partial class EditorViewModel : ObservableObject, IDisposable
 {
     private readonly EditorStateStore _stateStore;
     private readonly string _savePath;
@@ -262,6 +262,8 @@ public partial class EditorViewModel : ObservableObject
 
     private string? _currentImagePath;
 
+    public string? CurrentImagePath => (SelectedNode as ExplorerFile)?.FullPath ?? _currentImagePath;
+
     public string? CurrentImageId { get; private set; }
 
     partial void OnSelectedNodeChanged(ExplorerNode? value)
@@ -438,6 +440,8 @@ public partial class EditorViewModel : ObservableObject
     [ObservableProperty]
     private Qapptia.UI.Shared.Controls.ToastNotificationType _toastType = Qapptia.UI.Shared.Controls.ToastNotificationType.Success;
 
+    private System.Threading.CancellationTokenSource? _toastCts;
+
     public void ShowToast(string message, NotificationType type)
     {
         ToastMessage = message;
@@ -449,16 +453,23 @@ public partial class EditorViewModel : ObservableObject
             NotificationType.Info => Qapptia.UI.Shared.Controls.ToastNotificationType.Info,
             _ => Qapptia.UI.Shared.Controls.ToastNotificationType.Success
         };
+        
+        _toastCts?.Cancel();
+        _toastCts = new System.Threading.CancellationTokenSource();
+        var token = _toastCts.Token;
+
         IsToastVisible = true;
 
-
-        System.Threading.Tasks.Task.Delay(3000).ContinueWith(_ =>
+        System.Threading.Tasks.Task.Delay(2500, token).ContinueWith(t =>
         {
-            Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+            if (!t.IsCanceled)
             {
-                IsToastVisible = false;
-            });
-        });
+                Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    IsToastVisible = false;
+                });
+            }
+        }, token);
     }
 
 #pragma warning disable CA1822
@@ -499,7 +510,7 @@ public partial class EditorViewModel : ObservableObject
     [RelayCommand]
     public void CopyFile()
     {
-        if (SelectedNode is ExplorerFile)
+        if (!string.IsNullOrEmpty(CurrentImagePath))
         {
             CopyFileRequested?.Invoke(this, EventArgs.Empty);
         }
@@ -662,5 +673,12 @@ public partial class EditorViewModel : ObservableObject
             }
             _stateStore.Save(state);
         }
+    }
+
+    public void Dispose()
+    {
+        _toastCts?.Dispose();
+        _toastCts = null;
+        GC.SuppressFinalize(this);
     }
 }
