@@ -109,9 +109,32 @@ public partial class EditorViewModel : ObservableObject
 
     public TextShape? EditingTextShape { get; private set; }
     
+    partial void OnCurrentTextContentChanged(string value)
+    {
+        if (EditingTextShape != null)
+        {
+            EditingTextShape.Text = value;
+            RequestRedraw?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    partial void OnCurrentTextSizeChanged(int value)
+    {
+        if (EditingTextShape != null)
+        {
+            EditingTextShape.TextSize = value;
+            RequestRedraw?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
     partial void OnActiveColorChanged(Color value)
     {
         ActiveBrush = new SolidColorBrush(value);
+        if (EditingTextShape != null)
+        {
+            EditingTextShape.Color = value;
+            RequestRedraw?.Invoke(this, EventArgs.Empty);
+        }
     }
     
     partial void OnZoomLevelChanged(float value)

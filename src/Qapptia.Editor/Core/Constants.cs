@@ -31,8 +31,9 @@ public static class Constants
     // Cursor dual blanco y negro de alto contraste (visible en cualquier fondo)
     public static readonly IBrush TextToolCaretBrush = new LinearGradientBrush
     {
-        StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-        EndPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
+        StartPoint = new RelativePoint(0, 0, RelativeUnit.Absolute),
+        EndPoint = new RelativePoint(0, 6, RelativeUnit.Absolute),
+        SpreadMethod = GradientSpreadMethod.Repeat,
         GradientStops = new GradientStops
         {
             new GradientStop(Colors.Black, 0.0),

@@ -50,13 +50,10 @@
 
                 <!-- Control de tamaño -->
                 <Button Content="-" Padding="6,2" FontSize="11" FontWeight="Bold" Click="DecreaseSize_Click" 
-                        Background="#2D2D30" Foreground="White" CornerRadius="3" MinWidth="22" HorizontalContentAlignment="Center"
-                        ToolTip.Tip="Reducir tamaño" />
-                <TextBlock Text="{Binding CurrentTextSize}" VerticalAlignment="Center" Foreground="#E0E0E0" FontSize="11" FontWeight="SemiBold" MinWidth="20" TextAlignment="Center" 
-                           ToolTip.Tip="Tamaño del texto" />
+                        Background="#2D2D30" Foreground="White" CornerRadius="3" MinWidth="22" HorizontalContentAlignment="Center" />
+                <TextBlock Text="{Binding CurrentTextSize}" VerticalAlignment="Center" Foreground="#E0E0E0" FontSize="11" FontWeight="SemiBold" MinWidth="20" TextAlignment="Center" Background="Transparent" ToolTip.Tip="Tamaño del texto" />
                 <Button Content="+" Padding="6,2" FontSize="11" FontWeight="Bold" Click="IncreaseSize_Click" 
-                        Background="#2D2D30" Foreground="White" CornerRadius="3" MinWidth="22" HorizontalContentAlignment="Center"
-                        ToolTip.Tip="Aumentar tamaño" />
+                        Background="#2D2D30" Foreground="White" CornerRadius="3" MinWidth="22" HorizontalContentAlignment="Center" />
                 
                 <!-- Icono de información -->
                 <PathIcon Data="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"
@@ -72,42 +69,21 @@
                 BorderThickness="{x:Static core:Constants.TextToolBorderThickness}"
                 CornerRadius="2">
             
-            <Grid UseLayoutRounding="False">
-                <!-- 1. Contorno claro 360° homogéneo (Círculo unitario r=1.0) -->
-                <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolLightContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(-1px, 0px)" />
-                <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolLightContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(1px, 0px)" />
-                <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolLightContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(0px, -1px)" />
-                <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolLightContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(0px, 1px)" />
-                <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolLightContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(-0.7px, -0.7px)" />
-                <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolLightContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(0.7px, -0.7px)" />
-                <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolLightContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(-0.7px, 0.7px)" />
-                <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolLightContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(0.7px, 0.7px)" />
-
-                <!-- 2. Contorno oscuro 360° homogéneo (Círculo unitario r=1.0) -->
-                <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolDarkContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(-1px, 0px)" />
-                <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolDarkContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(1px, 0px)" />
-                <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolDarkContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(0px, -1px)" />
-                <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolDarkContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(0px, 1px)" />
-                <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolDarkContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(-0.7px, -0.7px)" />
-                <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolDarkContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(0.7px, -0.7px)" />
-                <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolDarkContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(-0.7px, 0.7px)" />
-                <TextBlock Text="{Binding CurrentTextContent}" FontSize="{Binding CurrentTextSize}" Foreground="{x:Static core:Constants.TextToolDarkContourBrush}" Padding="{x:Static core:Constants.TextToolPadding}" TextWrapping="Wrap" RenderTransform="translate(0.7px, 0.7px)" />
-
-                <!-- Cuadro de texto con cursor dual blanco/negro -->
-                <TextBox x:Name="EditTextBox"
-                         Text="{Binding CurrentTextContent, Mode=TwoWay}"
-                         FontSize="{Binding CurrentTextSize}"
-                         Foreground="{Binding ActiveBrush}"
-                         CaretBrush="{x:Static core:Constants.TextToolCaretBrush}"
-                         Background="Transparent"
-                         BorderThickness="0"
-                         AcceptsReturn="True"
-                         TextWrapping="Wrap"
-                         KeyDown="TextBox_KeyDown"
-                         Padding="{x:Static core:Constants.TextToolPadding}"
-                         MinWidth="100"
-                         MinHeight="30" />
-            </Grid>
+            <!-- Cuadro de texto interactivo (Skia dibuja el texto en tiempo real; el TextBox gestiona el cursor y teclado) -->
+            <TextBox x:Name="EditTextBox"
+                     Text="{Binding CurrentTextContent, Mode=TwoWay}"
+                     FontSize="{Binding CurrentTextSize}"
+                     Foreground="Transparent"
+                     SelectionBrush="#400078D7"
+                     CaretBrush="{x:Static core:Constants.TextToolCaretBrush}"
+                     Background="Transparent"
+                     BorderThickness="0"
+                     AcceptsReturn="True"
+                     TextWrapping="Wrap"
+                     KeyDown="TextBox_KeyDown"
+                     Padding="{x:Static core:Constants.TextToolPadding}"
+                     MinWidth="100"
+                     MinHeight="30" />
         </Border>
     </Grid>
 </UserControl>

@@ -82,7 +82,7 @@ public class AnnotationCanvas : Control
         }
 
         // Delegar el dibujado de vectores a SkiaSharp
-        context.Custom(new SkiaCanvasDrawOperation(new Rect(Bounds.Size), ViewModel.Store.Shapes, _currentDrawingShape, ViewModel.EditingTextShape));
+        context.Custom(new SkiaCanvasDrawOperation(new Rect(Bounds.Size), ViewModel.Store.Shapes, _currentDrawingShape));
     }
 
     private sealed class SkiaCanvasDrawOperation : Avalonia.Rendering.SceneGraph.ICustomDrawOperation
@@ -90,14 +90,12 @@ public class AnnotationCanvas : Control
         private readonly Rect _bounds;
         private readonly System.Collections.Generic.IEnumerable<VectorShape> _shapes;
         private readonly VectorShape? _currentShape;
-        private readonly VectorShape? _editingShape;
 
-        public SkiaCanvasDrawOperation(Rect bounds, System.Collections.Generic.IEnumerable<VectorShape> shapes, VectorShape? currentShape, VectorShape? editingShape)
+        public SkiaCanvasDrawOperation(Rect bounds, System.Collections.Generic.IEnumerable<VectorShape> shapes, VectorShape? currentShape)
         {
             _bounds = bounds;
             _shapes = shapes;
             _currentShape = currentShape;
-            _editingShape = editingShape;
         }
 
         public Rect Bounds => _bounds;
@@ -117,7 +115,6 @@ public class AnnotationCanvas : Control
             
             foreach (var shape in _shapes)
             {
-                if (shape == _editingShape) continue; // Ocultar vector en edición
                 shape.RenderSkia(canvas);
             }
             

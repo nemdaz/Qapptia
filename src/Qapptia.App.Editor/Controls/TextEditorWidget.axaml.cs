@@ -87,6 +87,10 @@ public partial class TextEditorWidget : UserControl
         if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
         {
             _isDragging = true;
+            if (sender is Control c)
+            {
+                ToolTip.SetIsOpen(c, false);
+            }
             _dragStartPoint = e.GetPosition(this.Parent as Avalonia.Controls.Control);
             e.Pointer.Capture(sender as IInputElement);
             e.Handled = true;
@@ -97,6 +101,10 @@ public partial class TextEditorWidget : UserControl
     {
         if (_isDragging && DataContext is EditorViewModel vm)
         {
+            if (sender is Control c)
+            {
+                ToolTip.SetIsOpen(c, false);
+            }
             var currentPoint = e.GetPosition(this.Parent as Avalonia.Controls.Control);
             double dx = currentPoint.X - _dragStartPoint.X;
             double dy = currentPoint.Y - _dragStartPoint.Y;
