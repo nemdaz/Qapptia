@@ -136,33 +136,9 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     private bool _isEditingText;
 
     [ObservableProperty]
-    private string _currentTextContent = string.Empty;
-
-    [ObservableProperty]
-    private int _currentTextSize = 24;
-
-    [ObservableProperty]
     private Avalonia.Rect _currentTextBounds;
 
-    public TextShape? EditingTextShape { get; private set; }
-    
-    partial void OnCurrentTextContentChanged(string value)
-    {
-        if (EditingTextShape != null)
-        {
-            EditingTextShape.Text = value;
-            RequestRedraw?.Invoke(this, EventArgs.Empty);
-        }
-    }
-
-    partial void OnCurrentTextSizeChanged(int value)
-    {
-        if (EditingTextShape != null)
-        {
-            EditingTextShape.TextSize = value;
-            RequestRedraw?.Invoke(this, EventArgs.Empty);
-        }
-    }
+    public ITextInputShape? ActiveTextInputShape { get; private set; }
 
     partial void OnActiveColorChanged(Color value)
     {
@@ -181,9 +157,9 @@ public partial class EditorViewModel : ObservableObject, IDisposable
                 AvailableColors[0].IsSelected = true;
             }
         }
-        if (EditingTextShape != null)
+        if (ActiveTextInputShape is VectorShape vectorShape)
         {
-            EditingTextShape.Color = value;
+            vectorShape.Color = value;
             RequestRedraw?.Invoke(this, EventArgs.Empty);
         }
     }
@@ -332,24 +308,19 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         RequestRedraw?.Invoke(this, EventArgs.Empty);
     }
 
-    public void StartTextEditing(TextShape shape)
+    public void StartTextInput(ITextInputShape shape)
     {
         if (IsEditingText)
         {
-            CommitTextEditing();
+            CommitCurrentState();
         }
 
-        EditingTextShape = shape;
+        ActiveTextInputShape = shape;
         shape.IsEditing = true;
         shape.CaretIndex = shape.Text.Length;
         shape.IsCaretVisible = true;
-        CurrentTextContent = shape.Text;
-        CurrentTextSize = shape.TextSize;
         
-        // Posición del widget flotante (desfase 32px para la barra de herramientas)
-        double left = Math.Min(shape.Start.X, shape.End.X);
-        double top = Math.Min(shape.Start.Y, shape.End.Y);
-        CurrentTextBounds = new Avalonia.Rect(left, top - 32, shape.BoxWidth, 32); 
+        CurrentTextBounds = shape.TextBounds;
         IsEditingText = true;
         RequestRedraw?.Invoke(this, EventArgs.Empty);
     }
@@ -357,57 +328,26 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public void CommitCurrentState()
     {
-        if (IsEditingText)
+        if (IsEditingText && ActiveTextInputShape != null)
         {
-            CommitTextEditing();
+            ActiveTextInputShape.IsEditing = false;
+            
+            if (ActiveTextInputShape.IsEmpty && ActiveTextInputShape is VectorShape vectorShape)
+            {
+                Store.RemoveShape(vectorShape);
+            }
+            
+            IsEditingText = false;
+            ActiveTextInputShape = null;
+            Store.ClearSelection();
+            SaveCurrentAnnotations();
+            RequestRedraw?.Invoke(this, EventArgs.Empty);
         }
         else
         {
             Store.ClearSelection();
             RequestRedraw?.Invoke(this, EventArgs.Empty);
         }
-    }
-
-    [RelayCommand]
-    public void CommitTextEditing()
-    {
-        if (!IsEditingText || EditingTextShape == null) return;
-        
-        EditingTextShape.IsEditing = false;
-        EditingTextShape.Text = CurrentTextContent;
-        EditingTextShape.TextSize = CurrentTextSize;
-        
-        // Eliminar si el texto quedó vacío
-        if (string.IsNullOrWhiteSpace(EditingTextShape.Text))
-        {
-            Store.RemoveShape(EditingTextShape);
-        }
-        
-        IsEditingText = false;
-        EditingTextShape = null;
-        Store.ClearSelection();
-        SaveCurrentAnnotations();
-        RequestRedraw?.Invoke(this, EventArgs.Empty);
-    }
-
-    [RelayCommand]
-    public void CancelTextEditing()
-    {
-        if (!IsEditingText) return;
-
-        if (EditingTextShape != null)
-        {
-            EditingTextShape.IsEditing = false;
-            if (string.IsNullOrWhiteSpace(EditingTextShape.Text))
-            {
-                Store.RemoveShape(EditingTextShape);
-            }
-        }
-        
-        IsEditingText = false;
-        EditingTextShape = null;
-        Store.ClearSelection();
-        RequestRedraw?.Invoke(this, EventArgs.Empty);
     }
 
     public ObservableCollection<PaletteColorItem> AvailableColors { get; }

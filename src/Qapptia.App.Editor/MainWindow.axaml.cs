@@ -93,7 +93,7 @@ public partial class MainWindow : Window
         {
             if (DataContext is EditorViewModel currentVm && currentVm.IsEditingText)
             {
-                currentVm.CommitTextEditing();
+                currentVm.CommitCurrentState();
             }
         };
         

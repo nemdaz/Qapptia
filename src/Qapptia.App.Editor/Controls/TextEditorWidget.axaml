@@ -26,7 +26,7 @@
             <!-- Control de tamaño -->
             <Button Content="-" Padding="6,2" FontSize="11" FontWeight="Bold" Click="DecreaseSize_Click" 
                     Background="#2D2D30" Foreground="White" CornerRadius="3" MinWidth="22" HorizontalContentAlignment="Center" />
-            <TextBlock Text="{Binding CurrentTextSize}" VerticalAlignment="Center" Foreground="#E0E0E0" FontSize="11" FontWeight="SemiBold" MinWidth="20" TextAlignment="Center" Background="Transparent" ToolTip.Tip="Tamaño del texto" />
+            <TextBlock x:Name="SizeTextBlock" Text="24" VerticalAlignment="Center" Foreground="#E0E0E0" FontSize="11" FontWeight="SemiBold" MinWidth="20" TextAlignment="Center" Background="Transparent" ToolTip.Tip="Tamaño del texto" />
             <Button Content="+" Padding="6,2" FontSize="11" FontWeight="Bold" Click="IncreaseSize_Click" 
                     Background="#2D2D30" Foreground="White" CornerRadius="3" MinWidth="22" HorizontalContentAlignment="Center" />
             

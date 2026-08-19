@@ -37,9 +37,9 @@ public class AnnotationCanvas : Control
         };
         _caretTimer.Tick += (s, e) =>
         {
-            if (ViewModel?.EditingTextShape != null && ViewModel.IsEditingText)
+            if (ViewModel?.ActiveTextInputShape != null && ViewModel.IsEditingText)
             {
-                ViewModel.EditingTextShape.IsCaretVisible = !ViewModel.EditingTextShape.IsCaretVisible;
+                ViewModel.ActiveTextInputShape.IsCaretVisible = !ViewModel.ActiveTextInputShape.IsCaretVisible;
                 InvalidateVisual();
             }
         };
@@ -162,9 +162,8 @@ public class AnnotationCanvas : Control
         Focus();
 
         // 1. Si ya estamos en modo de ingreso de texto activo:
-        if (ViewModel.IsEditingText && ViewModel.EditingTextShape != null)
+        if (ViewModel.IsEditingText && ViewModel.ActiveTextInputShape is VectorShape activeShape && activeShape is ITextInputShape activeInput)
         {
-            var activeShape = ViewModel.EditingTextShape;
             var handle = activeShape.HitTest(point);
             if (handle != HandleType.None)
             {
@@ -179,18 +178,31 @@ public class AnnotationCanvas : Control
                     return;
                 }
 
-                // Clic en el cuerpo: posicionar cursor o selección de caracteres
+                // Clic en el borde perimetral del recuadro: pasar a modo contenedor
+                if (activeInput.IsOnBorder(point))
+                {
+                    ViewModel.CommitCurrentState();
+                    activeShape.IsSelected = true;
+                    _selectedShape = activeShape;
+                    _activeHandle = HandleType.Body;
+                    _interaction = CanvasInteraction.ManipulatingShape;
+                    InvalidateVisual();
+                    e.Handled = true;
+                    return;
+                }
+
+                // Clic en el cuerpo del texto: posicionar cursor o selección de caracteres
                 _interaction = CanvasInteraction.None;
-                activeShape.OnPointerPressedInTextInput(point, e.KeyModifiers, e.ClickCount, out _isSelectingText);
+                activeInput.OnPointerPressedInTextInput(point, e.KeyModifiers, e.ClickCount, out _isSelectingText);
                 InvalidateVisual();
                 e.Handled = true;
                 return;
             }
             else
             {
-                bool wasEmpty = string.IsNullOrWhiteSpace(activeShape.Text);
+                bool wasEmpty = activeInput.IsEmpty;
                 _isSelectingText = false;
-                ViewModel.CommitTextEditing();
+                ViewModel.CommitCurrentState();
                 UpdateCursor(point);
 
                 // Si el texto contenía contenido, el clic fuera solo confirma y cierra la edición actual
@@ -226,18 +238,24 @@ public class AnnotationCanvas : Control
         if (_selectedShape != null)
         {
             _selectedShape.IsSelected = true;
-            // Si la figura es un texto, entrar a edición inmediatamente en 1 solo clic (con sus nodos y caret activos):
-            if (_selectedShape.SupportsTextInput && _selectedShape is TextShape textShape)
+            // Si la figura admite ingreso de texto:
+            if (_selectedShape.SupportsTextInput && _selectedShape is ITextInputShape inputShape)
             {
-                ViewModel.StartTextEditing(textShape);
                 if (_activeHandle == HandleType.LeftCenter || _activeHandle == HandleType.RightCenter)
                 {
                     _interaction = CanvasInteraction.ManipulatingShape;
                 }
+                else if (inputShape.IsOnBorder(point))
+                {
+                    // Clic en el borde: seleccionar como contenedor vectorial (para mover o presionar Suprimir)
+                    _interaction = CanvasInteraction.ManipulatingShape;
+                }
                 else
                 {
+                    // Clic en el interior del texto: entrar a modo edición de texto
+                    ViewModel.StartTextInput(inputShape);
                     _interaction = CanvasInteraction.None;
-                    textShape.OnPointerPressedInTextInput(point, e.KeyModifiers, e.ClickCount, out _isSelectingText);
+                    inputShape.OnPointerPressedInTextInput(point, e.KeyModifiers, e.ClickCount, out _isSelectingText);
                 }
                 InvalidateVisual();
                 e.Handled = true;
@@ -251,13 +269,13 @@ public class AnnotationCanvas : Control
             var newShape = ShapeFactory.Create(ViewModel.ActiveTool, point, ViewModel.ActiveColor);
             if (newShape != null)
             {
-                if (newShape.AutoStartsTextInputOnCreation)
+                if (newShape.AutoStartsTextInputOnCreation && newShape is ITextInputShape inputShape)
                 {
                     _interaction = CanvasInteraction.None;
                     ViewModel.Store.AddShape(newShape);
                     newShape.IsSelected = true;
                     _selectedShape = newShape;
-                    ViewModel.StartTextEditing((TextShape)newShape);
+                    ViewModel.StartTextInput(inputShape);
                     InvalidateVisual();
                     e.Handled = true;
                     return;
@@ -281,7 +299,7 @@ public class AnnotationCanvas : Control
         var point = e.GetPosition(this);
 
         // Selección de texto por arrastre del ratón
-        if (_isSelectingText && ViewModel.EditingTextShape is { IsEditing: true } textShapeActive && e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        if (_isSelectingText && ViewModel.ActiveTextInputShape is { IsEditing: true } and TextShape textShapeActive && e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
         {
             int dragIdx = textShapeActive.GetCaretIndexFromPoint(point);
             textShapeActive.CaretIndex = dragIdx;
@@ -332,11 +350,9 @@ public class AnnotationCanvas : Control
             
             _selectedShape.DragHandle(_activeHandle, dx, dy, ref _activeHandle);
 
-            if (_selectedShape is TextShape textShape && ViewModel != null && ViewModel.IsEditingText)
+            if (_selectedShape is ITextInputShape inputShape && ViewModel != null && ViewModel.IsEditingText)
             {
-                double left = Math.Min(textShape.Start.X, textShape.End.X);
-                double top = Math.Min(textShape.Start.Y, textShape.End.Y);
-                ViewModel.CurrentTextBounds = new Rect(left, top - 32, textShape.BoxWidth, 32);
+                ViewModel.CurrentTextBounds = inputShape.TextBounds;
             }
             
             _lastMousePos = point;
@@ -362,28 +378,19 @@ public class AnnotationCanvas : Control
                     double dy = _currentDrawingShape.End.Y - _currentDrawingShape.Start.Y;
                     double distance = Math.Sqrt(dx * dx + dy * dy);
 
-                    if (distance >= Qapptia.Editor.Core.Constants.DrawMinDistance)
+                    // Si el usuario solo hizo un clic mínimo sin arrastrar, no agregamos figura basura
+                    if (distance > 3)
                     {
                         ViewModel?.Store.AddShape(_currentDrawingShape);
-                        
-                        if (ViewModel != null)
-                        {
-                            ViewModel.Store.ClearSelection();
-                            _selectedShape = _currentDrawingShape;
-                            _selectedShape.IsSelected = true;
-                            shouldSave = true;
-                        }
+                        shouldSave = true;
                     }
-                    
                     _currentDrawingShape = null;
-                    InvalidateVisual();
                 }
                 break;
 
             case CanvasInteraction.ManipulatingShape:
                 if (_hasDragged)
                 {
-                    // Arrastre completado
                     shouldSave = true;
                 }
                 break;
@@ -392,6 +399,7 @@ public class AnnotationCanvas : Control
         _interaction = CanvasInteraction.None;
         _activeHandle = HandleType.None;
         _isSelectingText = false;
+        InvalidateVisual();
 
         if (shouldSave)
         {
@@ -402,10 +410,9 @@ public class AnnotationCanvas : Control
     protected override void OnTextInput(TextInputEventArgs e)
     {
         base.OnTextInput(e);
-        if (ViewModel?.EditingTextShape is { IsEditing: true } textShape && !string.IsNullOrEmpty(e.Text))
+        if (ViewModel?.ActiveTextInputShape is { IsEditing: true } textInput && !string.IsNullOrEmpty(e.Text))
         {
-            textShape.InsertText(e.Text);
-            ViewModel.CurrentTextContent = textShape.Text;
+            textInput.InsertText(e.Text);
             InvalidateVisual();
             e.Handled = true;
         }
@@ -414,7 +421,7 @@ public class AnnotationCanvas : Control
     protected override async void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
-        if (ViewModel?.EditingTextShape is { IsEditing: true } textShape)
+        if (ViewModel?.ActiveTextInputShape is { IsEditing: true } textInput)
         {
             // Atajos de portapapeles
             if (e.Key == Key.V && e.KeyModifiers.HasFlag(KeyModifiers.Control))
@@ -425,8 +432,7 @@ public class AnnotationCanvas : Control
                     var pasteText = await top.Clipboard.TryGetTextAsync();
                     if (!string.IsNullOrEmpty(pasteText))
                     {
-                        textShape.InsertText(pasteText);
-                        ViewModel.CurrentTextContent = textShape.Text;
+                        textInput.InsertText(pasteText);
                         InvalidateVisual();
                         e.Handled = true;
                     }
@@ -437,7 +443,7 @@ public class AnnotationCanvas : Control
             if (e.Key == Key.C && e.KeyModifiers.HasFlag(KeyModifiers.Control))
             {
                 var top = TopLevel.GetTopLevel(this);
-                string textToCopy = textShape.HasSelection ? textShape.SelectedText : textShape.Text;
+                string textToCopy = textInput.HasSelection ? textInput.SelectedText : textInput.Text;
                 if (top?.Clipboard != null && !string.IsNullOrEmpty(textToCopy))
                 {
                     await top.Clipboard.SetTextAsync(textToCopy);
@@ -449,40 +455,56 @@ public class AnnotationCanvas : Control
             if (e.Key == Key.X && e.KeyModifiers.HasFlag(KeyModifiers.Control))
             {
                 var top = TopLevel.GetTopLevel(this);
-                string textToCut = textShape.HasSelection ? textShape.SelectedText : textShape.Text;
+                string textToCut = textInput.HasSelection ? textInput.SelectedText : textInput.Text;
                 if (top?.Clipboard != null && !string.IsNullOrEmpty(textToCut))
                 {
                     await top.Clipboard.SetTextAsync(textToCut);
-                    if (textShape.HasSelection)
+                    if (textInput.HasSelection)
                     {
-                        textShape.DeleteBackward();
+                        textInput.DeleteBackward();
                     }
                     else
                     {
-                        textShape.Text = string.Empty;
-                        textShape.CaretIndex = 0;
+                        textInput.Text = string.Empty;
+                        textInput.CaretIndex = 0;
                     }
-                    ViewModel.CurrentTextContent = textShape.Text;
                     InvalidateVisual();
                     e.Handled = true;
                 }
                 return;
             }
 
-            // Delegar la manipulación de teclas a TextShape
-            if (textShape.HandleKeyDown(e.Key, e.KeyModifiers, out bool shouldCommit))
+            // Delegar la manipulación de teclas a ITextInputShape
+            if (textInput.HandleKeyDown(e.Key, e.KeyModifiers, out bool shouldCommit))
             {
                 if (shouldCommit)
                 {
-                    ViewModel.CommitTextEditing();
+                    if (e.Key == Key.Escape && textInput is VectorShape vs)
+                    {
+                        // Escape: confirma el texto y transiciona a modo contenedor (IsSelected = true, IsEditing = false)
+                        ViewModel.CommitCurrentState();
+                        vs.IsSelected = true;
+                        _selectedShape = vs;
+                        InvalidateVisual();
+                    }
+                    else
+                    {
+                        ViewModel.CommitCurrentState();
+                    }
                 }
                 else
                 {
-                    ViewModel.CurrentTextContent = textShape.Text;
                     InvalidateVisual();
                 }
                 e.Handled = true;
             }
+        }
+        else if (e.Key == Key.Escape && ViewModel != null)
+        {
+            ViewModel.Store.ClearSelection();
+            _selectedShape = null;
+            InvalidateVisual();
+            e.Handled = true;
         }
         else if (e.Key == Key.Delete && ViewModel != null)
         {

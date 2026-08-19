@@ -10,7 +10,7 @@ namespace Qapptia.Editor.Models;
 
 public record struct TextLayoutLine(string Text, int StartIndex, int Length, float Width, float YOffset);
 
-public class TextShape : VectorShape
+public class TextShape : VectorShape, ITextInputShape
 {
     private static readonly (float dx, float dy)[] s_contourOffsets =
     [
@@ -27,7 +27,7 @@ public class TextShape : VectorShape
     private static readonly string[] s_lineSeparators = ["\r\n", "\r", "\n"];
 
     public string Text { get; set; } = string.Empty;
-    public int TextSize { get; set; } = 24;
+    public float TextSize { get; set; } = 24f;
     public int CaretIndex { get; set; }
     public int SelectionStart { get; set; }
     public int SelectionEnd { get; set; }
@@ -36,6 +36,8 @@ public class TextShape : VectorShape
 
     public double BoxWidth => Math.Max(Constants.TextToolMinWidth, Math.Abs(End.X - Start.X));
     public double UsableWidth => Math.Max(Constants.TextToolMinWidth - (Constants.TextToolOffset * 2), BoxWidth - (Constants.TextToolOffset * 2));
+    public Rect TextBounds => new Rect(Math.Min(Start.X, End.X), Math.Min(Start.Y, End.Y) - 32, BoxWidth, 32);
+    public bool IsEmpty => string.IsNullOrWhiteSpace(Text);
 
     public bool HasSelection => SelectionStart != SelectionEnd && !string.IsNullOrEmpty(Text);
     public int SelectionMin => Math.Clamp(Math.Min(SelectionStart, SelectionEnd), 0, Text.Length);
@@ -85,22 +87,22 @@ public class TextShape : VectorShape
 
     #region Text Editing Operations (Monomotor)
 
-    public void InsertText(string newText)
+    public void InsertText(string text)
     {
-        if (string.IsNullOrEmpty(newText)) return;
+        if (string.IsNullOrEmpty(text)) return;
         if (HasSelection)
         {
             int min = SelectionMin;
             int max = SelectionMax;
-            Text = Text.Remove(min, max - min).Insert(min, newText);
-            CaretIndex = min + newText.Length;
+            Text = Text.Remove(min, max - min).Insert(min, text);
+            CaretIndex = min + text.Length;
             ClearSelection();
         }
         else
         {
             int idx = Math.Clamp(CaretIndex, 0, Text.Length);
-            Text = Text.Insert(idx, newText);
-            CaretIndex = idx + newText.Length;
+            Text = Text.Insert(idx, text);
+            CaretIndex = idx + text.Length;
             ClearSelection();
         }
         IsCaretVisible = true;
@@ -677,6 +679,19 @@ public class TextShape : VectorShape
         }
     }
 
+    /// <summary>
+    /// Determina si un punto se encuentra en la zona perimetral del recuadro de texto (borde de agarre/selección).
+    /// </summary>
+    public bool IsOnBorder(Point point, double tolerance = 6.0)
+    {
+        var box = GetBoundingBox();
+        var outer = new Rect(box.X - tolerance, box.Y - tolerance, box.Width + tolerance * 2, box.Height + tolerance * 2);
+        if (!outer.Contains(point)) return false;
+
+        var inner = new Rect(box.X + tolerance, box.Y + tolerance, Math.Max(0, box.Width - tolerance * 2), Math.Max(0, box.Height - tolerance * 2));
+        return !inner.Contains(point);
+    }
+
     public override StandardCursorType? GetCursorType(Point point)
     {
         var handle = HitTest(point);
@@ -687,7 +702,11 @@ public class TextShape : VectorShape
 
         if (handle == HandleType.Body)
         {
-            return IsEditing ? StandardCursorType.Ibeam : StandardCursorType.SizeAll;
+            if (IsOnBorder(point))
+            {
+                return StandardCursorType.SizeAll;
+            }
+            return StandardCursorType.Ibeam;
         }
 
         return null;

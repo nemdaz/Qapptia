@@ -12,6 +12,13 @@ public partial class TextEditorWidget : UserControl
     public TextEditorWidget()
     {
         InitializeComponent();
+        this.AttachedToVisualTree += (s, e) => UpdateDisplay();
+    }
+
+    protected override void OnDataContextChanged(EventArgs e)
+    {
+        base.OnDataContextChanged(e);
+        UpdateDisplay();
     }
 
     private void InitializeComponent()
@@ -19,20 +26,38 @@ public partial class TextEditorWidget : UserControl
         AvaloniaXamlLoader.Load(this);
     }
 
+    private void UpdateDisplay()
+    {
+        if (DataContext is EditorViewModel vm && vm.ActiveTextInputShape != null)
+        {
+            var sizeBlock = this.FindControl<TextBlock>("SizeTextBlock");
+            if (sizeBlock != null)
+            {
+                sizeBlock.Text = ((int)vm.ActiveTextInputShape.TextSize).ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
+        }
+    }
+
     private void IncreaseSize_Click(object? sender, RoutedEventArgs e)
     {
-        if (DataContext is EditorViewModel vm)
+        if (DataContext is EditorViewModel vm && vm.ActiveTextInputShape != null)
         {
-            vm.CurrentTextSize += 2;
+            vm.ActiveTextInputShape.TextSize += 2;
+            UpdateDisplay();
+            vm.TriggerRedraw();
         }
     }
 
     private void DecreaseSize_Click(object? sender, RoutedEventArgs e)
     {
-        if (DataContext is EditorViewModel vm)
+        if (DataContext is EditorViewModel vm && vm.ActiveTextInputShape != null)
         {
-            if (vm.CurrentTextSize > 8)
-                vm.CurrentTextSize -= 2;
+            if (vm.ActiveTextInputShape.TextSize > 8)
+            {
+                vm.ActiveTextInputShape.TextSize -= 2;
+                UpdateDisplay();
+                vm.TriggerRedraw();
+            }
         }
     }
 
@@ -67,19 +92,10 @@ public partial class TextEditorWidget : UserControl
             double dy = currentPoint.Y - _dragStartPoint.Y;
 
             // Sincronizar posición del vector y overlay flotante preservando el ancho
-            if (vm.EditingTextShape != null)
+            if (vm.ActiveTextInputShape is Qapptia.Editor.Models.VectorShape vectorShape)
             {
-                vm.EditingTextShape.Move(dx, dy);
-
-                double left = Math.Min(vm.EditingTextShape.Start.X, vm.EditingTextShape.End.X);
-                double top = Math.Min(vm.EditingTextShape.Start.Y, vm.EditingTextShape.End.Y);
-
-                vm.CurrentTextBounds = new Rect(
-                    left,
-                    top - 32,
-                    vm.EditingTextShape.BoxWidth,
-                    vm.CurrentTextBounds.Height);
-
+                vectorShape.Move(dx, dy);
+                vm.CurrentTextBounds = vm.ActiveTextInputShape.TextBounds;
                 vm.TriggerRedraw();
             }
 

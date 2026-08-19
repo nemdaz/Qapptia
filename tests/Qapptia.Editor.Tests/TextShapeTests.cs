@@ -82,28 +82,28 @@ public class TextShapeTests
     }
 
     [Fact]
-    public void GetCursorTypeReturnsIbeamWhenEditingAndSizeAllWhenNotEditing()
+    public void GetCursorTypeReturnsIbeamInsideAndSizeAllOnBorder()
     {
         var shape = new TextShape
         {
             Start = new Avalonia.Point(50, 50),
-            End = new Avalonia.Point(50, 50),
+            End = new Avalonia.Point(350, 80),
             Text = "Hola Mundo",
             IsEditing = true
         };
 
-        var insidePoint = new Avalonia.Point(60, 60);
+        var insidePoint = new Avalonia.Point(100, 65);
+        var borderPoint = new Avalonia.Point(100, 50);
         var outsidePoint = new Avalonia.Point(10, 10);
 
         // Editando dentro del texto -> Ibeam
         Assert.Equal(StandardCursorType.Ibeam, shape.GetCursorType(insidePoint));
 
-        // Editando fuera del texto -> null
-        Assert.Null(shape.GetCursorType(outsidePoint));
+        // Sobre el borde perimetral -> SizeAll
+        Assert.Equal(StandardCursorType.SizeAll, shape.GetCursorType(borderPoint));
 
-        // Sin editar dentro del texto -> SizeAll
-        shape.IsEditing = false;
-        Assert.Equal(StandardCursorType.SizeAll, shape.GetCursorType(insidePoint));
+        // Fuera del texto -> null
+        Assert.Null(shape.GetCursorType(outsidePoint));
     }
 
     [Fact]
@@ -268,5 +268,50 @@ public class TextShapeTests
         Assert.Equal(120.0, shape.Start.X);
         Assert.Equal(130.0, shape.Start.Y);
         Assert.Equal(350.0, shape.BoxWidth); // Ancho permanece intacto al mover
+    }
+
+    [Fact]
+    public void IsOnBorderDetectsPerimeterAndReturnsSizeAllCursor()
+    {
+        var shape = new TextShape
+        {
+            Start = new Avalonia.Point(100, 100),
+            End = new Avalonia.Point(400, 130),
+            Text = "Texto con Borde",
+            IsSelected = true
+        };
+
+        // Borde superior (Y = 100) -> IsOnBorder debe ser true y cursor SizeAll
+        var borderPoint = new Avalonia.Point(250, 100);
+        Assert.True(shape.IsOnBorder(borderPoint));
+        Assert.Equal(Avalonia.Input.StandardCursorType.SizeAll, shape.GetCursorType(borderPoint));
+
+        // Interior profundo (X = 250, Y = 115) -> IsOnBorder debe ser false y cursor Ibeam
+        using var font = TextShape.CreateSKFont(24);
+        float h = shape.CalculateHeight(font);
+        var interiorPoint = new Avalonia.Point(250, 100 + h / 2.0);
+        Assert.False(shape.IsOnBorder(interiorPoint));
+        Assert.Equal(Avalonia.Input.StandardCursorType.Ibeam, shape.GetCursorType(interiorPoint));
+    }
+
+    [Fact]
+    public void TextShapeImplementsITextInputShapeContract()
+    {
+        var shape = new TextShape
+        {
+            Start = new Avalonia.Point(100, 100),
+            End = new Avalonia.Point(400, 130),
+            Text = "Texto Polimórfico"
+        };
+
+        ITextInputShape inputShape = shape;
+        Assert.Equal("Texto Polimórfico", inputShape.Text);
+        Assert.False(inputShape.IsEmpty);
+        Assert.Equal(100.0, inputShape.TextBounds.X);
+        Assert.Equal(68.0, inputShape.TextBounds.Y); // 100 - 32
+        Assert.Equal(300.0, inputShape.TextBounds.Width);
+
+        inputShape.Text = "";
+        Assert.True(inputShape.IsEmpty);
     }
 }
