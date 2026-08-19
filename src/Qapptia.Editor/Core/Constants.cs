@@ -16,6 +16,9 @@ public static class Constants
     // Herramienta de texto (Anotaciones - Monomotor Skia)
     public const string TextToolFontFamilyName = "Segoe UI";
     public static readonly SkiaSharp.SKTypeface TextToolTypeface = SkiaSharp.SKTypeface.FromFamilyName(TextToolFontFamilyName) ?? SkiaSharp.SKTypeface.Default;
+    public const float TextToolMinFontSize = 8f; // Tamaño mínimo de fuente
+    public const float TextToolMaxFontSize = 200f; // Tamaño máximo de fuente
+    public const float TextToolDefaultFontSize = 24f; // Tamaño inicial predeterminado
     public const double TextToolOffset = 5.0; // Margen interno de texto
     public const double TextToolMinWidth = 100.0; // Ancho mínimo permitido para la caja de texto
     public const double TextToolDefaultWidth = 300.0; // Ancho inicial predeterminado

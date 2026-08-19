@@ -4,6 +4,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Qapptia.App.Editor.ViewModels;
+using System.Linq;
 
 namespace Qapptia.App.Editor.Controls;
 
@@ -21,6 +22,15 @@ public partial class TextEditorWidget : UserControl
         UpdateDisplay();
     }
 
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == IsVisibleProperty && this.IsVisible)
+        {
+            UpdateDisplay();
+        }
+    }
+
     private void InitializeComponent()
     {
         AvaloniaXamlLoader.Load(this);
@@ -30,35 +40,115 @@ public partial class TextEditorWidget : UserControl
     {
         if (DataContext is EditorViewModel vm && vm.ActiveTextInputShape != null)
         {
-            var sizeBlock = this.FindControl<TextBlock>("SizeTextBlock");
-            if (sizeBlock != null)
+            var sizeBox = this.FindControl<TextBox>("SizeTextBox");
+            if (sizeBox != null && !sizeBox.IsFocused)
             {
-                sizeBlock.Text = ((int)vm.ActiveTextInputShape.TextSize).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                sizeBox.Text = ((int)vm.ActiveTextInputShape.TextSize).ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
+        }
+    }
+
+    private void ExecuteOnActiveShape(Action<Qapptia.Editor.Models.ITextInputShape> action)
+    {
+        if (DataContext is EditorViewModel vm && vm.ActiveTextInputShape != null)
+        {
+            action(vm.ActiveTextInputShape);
+            UpdateDisplay();
+            vm.TriggerRedraw();
+        }
+    }
+
+    private void ReturnFocusToCanvas()
+    {
+        if (this.Parent?.Parent is Panel panel)
+        {
+            foreach (var child in panel.Children)
+            {
+                if (child is AnnotationCanvas mainCanvas)
+                {
+                    mainCanvas.Focus();
+                    return;
+                }
+            }
+        }
+        (this.Parent as Control)?.Focus();
+    }
+
+    private void SizeTextBox_KeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter && sender is TextBox tb)
+        {
+            if (int.TryParse(tb.Text, out int size))
+            {
+                int min = (int)Qapptia.Editor.Core.Constants.TextToolMinFontSize;
+                if (size < min) size = min;
+                ExecuteOnActiveShape(shape => shape.TextSize = size);
+                tb.Text = size.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
+            ReturnFocusToCanvas();
+            e.Handled = true;
+        }
+    }
+
+    private void SizeTextBox_TextChanged(object? sender, TextChangedEventArgs e)
+    {
+        if (sender is TextBox tb && !string.IsNullOrEmpty(tb.Text))
+        {
+            var cleanText = new string(tb.Text.Where(char.IsDigit).ToArray());
+            if (cleanText != tb.Text)
+            {
+                tb.Text = cleanText;
+                tb.CaretIndex = cleanText.Length;
+            }
+            if (int.TryParse(cleanText, out int val))
+            {
+                int max = (int)Qapptia.Editor.Core.Constants.TextToolMaxFontSize;
+                if (val > max)
+                {
+                    tb.Text = max.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                    tb.CaretIndex = tb.Text.Length;
+                }
+            }
+        }
+    }
+
+    private void SizeTextBox_LostFocus(object? sender, RoutedEventArgs e)
+    {
+        if (sender is TextBox tb)
+        {
+            if (int.TryParse(tb.Text, out int size))
+            {
+                int min = (int)Qapptia.Editor.Core.Constants.TextToolMinFontSize;
+                if (size < min)
+                {
+                    tb.Text = min.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                    ExecuteOnActiveShape(shape => shape.TextSize = min);
+                }
+                else
+                {
+                    ExecuteOnActiveShape(shape => shape.TextSize = size);
+                }
+            }
+            else
+            {
+                if (DataContext is EditorViewModel vm && vm.ActiveTextInputShape != null)
+                {
+                    tb.Text = ((int)vm.ActiveTextInputShape.TextSize).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                }
             }
         }
     }
 
     private void IncreaseSize_Click(object? sender, RoutedEventArgs e)
     {
-        if (DataContext is EditorViewModel vm && vm.ActiveTextInputShape != null)
-        {
-            vm.ActiveTextInputShape.TextSize += 2;
-            UpdateDisplay();
-            vm.TriggerRedraw();
-        }
+        ExecuteOnActiveShape(shape => shape.TextSize += 2);
+        ReturnFocusToCanvas();
     }
 
     private void DecreaseSize_Click(object? sender, RoutedEventArgs e)
     {
-        if (DataContext is EditorViewModel vm && vm.ActiveTextInputShape != null)
-        {
-            if (vm.ActiveTextInputShape.TextSize > 8)
-            {
-                vm.ActiveTextInputShape.TextSize -= 2;
-                UpdateDisplay();
-                vm.TriggerRedraw();
-            }
-        }
+        ExecuteOnActiveShape(shape => shape.TextSize -= 2);
+        ReturnFocusToCanvas();
     }
 
     private bool _isDragging;

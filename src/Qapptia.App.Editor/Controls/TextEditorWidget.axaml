@@ -5,6 +5,16 @@
              x:Class="Qapptia.App.Editor.Controls.TextEditorWidget"
              ClipToBounds="False">
     
+    <UserControl.Styles>
+        <Style Selector="TextBox:focus">
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+        <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="#1E1E1E" />
+            <Setter Property="BorderBrush" Value="#007ACC" />
+        </Style>
+    </UserControl.Styles>
+    
     <!-- Barra de herramientas flotante de texto (Monomotor Skia) -->
     <Border Height="28" VerticalAlignment="Top"
             Background="#1E1E1E" BorderBrush="#3E3E42" BorderThickness="1" CornerRadius="4" Padding="4,2"
@@ -26,7 +36,27 @@
             <!-- Control de tamaño -->
             <Button Content="-" Padding="6,2" FontSize="11" FontWeight="Bold" Click="DecreaseSize_Click" 
                     Background="#2D2D30" Foreground="White" CornerRadius="3" MinWidth="22" HorizontalContentAlignment="Center" />
-            <TextBlock x:Name="SizeTextBlock" Text="24" VerticalAlignment="Center" Foreground="#E0E0E0" FontSize="11" FontWeight="SemiBold" MinWidth="20" TextAlignment="Center" Background="Transparent" ToolTip.Tip="Tamaño del texto" />
+            <TextBox x:Name="SizeTextBox" 
+                     Text="24" 
+                     VerticalAlignment="Center" 
+                     VerticalContentAlignment="Center"
+                     Foreground="#E0E0E0" 
+                     CaretBrush="White"
+                     FontSize="11" 
+                     FontWeight="SemiBold" 
+                     MinWidth="28" 
+                     MaxWidth="36"
+                     Height="22"
+                     Padding="2,1"
+                     TextAlignment="Center" 
+                     Background="#252526"
+                     BorderBrush="#3E3E42"
+                     BorderThickness="1"
+                     CornerRadius="3"
+                     KeyDown="SizeTextBox_KeyDown"
+                     TextChanged="SizeTextBox_TextChanged"
+                     LostFocus="SizeTextBox_LostFocus"
+                     ToolTip.Tip="Tamaño del texto (Enter para confirmar)" />
             <Button Content="+" Padding="6,2" FontSize="11" FontWeight="Bold" Click="IncreaseSize_Click" 
                     Background="#2D2D30" Foreground="White" CornerRadius="3" MinWidth="22" HorizontalContentAlignment="Center" />
             

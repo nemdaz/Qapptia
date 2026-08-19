@@ -26,8 +26,15 @@ public class TextShape : VectorShape, ITextInputShape
 
     private static readonly string[] s_lineSeparators = ["\r\n", "\r", "\n"];
 
+    private float _textSize = Constants.TextToolDefaultFontSize;
+
     public string Text { get; set; } = string.Empty;
-    public float TextSize { get; set; } = 24f;
+    public float TextSize
+    {
+        get => _textSize;
+        set => _textSize = Math.Clamp(value, Constants.TextToolMinFontSize, Constants.TextToolMaxFontSize);
+    }
+
     public int CaretIndex { get; set; }
     public int SelectionStart { get; set; }
     public int SelectionEnd { get; set; }

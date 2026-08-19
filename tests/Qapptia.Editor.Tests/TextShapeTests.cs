@@ -1,4 +1,5 @@
 using Avalonia.Input;
+using Qapptia.Editor.Core;
 using Qapptia.Editor.Models;
 using Xunit;
 
@@ -295,6 +296,7 @@ public class TextShapeTests
     }
 
     [Fact]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1859:Use concrete types when possible for improved performance", Justification = "Se verifica explícitamente el contrato ITextInputShape.")]
     public void TextShapeImplementsITextInputShapeContract()
     {
         var shape = new TextShape
@@ -313,5 +315,41 @@ public class TextShapeTests
 
         inputShape.Text = "";
         Assert.True(inputShape.IsEmpty);
+    }
+
+    [Fact]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1859:Use concrete types when possible for improved performance", Justification = "Se verifica explícitamente el contrato ITextInputShape.")]
+    public void TextShapeFontSizePropertyClampsCorrectly()
+    {
+        var shape = new TextShape();
+        ITextInputShape inputShape = shape;
+
+        // Valor por defecto
+        Assert.Equal(Constants.TextToolDefaultFontSize, inputShape.TextSize);
+
+        // Asignación directa
+        inputShape.TextSize = 36f;
+        Assert.Equal(36f, inputShape.TextSize);
+
+        // Incremento y decremento
+        inputShape.TextSize += 4f;
+        Assert.Equal(40f, inputShape.TextSize);
+
+        inputShape.TextSize -= 10f;
+        Assert.Equal(30f, inputShape.TextSize);
+
+        // Clamping inferior
+        inputShape.TextSize = 2f;
+        Assert.Equal(Constants.TextToolMinFontSize, inputShape.TextSize);
+
+        inputShape.TextSize -= 50f;
+        Assert.Equal(Constants.TextToolMinFontSize, inputShape.TextSize);
+
+        // Clamping superior
+        inputShape.TextSize = 500f;
+        Assert.Equal(Constants.TextToolMaxFontSize, inputShape.TextSize);
+
+        inputShape.TextSize += 50f;
+        Assert.Equal(Constants.TextToolMaxFontSize, inputShape.TextSize);
     }
 }
