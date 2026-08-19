@@ -5,7 +5,7 @@
         xmlns:vm="clr-namespace:Qapptia.App.Editor.ViewModels"
         xmlns:controls="clr-namespace:Qapptia.App.Editor.Controls"
         xmlns:core="clr-namespace:Qapptia.Core;assembly=Qapptia.Core"
-        xmlns:shared="clr-namespace:Qapptia.UI.Shared.Controls;assembly=Qapptia.UI.Shared"
+        xmlns:shared="clr-namespace:Qapptia.UI.Components.Controls;assembly=Qapptia.UI.Components"
         mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
         x:Class="Qapptia.App.Editor.MainWindow"
         x:DataType="vm:EditorViewModel"

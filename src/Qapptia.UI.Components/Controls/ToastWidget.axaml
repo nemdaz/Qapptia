@@ -1,7 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:controls="clr-namespace:Qapptia.UI.Shared.Controls"
-             x:Class="Qapptia.UI.Shared.Controls.ToastWidget">
+             xmlns:controls="clr-namespace:Qapptia.UI.Components.Controls"
+             x:Class="Qapptia.UI.Components.Controls.ToastWidget">
     
     <UserControl.Styles>
         <Style Selector="Border.toast">

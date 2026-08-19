@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <RootNamespace>Qapptia.Capture</RootNamespace>
@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Qapptia.UI.Shared\Qapptia.UI.Shared.csproj" />
+    <ProjectReference Include="..\Qapptia.UI.Components\Qapptia.UI.Components.csproj" />
   </ItemGroup>
 
 </Project>

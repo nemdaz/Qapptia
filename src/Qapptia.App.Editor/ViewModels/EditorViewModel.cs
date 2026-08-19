@@ -430,7 +430,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     private string _toastMessage = string.Empty;
 
     [ObservableProperty]
-    private Qapptia.UI.Shared.Controls.ToastNotificationType _toastType = Qapptia.UI.Shared.Controls.ToastNotificationType.Success;
+    private Qapptia.UI.Components.Controls.ToastNotificationType _toastType = Qapptia.UI.Components.Controls.ToastNotificationType.Success;
 
     private System.Threading.CancellationTokenSource? _toastCts;
 
@@ -439,11 +439,11 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         ToastMessage = message;
         ToastType = type switch
         {
-            NotificationType.Success => Qapptia.UI.Shared.Controls.ToastNotificationType.Success,
-            NotificationType.Error => Qapptia.UI.Shared.Controls.ToastNotificationType.Error,
-            NotificationType.Warning => Qapptia.UI.Shared.Controls.ToastNotificationType.Warning,
-            NotificationType.Info => Qapptia.UI.Shared.Controls.ToastNotificationType.Info,
-            _ => Qapptia.UI.Shared.Controls.ToastNotificationType.Success
+            NotificationType.Success => Qapptia.UI.Components.Controls.ToastNotificationType.Success,
+            NotificationType.Error => Qapptia.UI.Components.Controls.ToastNotificationType.Error,
+            NotificationType.Warning => Qapptia.UI.Components.Controls.ToastNotificationType.Warning,
+            NotificationType.Info => Qapptia.UI.Components.Controls.ToastNotificationType.Info,
+            _ => Qapptia.UI.Components.Controls.ToastNotificationType.Success
         };
         
         _toastCts?.Cancel();

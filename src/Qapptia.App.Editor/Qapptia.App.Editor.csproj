@@ -33,7 +33,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Qapptia.Core\Qapptia.Core.csproj" />
     <ProjectReference Include="..\Qapptia.Editor\Qapptia.Editor.csproj" />
-    <ProjectReference Include="..\Qapptia.UI.Shared\Qapptia.UI.Shared.csproj" />
+    <ProjectReference Include="..\Qapptia.UI.Components\Qapptia.UI.Components.csproj" />
   </ItemGroup>
 
   <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">

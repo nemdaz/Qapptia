@@ -3,7 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 
-namespace Qapptia.UI.Shared.Controls;
+namespace Qapptia.UI.Components.Controls;
 
 public enum ToastNotificationType
 {

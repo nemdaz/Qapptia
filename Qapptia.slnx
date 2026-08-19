@@ -8,7 +8,7 @@
     <Project Path="src/Qapptia.Platform.Linux/Qapptia.Platform.Linux.csproj" />
     <Project Path="src/Qapptia.Platform.MacOS/Qapptia.Platform.MacOS.csproj" />
     <Project Path="src/Qapptia.Platform.Windows/Qapptia.Platform.Windows.csproj" />
-    <Project Path="src/Qapptia.UI.Shared/Qapptia.UI.Shared.csproj" />
+    <Project Path="src/Qapptia.UI.Components/Qapptia.UI.Components.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Qapptia.Capture.Tests/Qapptia.Capture.Tests.csproj" />

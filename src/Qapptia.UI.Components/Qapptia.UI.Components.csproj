@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <RootNamespace>Qapptia.UI.Shared</RootNamespace>
+    <RootNamespace>Qapptia.UI.Components</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

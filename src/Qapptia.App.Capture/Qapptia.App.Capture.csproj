@@ -35,7 +35,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Qapptia.Capture\Qapptia.Capture.csproj" />
-    <ProjectReference Include="..\Qapptia.UI.Shared\Qapptia.UI.Shared.csproj" />
+    <ProjectReference Include="..\Qapptia.UI.Components\Qapptia.UI.Components.csproj" />
   </ItemGroup>
 
   <ItemGroup>
