@@ -105,4 +105,60 @@ public class TextShapeTests
         shape.IsEditing = false;
         Assert.Equal(StandardCursorType.SizeAll, shape.GetCursorType(insidePoint));
     }
+
+    [Fact]
+    public void SupportsTextInputAndAutoStartsTextInputOnCreationAreTrueOnlyForTextShape()
+    {
+        var textShape = new TextShape();
+        var rectShape = new RectangleShape();
+        var lineShape = new LineShape();
+        var arrowShape = new ArrowShape();
+
+        Assert.True(textShape.SupportsTextInput);
+        Assert.True(textShape.AutoStartsTextInputOnCreation);
+
+        Assert.False(rectShape.SupportsTextInput);
+        Assert.False(rectShape.AutoStartsTextInputOnCreation);
+
+        Assert.False(lineShape.SupportsTextInput);
+        Assert.False(lineShape.AutoStartsTextInputOnCreation);
+
+        Assert.False(arrowShape.SupportsTextInput);
+        Assert.False(arrowShape.AutoStartsTextInputOnCreation);
+    }
+
+    [Fact]
+    public void OnPointerPressedInTextInputHandlesClickPositionAndSelection()
+    {
+        var shape = new TextShape
+        {
+            Start = new Avalonia.Point(50, 50),
+            End = new Avalonia.Point(50, 50),
+            Text = "ABCDEFG",
+            IsEditing = true
+        };
+
+        // 1. Clic simple posiciona caret y activa bandera de selección por arrastre
+        shape.OnPointerPressedInTextInput(new Avalonia.Point(55, 55), Avalonia.Input.KeyModifiers.None, clickCount: 1, out bool isSelecting);
+        Assert.True(isSelecting);
+        Assert.False(shape.HasSelection);
+
+        // 2. Doble clic selecciona todo el texto
+        shape.OnPointerPressedInTextInput(new Avalonia.Point(55, 55), Avalonia.Input.KeyModifiers.None, clickCount: 2, out bool isSelecting2);
+        Assert.False(isSelecting2);
+        Assert.True(shape.HasSelection);
+        Assert.Equal("ABCDEFG", shape.SelectedText);
+    }
+
+    [Fact]
+    public void ShapeFactoryCreatesExpectedShapeTypes()
+    {
+        var text = Qapptia.Editor.Core.ShapeFactory.Create(ToolType.Text, new Avalonia.Point(10, 10), Avalonia.Media.Colors.Red);
+        var rect = Qapptia.Editor.Core.ShapeFactory.Create(ToolType.Rectangle, new Avalonia.Point(10, 10), Avalonia.Media.Colors.Red);
+        var arrow = Qapptia.Editor.Core.ShapeFactory.Create(ToolType.Arrow, new Avalonia.Point(10, 10), Avalonia.Media.Colors.Red);
+
+        Assert.IsType<TextShape>(text);
+        Assert.IsType<RectangleShape>(rect);
+        Assert.IsType<ArrowShape>(arrow);
+    }
 }

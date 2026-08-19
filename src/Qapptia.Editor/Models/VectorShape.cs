@@ -21,8 +21,26 @@ public abstract class VectorShape
     // Indica si el vector se está quemando en la imagen (para ajustar sombras)
     public bool IsBurning { get; set; }
 
+    /// <summary>
+    /// Indica si la figura admite ingreso y edición de texto por teclado.
+    /// </summary>
+    public virtual bool SupportsTextInput => false;
+
+    /// <summary>
+    /// Indica si la figura inicia la entrada de texto inmediatamente tras su creación.
+    /// </summary>
+    public virtual bool AutoStartsTextInputOnCreation => false;
+
     public abstract void RenderSkia(SkiaSharp.SKCanvas canvas);
     public abstract HandleType HitTest(Point point);
+
+    /// <summary>
+    /// Maneja eventos de puntero cuando la figura está en modo de ingreso de texto activo.
+    /// </summary>
+    public virtual void OnPointerPressedInTextInput(Point point, KeyModifiers modifiers, int clickCount, out bool isSelecting)
+    {
+        isSelecting = false;
+    }
 
     public virtual StandardCursorType? GetCursorType(Point point)
     {

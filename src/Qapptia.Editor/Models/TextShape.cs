@@ -39,6 +39,33 @@ public class TextShape : VectorShape
     public int SelectionMax => Math.Clamp(Math.Max(SelectionStart, SelectionEnd), 0, Text.Length);
     public string SelectedText => HasSelection ? Text.Substring(SelectionMin, SelectionMax - SelectionMin) : string.Empty;
 
+    public override bool SupportsTextInput => true;
+    public override bool AutoStartsTextInputOnCreation => true;
+
+    public override void OnPointerPressedInTextInput(Point point, KeyModifiers modifiers, int clickCount, out bool isSelecting)
+    {
+        isSelecting = false;
+        int clickIdx = GetCaretIndexFromPoint(point);
+        CaretIndex = clickIdx;
+
+        if (modifiers.HasFlag(KeyModifiers.Shift))
+        {
+            SelectionEnd = clickIdx;
+        }
+        else if (clickCount >= 2)
+        {
+            SelectAll();
+        }
+        else
+        {
+            SelectionStart = clickIdx;
+            SelectionEnd = clickIdx;
+            isSelecting = true;
+        }
+
+        IsCaretVisible = true;
+    }
+
     public void ClearSelection()
     {
         SelectionStart = CaretIndex;

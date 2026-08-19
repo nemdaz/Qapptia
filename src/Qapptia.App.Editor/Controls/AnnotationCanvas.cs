@@ -6,6 +6,7 @@ using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Qapptia.Editor.Core;
 using Qapptia.Editor.Models;
 using Qapptia.App.Editor.ViewModels;
 
@@ -80,8 +81,7 @@ public class AnnotationCanvas : Control
         None,
         CommittingText,
         DrawingShape,
-        ManipulatingShape,
-        CreatingText
+        ManipulatingShape
     }
 
     private Point _lastMousePos;
@@ -162,30 +162,13 @@ public class AnnotationCanvas : Control
         _hasDragged = false;
         Focus();
 
-        // 1. Si ya estamos editando texto:
+        // 1. Si ya estamos en modo de ingreso de texto activo:
         if (ViewModel.IsEditingText && ViewModel.EditingTextShape != null)
         {
             var activeShape = ViewModel.EditingTextShape;
-            // Si el clic es dentro del texto activo, posicionar o seleccionar
             if (activeShape.HitTest(point) != HandleType.None)
             {
-                int clickIdx = activeShape.GetCaretIndexFromPoint(point);
-                activeShape.CaretIndex = clickIdx;
-                if (e.KeyModifiers.HasFlag(KeyModifiers.Shift))
-                {
-                    activeShape.SelectionEnd = clickIdx;
-                }
-                else if (e.ClickCount >= 2)
-                {
-                    activeShape.SelectAll();
-                }
-                else
-                {
-                    activeShape.SelectionStart = clickIdx;
-                    activeShape.SelectionEnd = clickIdx;
-                    _isSelectingText = true;
-                }
-                activeShape.IsCaretVisible = true;
+                activeShape.OnPointerPressedInTextInput(point, e.KeyModifiers, e.ClickCount, out _isSelectingText);
                 InvalidateVisual();
                 e.Handled = true;
                 return;
@@ -224,27 +207,39 @@ public class AnnotationCanvas : Control
         if (_selectedShape != null)
         {
             _selectedShape.IsSelected = true;
-            // Doble clic sobre texto con cualquier herramienta abre edición inmediata sin cambiar ActiveTool
-            if (_selectedShape is TextShape textShape && e.ClickCount >= 2)
+            // Si la figura admite ingreso de texto y la interacción contextual lo solicita:
+            if (_selectedShape.SupportsTextInput && (ViewModel.ActiveTool == ToolType.Text || e.ClickCount >= 2))
             {
                 _interaction = CanvasInteraction.None;
-                ViewModel.StartTextEditing(textShape);
+                ViewModel.StartTextEditing((TextShape)_selectedShape);
+                InvalidateVisual();
+                e.Handled = true;
+                return;
             }
-            else
-            {
-                _interaction = CanvasInteraction.ManipulatingShape;
-            }
+            
+            _interaction = CanvasInteraction.ManipulatingShape;
         }
         else
         {
-            if (ViewModel.ActiveTool == ToolType.Text)
+            var newShape = ShapeFactory.Create(ViewModel.ActiveTool, point, ViewModel.ActiveColor);
+            if (newShape != null)
             {
-                _interaction = CanvasInteraction.CreatingText;
-            }
-            else
-            {
-                _interaction = CanvasInteraction.DrawingShape;
-                _currentDrawingShape = CreateShape(ViewModel.ActiveTool, point, ViewModel.ActiveColor);
+                if (newShape.AutoStartsTextInputOnCreation)
+                {
+                    _interaction = CanvasInteraction.None;
+                    ViewModel.Store.AddShape(newShape);
+                    newShape.IsSelected = true;
+                    _selectedShape = newShape;
+                    ViewModel.StartTextEditing((TextShape)newShape);
+                    InvalidateVisual();
+                    e.Handled = true;
+                    return;
+                }
+                else
+                {
+                    _interaction = CanvasInteraction.DrawingShape;
+                    _currentDrawingShape = newShape;
+                }
             }
         }
 
@@ -414,35 +409,10 @@ public class AnnotationCanvas : Control
                 break;
 
             case CanvasInteraction.ManipulatingShape:
-                if (!_hasDragged && ViewModel != null)
-                {
-                    // Clic limpio sobre texto existente
-                    if (_selectedShape is TextShape textShape && ViewModel.ActiveTool == ToolType.Text)
-                    {
-                        ViewModel.StartTextEditing(textShape);
-                    }
-                }
-                else if (_hasDragged)
+                if (_hasDragged)
                 {
                     // Arrastre completado
                     shouldSave = true;
-                }
-                break;
-
-            case CanvasInteraction.CreatingText:
-                if (!_hasDragged && ViewModel != null)
-                {
-                    // Clic limpio en área vacía con herramienta Texto
-                    var newTextShape = new TextShape 
-                    { 
-                        Start = _pointerPressedPoint, 
-                        End = _pointerPressedPoint, 
-                        Color = ViewModel.ActiveColor 
-                    };
-                    ViewModel.Store.AddShape(newTextShape);
-                    newTextShape.IsSelected = true;
-                    _selectedShape = newTextShape;
-                    ViewModel.StartTextEditing(newTextShape);
                 }
                 break;
 
@@ -593,19 +563,6 @@ public class AnnotationCanvas : Control
         {
             ToolType.Line or ToolType.Arrow or ToolType.Rectangle or ToolType.Ellipse or ToolType.Highlighter => new Cursor(StandardCursorType.Cross),
             _ => Cursor.Default
-        };
-    }
-
-    private static VectorShape? CreateShape(ToolType tool, Point startPos, Color color)
-    {
-        return tool switch
-        {
-            ToolType.Rectangle => new RectangleShape { Start = startPos, End = startPos, Color = color },
-            ToolType.Ellipse => new EllipseShape { Start = startPos, End = startPos, Color = color },
-            ToolType.Highlighter => new HighlighterShape { Start = startPos, End = startPos, Color = color },
-            ToolType.Line => new LineShape { Start = startPos, End = startPos, Color = color },
-            ToolType.Arrow => new ArrowShape { Start = startPos, End = startPos, Color = color },
-            _ => null
         };
     }
 }
