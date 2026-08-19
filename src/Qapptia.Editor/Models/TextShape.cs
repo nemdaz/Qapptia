@@ -41,6 +41,9 @@ public class TextShape : VectorShape, ITextInputShape
     public bool IsEditing { get; set; }
     public bool IsCaretVisible { get; set; } = true;
 
+    public event EventHandler? FocusRequested;
+    public void RequestFocus() => FocusRequested?.Invoke(this, EventArgs.Empty);
+
     public double BoxWidth => Math.Max(Constants.TextToolMinWidth, Math.Abs(End.X - Start.X));
     public double UsableWidth => Math.Max(Constants.TextToolMinWidth - (Constants.TextToolOffset * 2), BoxWidth - (Constants.TextToolOffset * 2));
     public Rect TextBounds => new Rect(Math.Min(Start.X, End.X), Math.Min(Start.Y, End.Y) - 32, BoxWidth, 32);

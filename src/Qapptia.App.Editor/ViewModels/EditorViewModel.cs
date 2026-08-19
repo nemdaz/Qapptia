@@ -139,6 +139,8 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     private Avalonia.Rect _currentTextBounds;
 
     public ITextInputShape? ActiveTextInputShape { get; private set; }
+    
+    public event EventHandler? TextInputFocusRequested;
 
     partial void OnActiveColorChanged(Color value)
     {
@@ -316,6 +318,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         }
 
         ActiveTextInputShape = shape;
+        ActiveTextInputShape.FocusRequested += OnActiveShapeFocusRequested;
         shape.IsEditing = true;
         shape.CaretIndex = shape.Text.Length;
         shape.IsCaretVisible = true;
@@ -323,6 +326,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         CurrentTextBounds = shape.TextBounds;
         IsEditingText = true;
         RequestRedraw?.Invoke(this, EventArgs.Empty);
+        shape.RequestFocus();
     }
 
     [RelayCommand]
@@ -330,6 +334,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     {
         if (IsEditingText && ActiveTextInputShape != null)
         {
+            ActiveTextInputShape.FocusRequested -= OnActiveShapeFocusRequested;
             ActiveTextInputShape.IsEditing = false;
             
             if (ActiveTextInputShape.IsEmpty && ActiveTextInputShape is VectorShape vectorShape)
@@ -348,6 +353,11 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             Store.ClearSelection();
             RequestRedraw?.Invoke(this, EventArgs.Empty);
         }
+    }
+
+    private void OnActiveShapeFocusRequested(object? sender, EventArgs e)
+    {
+        TextInputFocusRequested?.Invoke(this, EventArgs.Empty);
     }
 
     public ObservableCollection<PaletteColorItem> AvailableColors { get; }

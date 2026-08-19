@@ -56,14 +56,21 @@ public class AnnotationCanvas : Control
             {
                 oldVm.ImageLoaded -= OnViewModelImageLoaded;
                 oldVm.RequestRedraw -= OnViewModelImageLoaded;
+                oldVm.TextInputFocusRequested -= OnTextInputFocusRequested;
             }
             
             if (change.NewValue is EditorViewModel newVm)
             {
                 newVm.ImageLoaded += OnViewModelImageLoaded;
                 newVm.RequestRedraw += OnViewModelImageLoaded;
+                newVm.TextInputFocusRequested += OnTextInputFocusRequested;
             }
         }
+    }
+
+    private void OnTextInputFocusRequested(object? sender, EventArgs e)
+    {
+        this.Focus();
     }
 
     private void OnViewModelImageLoaded(object? sender, EventArgs e)

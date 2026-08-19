@@ -58,22 +58,6 @@ public partial class TextEditorWidget : UserControl
         }
     }
 
-    private void ReturnFocusToCanvas()
-    {
-        if (this.Parent?.Parent is Panel panel)
-        {
-            foreach (var child in panel.Children)
-            {
-                if (child is AnnotationCanvas mainCanvas)
-                {
-                    mainCanvas.Focus();
-                    return;
-                }
-            }
-        }
-        (this.Parent as Control)?.Focus();
-    }
-
     private void SizeTextBox_KeyDown(object? sender, KeyEventArgs e)
     {
         if (e.Key == Key.Enter && sender is TextBox tb)
@@ -82,10 +66,13 @@ public partial class TextEditorWidget : UserControl
             {
                 int min = (int)Qapptia.Editor.Core.Constants.TextToolMinFontSize;
                 if (size < min) size = min;
-                ExecuteOnActiveShape(shape => shape.TextSize = size);
+                ExecuteOnActiveShape(shape => 
+                {
+                    shape.TextSize = size;
+                    shape.RequestFocus();
+                });
                 tb.Text = size.ToString(System.Globalization.CultureInfo.InvariantCulture);
             }
-            ReturnFocusToCanvas();
             e.Handled = true;
         }
     }
@@ -141,14 +128,20 @@ public partial class TextEditorWidget : UserControl
 
     private void IncreaseSize_Click(object? sender, RoutedEventArgs e)
     {
-        ExecuteOnActiveShape(shape => shape.TextSize += 2);
-        ReturnFocusToCanvas();
+        ExecuteOnActiveShape(shape => 
+        {
+            shape.TextSize += 2;
+            shape.RequestFocus();
+        });
     }
 
     private void DecreaseSize_Click(object? sender, RoutedEventArgs e)
     {
-        ExecuteOnActiveShape(shape => shape.TextSize -= 2);
-        ReturnFocusToCanvas();
+        ExecuteOnActiveShape(shape => 
+        {
+            shape.TextSize -= 2;
+            shape.RequestFocus();
+        });
     }
 
     private bool _isDragging;

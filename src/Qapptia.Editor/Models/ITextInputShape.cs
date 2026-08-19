@@ -15,6 +15,9 @@ public interface ITextInputShape
     int CaretIndex { get; set; }
     Rect TextBounds { get; }
     bool IsEmpty { get; }
+    
+    event System.EventHandler? FocusRequested;
+    void RequestFocus();
 
     bool IsOnBorder(Point point, double tolerance = 6.0);
     void OnPointerPressedInTextInput(Point point, KeyModifiers modifiers, int clickCount, out bool isSelecting);
