@@ -13,36 +13,20 @@ public static class Constants
     public const double DrawMinDistance = 8.0;
     public const byte HighlighterAlpha = 102; // 40% opacity
     
-    // Herramienta de texto (Anotaciones)
+    // Herramienta de texto (Anotaciones - Monomotor Skia)
     public const string TextToolFontFamilyName = "Segoe UI";
     public static readonly SkiaSharp.SKTypeface TextToolTypeface = SkiaSharp.SKTypeface.FromFamilyName(TextToolFontFamilyName) ?? SkiaSharp.SKTypeface.Default;
-    public static readonly Thickness TextToolPadding = new(4.0);
-    public static readonly Thickness TextToolBorderThickness = new(1.0);
-    public const double TextToolOffset = 5.0; // TextToolPadding (4) + TextToolBorderThickness (1)
+    public const double TextToolOffset = 5.0; // Margen interno de texto
+    public const double TextToolDefaultWidth = 300.0; // Ancho fijo (+50% sobre 200px base)
+    public const double TextToolUsableWidth = TextToolDefaultWidth - (TextToolOffset * 2); // 290.0 px de área de texto
 
-    // Contornos de texto (8 direcciones 360°)
-    public static readonly Color TextToolDarkContourColor = Color.FromArgb(90, 0, 0, 0); // 35% alpha
-    public static readonly Color TextToolLightContourColor = Color.FromArgb(72, 255, 255, 255); // 28% alpha
-    public static readonly IBrush TextToolDarkContourBrush = new SolidColorBrush(TextToolDarkContourColor);
-    public static readonly IBrush TextToolLightContourBrush = new SolidColorBrush(TextToolLightContourColor);
-
+    // Contornos de texto Skia (8 direcciones 360°)
     public static readonly SkiaSharp.SKColor TextToolDarkContourSKColor = new(0, 0, 0, 90);
     public static readonly SkiaSharp.SKColor TextToolLightContourSKColor = new(255, 255, 255, 72);
-
-    // Cursor dual blanco y negro de alto contraste (visible en cualquier fondo)
-    public static readonly IBrush TextToolCaretBrush = new LinearGradientBrush
-    {
-        StartPoint = new RelativePoint(0, 0, RelativeUnit.Absolute),
-        EndPoint = new RelativePoint(0, 6, RelativeUnit.Absolute),
-        SpreadMethod = GradientSpreadMethod.Repeat,
-        GradientStops = new GradientStops
-        {
-            new GradientStop(Colors.Black, 0.0),
-            new GradientStop(Colors.Black, 0.5),
-            new GradientStop(Colors.White, 0.5),
-            new GradientStop(Colors.White, 1.0)
-        }
-    };
+    public static readonly SkiaSharp.SKColor TextToolBorderSKColor = new(136, 136, 136, 180);
+    public static readonly SkiaSharp.SKColor TextToolSelectionSKColor = new(0, 120, 215, 110); // Azul traslúcido de selección
+    public static readonly SkiaSharp.SKColor TextToolCaretBlack = new(0, 0, 0, 255);
+    public static readonly SkiaSharp.SKColor TextToolCaretWhite = new(255, 255, 255, 255);
 
     // Persistence
     public const string DrawingExtension = ".dibujo";

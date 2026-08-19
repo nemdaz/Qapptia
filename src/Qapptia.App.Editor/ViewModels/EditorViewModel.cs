@@ -323,6 +323,11 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         }
     }
 
+    public void TriggerRedraw()
+    {
+        RequestRedraw?.Invoke(this, EventArgs.Empty);
+    }
+
     public void StartTextEditing(TextShape shape)
     {
         if (IsEditingText)
@@ -331,11 +336,14 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         }
 
         EditingTextShape = shape;
+        shape.IsEditing = true;
+        shape.CaretIndex = shape.Text.Length;
+        shape.IsCaretVisible = true;
         CurrentTextContent = shape.Text;
         CurrentTextSize = shape.TextSize;
         
-        // Posición del widget (desfase 32px para la barra de herramientas Fila 0)
-        CurrentTextBounds = new Avalonia.Rect(shape.Start.X, shape.Start.Y - 32, 200, 50); 
+        // Posición del widget flotante (desfase 32px para la barra de herramientas)
+        CurrentTextBounds = new Avalonia.Rect(shape.Start.X, shape.Start.Y - 32, Qapptia.Editor.Core.Constants.TextToolDefaultWidth, 32); 
         IsEditingText = true;
         RequestRedraw?.Invoke(this, EventArgs.Empty);
     }
@@ -345,6 +353,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     {
         if (!IsEditingText || EditingTextShape == null) return;
         
+        EditingTextShape.IsEditing = false;
         EditingTextShape.Text = CurrentTextContent;
         EditingTextShape.TextSize = CurrentTextSize;
         
@@ -366,10 +375,13 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     {
         if (!IsEditingText) return;
 
-        // Eliminar si el texto está vacío
-        if (EditingTextShape != null && string.IsNullOrWhiteSpace(EditingTextShape.Text))
+        if (EditingTextShape != null)
         {
-            Store.RemoveShape(EditingTextShape);
+            EditingTextShape.IsEditing = false;
+            if (string.IsNullOrWhiteSpace(EditingTextShape.Text))
+            {
+                Store.RemoveShape(EditingTextShape);
+            }
         }
         
         IsEditingText = false;

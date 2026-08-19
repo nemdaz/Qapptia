@@ -200,6 +200,11 @@ public partial class MainWindow : Window
     {
         if (DataContext is EditorViewModel vm)
         {
+            if (vm.IsEditingText)
+            {
+                vm.CommitTextEditing();
+            }
+
             var canvas = this.FindControl<Qapptia.App.Editor.Controls.AnnotationCanvas>("MainCanvas");
             if (canvas != null && vm.ImageWidth > 0 && vm.ImageHeight > 0)
             {
@@ -304,6 +309,11 @@ public partial class MainWindow : Window
             {
                 // Respaldo por si aún no se inicializó
                 guid = await Qapptia.Core.Services.ImageMetadataService.EnsureImageIdAsync(filePath);
+            }
+
+            if (vm.IsEditingText)
+            {
+                vm.CommitTextEditing();
             }
 
             vm.Store.ClearSelection(); // Deseleccionar antes de guardar para ocultar los nodos de edición

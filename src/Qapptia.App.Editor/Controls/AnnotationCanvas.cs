@@ -3,7 +3,9 @@ using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Media;
+using Avalonia.Threading;
 using Qapptia.Editor.Models;
 using Qapptia.App.Editor.ViewModels;
 
@@ -18,6 +20,29 @@ public class AnnotationCanvas : Control
     {
         get => GetValue(ViewModelProperty);
         set => SetValue(ViewModelProperty, value);
+    }
+
+    private readonly DispatcherTimer _caretTimer;
+
+    public AnnotationCanvas()
+    {
+        ClipToBounds = true;
+        Focusable = true;
+        AddHandler(RequestBringIntoViewEvent, (s, e) => e.Handled = true, Avalonia.Interactivity.RoutingStrategies.Tunnel | Avalonia.Interactivity.RoutingStrategies.Bubble);
+
+        _caretTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(500)
+        };
+        _caretTimer.Tick += (s, e) =>
+        {
+            if (ViewModel?.EditingTextShape != null && ViewModel.IsEditingText)
+            {
+                ViewModel.EditingTextShape.IsCaretVisible = !ViewModel.EditingTextShape.IsCaretVisible;
+                InvalidateVisual();
+            }
+        };
+        _caretTimer.Start();
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -42,6 +67,11 @@ public class AnnotationCanvas : Control
 
     private void OnViewModelImageLoaded(object? sender, EventArgs e)
     {
+        if (ViewModel != null && !ViewModel.IsEditingText)
+        {
+            _isSelectingText = false;
+        }
+        UpdateCursor(_lastMousePos);
         InvalidateVisual();
     }
 
@@ -62,13 +92,6 @@ public class AnnotationCanvas : Control
     private VectorShape? _currentDrawingShape;
     private VectorShape? _selectedShape;
 
-    public AnnotationCanvas()
-    {
-        ClipToBounds = true;
-        Focusable = true;
-        AddHandler(RequestBringIntoViewEvent, (s, e) => e.Handled = true, Avalonia.Interactivity.RoutingStrategies.Tunnel | Avalonia.Interactivity.RoutingStrategies.Bubble);
-    }
-
     public override void Render(DrawingContext context)
     {
         base.Render(context);
@@ -82,7 +105,7 @@ public class AnnotationCanvas : Control
             context.DrawImage(ViewModel.Store.BackgroundImage, rect);
         }
 
-        // Delegar el dibujado de vectores a SkiaSharp
+        // Delegar el dibujado de vectores a SkiaSharp (Monomotor puro)
         context.Custom(new SkiaCanvasDrawOperation(new Rect(Bounds.Size), ViewModel.Store.Shapes, _currentDrawingShape));
     }
 
@@ -100,50 +123,84 @@ public class AnnotationCanvas : Control
         }
 
         public Rect Bounds => _bounds;
-        public bool HitTest(Point p) => false;
-        public bool Equals(Avalonia.Rendering.SceneGraph.ICustomDrawOperation? other) => false;
-        public void Dispose() {}
 
-        public void Render(Avalonia.Media.ImmediateDrawingContext context)
+        public void Dispose() { }
+
+        public bool Equals(Avalonia.Rendering.SceneGraph.ICustomDrawOperation? other) => false;
+
+        public bool HitTest(Point p) => _bounds.Contains(p);
+
+        public void Render(ImmediateDrawingContext context)
         {
             var leaseFeature = context.TryGetFeature<Avalonia.Skia.ISkiaSharpApiLeaseFeature>();
             if (leaseFeature == null) return;
-            
+
             using var lease = leaseFeature.Lease();
             var canvas = lease.SkCanvas;
 
-            canvas.Save();
-            
+            // Renderizar todos los vectores guardados
             foreach (var shape in _shapes)
             {
                 shape.RenderSkia(canvas);
             }
-            
+
+            // Renderizar la figura que se está dibujando actualmente en vivo
             _currentShape?.RenderSkia(canvas);
-            
-            canvas.Restore();
         }
     }
+
+    private bool _isSelectingText;
 
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         base.OnPointerPressed(e);
         if (ViewModel == null) return;
 
-        // Confirmar texto al hacer clic fuera
-        if (ViewModel.IsEditingText)
-        {
-            _interaction = CanvasInteraction.CommittingText;
-            ViewModel.CommitTextEditing();
-            InvalidateVisual();
-            return;
-        }
-
         var point = e.GetPosition(this);
         _lastMousePos = point;
         _pointerPressedPoint = point;
         _hasDragged = false;
         Focus();
+
+        // 1. Si ya estamos editando texto:
+        if (ViewModel.IsEditingText && ViewModel.EditingTextShape != null)
+        {
+            var activeShape = ViewModel.EditingTextShape;
+            // Si el clic es dentro del texto activo, posicionar o seleccionar
+            if (activeShape.HitTest(point) != HandleType.None)
+            {
+                int clickIdx = activeShape.GetCaretIndexFromPoint(point);
+                activeShape.CaretIndex = clickIdx;
+                if (e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+                {
+                    activeShape.SelectionEnd = clickIdx;
+                }
+                else if (e.ClickCount >= 2)
+                {
+                    activeShape.SelectAll();
+                }
+                else
+                {
+                    activeShape.SelectionStart = clickIdx;
+                    activeShape.SelectionEnd = clickIdx;
+                    _isSelectingText = true;
+                }
+                activeShape.IsCaretVisible = true;
+                InvalidateVisual();
+                e.Handled = true;
+                return;
+            }
+            else
+            {
+                // Clic fuera: confirmar edición previa
+                _interaction = CanvasInteraction.CommittingText;
+                _isSelectingText = false;
+                ViewModel.CommitTextEditing();
+                UpdateCursor(point);
+                InvalidateVisual();
+                return;
+            }
+        }
 
         HandleType hitHandle = HandleType.None;
         VectorShape? hitShape = null;
@@ -201,6 +258,17 @@ public class AnnotationCanvas : Control
 
         var point = e.GetPosition(this);
 
+        // Selección de texto por arrastre del ratón
+        if (_isSelectingText && ViewModel.EditingTextShape is { IsEditing: true } textShapeActive && e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        {
+            int dragIdx = textShapeActive.GetCaretIndexFromPoint(point);
+            textShapeActive.CaretIndex = dragIdx;
+            textShapeActive.SelectionEnd = dragIdx;
+            textShapeActive.IsCaretVisible = true;
+            InvalidateVisual();
+            return;
+        }
+
         // Detectar si el usuario comenzó a arrastrar
         if (!_hasDragged && e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
         {
@@ -214,7 +282,7 @@ public class AnnotationCanvas : Control
 
         if (_interaction == CanvasInteraction.DrawingShape && _currentDrawingShape != null)
         {
-            if (e.KeyModifiers.HasFlag(Avalonia.Input.KeyModifiers.Shift) &&
+            if (e.KeyModifiers.HasFlag(KeyModifiers.Shift) &&
                 (_currentDrawingShape is RectangleShape || _currentDrawingShape is EllipseShape))
             {
                 double dx = point.X - _currentDrawingShape.Start.X;
@@ -348,7 +416,7 @@ public class AnnotationCanvas : Control
             case CanvasInteraction.ManipulatingShape:
                 if (!_hasDragged && ViewModel != null)
                 {
-                    // Clic limpio sobre forma existente
+                    // Clic limpio sobre texto existente
                     if (_selectedShape is TextShape textShape && ViewModel.ActiveTool == ToolType.Text)
                     {
                         ViewModel.StartTextEditing(textShape);
@@ -356,7 +424,7 @@ public class AnnotationCanvas : Control
                 }
                 else if (_hasDragged)
                 {
-                    // Arrastre completado (mover o redimensionar)
+                    // Arrastre completado
                     shouldSave = true;
                 }
                 break;
@@ -379,12 +447,12 @@ public class AnnotationCanvas : Control
                 break;
 
             case CanvasInteraction.CommittingText:
-                // El clic fuera solo cerró la edición previa
                 break;
         }
 
         _interaction = CanvasInteraction.None;
         _activeHandle = HandleType.None;
+        _isSelectingText = false;
 
         if (shouldSave)
         {
@@ -392,31 +460,129 @@ public class AnnotationCanvas : Control
         }
     }
 
+    protected override void OnTextInput(TextInputEventArgs e)
+    {
+        base.OnTextInput(e);
+        if (ViewModel?.EditingTextShape is { IsEditing: true } textShape && !string.IsNullOrEmpty(e.Text))
+        {
+            textShape.InsertText(e.Text);
+            ViewModel.CurrentTextContent = textShape.Text;
+            InvalidateVisual();
+            e.Handled = true;
+        }
+    }
+
+    protected override async void OnKeyDown(KeyEventArgs e)
+    {
+        base.OnKeyDown(e);
+        if (ViewModel?.EditingTextShape is { IsEditing: true } textShape)
+        {
+            // Atajos de portapapeles
+            if (e.Key == Key.V && e.KeyModifiers.HasFlag(KeyModifiers.Control))
+            {
+                var top = TopLevel.GetTopLevel(this);
+                if (top?.Clipboard != null)
+                {
+                    var pasteText = await top.Clipboard.TryGetTextAsync();
+                    if (!string.IsNullOrEmpty(pasteText))
+                    {
+                        textShape.InsertText(pasteText);
+                        ViewModel.CurrentTextContent = textShape.Text;
+                        InvalidateVisual();
+                        e.Handled = true;
+                    }
+                }
+                return;
+            }
+
+            if (e.Key == Key.C && e.KeyModifiers.HasFlag(KeyModifiers.Control))
+            {
+                var top = TopLevel.GetTopLevel(this);
+                string textToCopy = textShape.HasSelection ? textShape.SelectedText : textShape.Text;
+                if (top?.Clipboard != null && !string.IsNullOrEmpty(textToCopy))
+                {
+                    await top.Clipboard.SetTextAsync(textToCopy);
+                    e.Handled = true;
+                }
+                return;
+            }
+
+            if (e.Key == Key.X && e.KeyModifiers.HasFlag(KeyModifiers.Control))
+            {
+                var top = TopLevel.GetTopLevel(this);
+                string textToCut = textShape.HasSelection ? textShape.SelectedText : textShape.Text;
+                if (top?.Clipboard != null && !string.IsNullOrEmpty(textToCut))
+                {
+                    await top.Clipboard.SetTextAsync(textToCut);
+                    if (textShape.HasSelection)
+                    {
+                        textShape.DeleteBackward();
+                    }
+                    else
+                    {
+                        textShape.Text = string.Empty;
+                        textShape.CaretIndex = 0;
+                    }
+                    ViewModel.CurrentTextContent = textShape.Text;
+                    InvalidateVisual();
+                    e.Handled = true;
+                }
+                return;
+            }
+
+            // Delegar la manipulación de teclas a TextShape
+            if (textShape.HandleKeyDown(e.Key, e.KeyModifiers, out bool shouldCommit))
+            {
+                if (shouldCommit)
+                {
+                    ViewModel.CommitTextEditing();
+                }
+                else
+                {
+                    ViewModel.CurrentTextContent = textShape.Text;
+                    InvalidateVisual();
+                }
+                e.Handled = true;
+            }
+        }
+        else if (e.Key == Key.Delete && _selectedShape != null && ViewModel != null)
+        {
+            ViewModel.Store.RemoveShape(_selectedShape);
+            _selectedShape = null;
+            ViewModel.SaveCurrentAnnotations();
+            InvalidateVisual();
+            e.Handled = true;
+        }
+    }
+
     private void UpdateCursor(Point point)
     {
         if (ViewModel?.Store == null) return;
 
+        // 1. Si hay una figura seleccionada (o en edición), delegar en su propio método polimórfico
         if (_selectedShape != null)
         {
-            var handle = _selectedShape.HitTest(point);
-            if (handle != HandleType.None)
+            var cursorType = _selectedShape.GetCursorType(point);
+            if (cursorType != null)
             {
-                Cursor = GetCursorForHandle(handle);
+                Cursor = new Cursor(cursorType.Value);
                 return;
             }
         }
 
+        // 2. Hover sobre las demás figuras del lienzo
         for (int i = ViewModel.Store.Shapes.Count - 1; i >= 0; i--)
         {
             var shape = ViewModel.Store.Shapes[i];
-            var handle = shape.HitTest(point);
-            if (handle != HandleType.None)
+            var cursorType = shape.GetCursorType(point);
+            if (cursorType != null)
             {
-                Cursor = new Cursor(StandardCursorType.SizeAll);
+                Cursor = new Cursor(cursorType.Value);
                 return;
             }
         }
 
+        // 3. Cursor por defecto según la herramienta de dibujo
         Cursor = GetDefaultCursorForTool();
     }
 
@@ -425,22 +591,7 @@ public class AnnotationCanvas : Control
         if (ViewModel == null) return Cursor.Default;
         return ViewModel.ActiveTool switch
         {
-            ToolType.Text => new Cursor(StandardCursorType.Ibeam),
             ToolType.Line or ToolType.Arrow or ToolType.Rectangle or ToolType.Ellipse or ToolType.Highlighter => new Cursor(StandardCursorType.Cross),
-            _ => Cursor.Default
-        };
-    }
-
-    private static Cursor GetCursorForHandle(HandleType handle)
-    {
-        return handle switch
-        {
-            HandleType.Body => new Cursor(StandardCursorType.SizeAll),
-            HandleType.Start or HandleType.End => new Cursor(StandardCursorType.Cross),
-            HandleType.TopLeft or HandleType.BottomRight => new Cursor(StandardCursorType.TopLeftCorner),
-            HandleType.TopRight or HandleType.BottomLeft => new Cursor(StandardCursorType.TopRightCorner),
-            HandleType.TopCenter or HandleType.BottomCenter => new Cursor(StandardCursorType.TopSide),
-            HandleType.LeftCenter or HandleType.RightCenter => new Cursor(StandardCursorType.LeftSide),
             _ => Cursor.Default
         };
     }

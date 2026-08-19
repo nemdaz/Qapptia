@@ -1,5 +1,6 @@
 using System;
 using Avalonia;
+using Avalonia.Input;
 using Avalonia.Media;
 
 namespace Qapptia.Editor.Models;
@@ -23,7 +24,24 @@ public abstract class VectorShape
     public abstract void RenderSkia(SkiaSharp.SKCanvas canvas);
     public abstract HandleType HitTest(Point point);
 
-    protected Rect GetBoundingBox()
+    public virtual StandardCursorType? GetCursorType(Point point)
+    {
+        var handle = HitTest(point);
+        if (handle == HandleType.None) return null;
+
+        return handle switch
+        {
+            HandleType.Body => StandardCursorType.SizeAll,
+            HandleType.Start or HandleType.End => StandardCursorType.Cross,
+            HandleType.TopLeft or HandleType.BottomRight => StandardCursorType.TopLeftCorner,
+            HandleType.TopRight or HandleType.BottomLeft => StandardCursorType.TopRightCorner,
+            HandleType.TopCenter or HandleType.BottomCenter => StandardCursorType.TopSide,
+            HandleType.LeftCenter or HandleType.RightCenter => StandardCursorType.LeftSide,
+            _ => StandardCursorType.Arrow
+        };
+    }
+
+    protected virtual Rect GetBoundingBox()
     {
         double left = Math.Min(Start.X, End.X);
         double right = Math.Max(Start.X, End.X);

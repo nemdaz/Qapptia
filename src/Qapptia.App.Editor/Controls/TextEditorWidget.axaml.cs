@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -18,50 +19,6 @@ public partial class TextEditorWidget : UserControl
         AvaloniaXamlLoader.Load(this);
     }
 
-    protected override void OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs change)
-    {
-        base.OnPropertyChanged(change);
-        if (change.Property == IsVisibleProperty && IsVisible)
-        {
-            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-            {
-                var textBox = this.FindControl<TextBox>("EditTextBox");
-                textBox?.Focus();
-                if (textBox != null && !string.IsNullOrEmpty(textBox.Text))
-                {
-                    textBox.CaretIndex = textBox.Text.Length;
-                }
-            }, Avalonia.Threading.DispatcherPriority.Loaded);
-        }
-    }
-
-    private void TextBox_KeyDown(object? sender, KeyEventArgs e)
-    {
-        if (e.Key == Key.Enter)
-        {
-            if (e.KeyModifiers.HasFlag(KeyModifiers.Shift))
-            {
-                // Salto de línea
-                return;
-            }
-            
-            // Confirmar edición
-            if (DataContext is EditorViewModel vm)
-            {
-                vm.CommitTextEditingCommand.Execute(null);
-            }
-            e.Handled = true;
-        }
-        else if (e.Key == Key.Escape)
-        {
-            if (DataContext is EditorViewModel vm)
-            {
-                vm.CancelTextEditingCommand.Execute(null);
-            }
-            e.Handled = true;
-        }
-    }
-
     private void IncreaseSize_Click(object? sender, RoutedEventArgs e)
     {
         if (DataContext is EditorViewModel vm)
@@ -80,7 +37,7 @@ public partial class TextEditorWidget : UserControl
     }
 
     private bool _isDragging;
-    private Avalonia.Point _dragStartPoint;
+    private Point _dragStartPoint;
 
     private void DragHandle_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
@@ -91,7 +48,7 @@ public partial class TextEditorWidget : UserControl
             {
                 ToolTip.SetIsOpen(c, false);
             }
-            _dragStartPoint = e.GetPosition(this.Parent as Avalonia.Controls.Control);
+            _dragStartPoint = e.GetPosition(this.Parent as Control);
             e.Pointer.Capture(sender as IInputElement);
             e.Handled = true;
         }
@@ -105,25 +62,27 @@ public partial class TextEditorWidget : UserControl
             {
                 ToolTip.SetIsOpen(c, false);
             }
-            var currentPoint = e.GetPosition(this.Parent as Avalonia.Controls.Control);
+            var currentPoint = e.GetPosition(this.Parent as Control);
             double dx = currentPoint.X - _dragStartPoint.X;
             double dy = currentPoint.Y - _dragStartPoint.Y;
 
-            // Sincronizar posición del vector y overlay
+            // Sincronizar posición del vector y overlay flotante
             if (vm.EditingTextShape != null)
             {
-                var newStart = new Avalonia.Point(
+                var newStart = new Point(
                     vm.EditingTextShape.Start.X + dx,
                     vm.EditingTextShape.Start.Y + dy);
-                
+
                 vm.EditingTextShape.Start = newStart;
                 vm.EditingTextShape.End = newStart;
 
-                vm.CurrentTextBounds = new Avalonia.Rect(
+                vm.CurrentTextBounds = new Rect(
                     newStart.X,
                     newStart.Y - 32,
                     vm.CurrentTextBounds.Width,
                     vm.CurrentTextBounds.Height);
+
+                vm.TriggerRedraw();
             }
 
             _dragStartPoint = currentPoint;
