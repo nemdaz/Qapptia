@@ -200,15 +200,11 @@ public partial class MainWindow : Window
     {
         if (DataContext is EditorViewModel vm)
         {
-            if (vm.IsEditingText)
-            {
-                vm.CommitTextEditing();
-            }
+            vm.CommitCurrentState();
 
             var canvas = this.FindControl<Qapptia.App.Editor.Controls.AnnotationCanvas>("MainCanvas");
             if (canvas != null && vm.ImageWidth > 0 && vm.ImageHeight > 0)
             {
-                vm.Store.ClearSelection(); // Deseleccionar antes de copiar para ocultar los nodos de edición
                 vm.Store.SetBurningMode(true);
                 canvas.InvalidateVisual();
                 var rtb = new Avalonia.Media.Imaging.RenderTargetBitmap(new PixelSize((int)vm.ImageWidth, (int)vm.ImageHeight));
@@ -311,12 +307,7 @@ public partial class MainWindow : Window
                 guid = await Qapptia.Core.Services.ImageMetadataService.EnsureImageIdAsync(filePath);
             }
 
-            if (vm.IsEditingText)
-            {
-                vm.CommitTextEditing();
-            }
-
-            vm.Store.ClearSelection(); // Deseleccionar antes de guardar para ocultar los nodos de edición
+            vm.CommitCurrentState();
             
             var canvas = this.FindControl<Qapptia.App.Editor.Controls.AnnotationCanvas>("MainCanvas");
             if (canvas != null)

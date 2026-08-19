@@ -106,6 +106,8 @@ public partial class EditorViewModel : ObservableObject, IDisposable
 
     partial void OnActiveToolChanged(ToolType value)
     {
+        CommitCurrentState();
+
         OnPropertyChanged(nameof(IsLineToolActive));
         OnPropertyChanged(nameof(IsArrowToolActive));
         OnPropertyChanged(nameof(IsEllipseToolActive));
@@ -346,6 +348,20 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         CurrentTextBounds = new Avalonia.Rect(shape.Start.X, shape.Start.Y - 32, Qapptia.Editor.Core.Constants.TextToolDefaultWidth, 32); 
         IsEditingText = true;
         RequestRedraw?.Invoke(this, EventArgs.Empty);
+    }
+
+    [RelayCommand]
+    public void CommitCurrentState()
+    {
+        if (IsEditingText)
+        {
+            CommitTextEditing();
+        }
+        else
+        {
+            Store.ClearSelection();
+            RequestRedraw?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     [RelayCommand]

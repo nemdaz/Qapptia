@@ -79,7 +79,6 @@ public class AnnotationCanvas : Control
     private enum CanvasInteraction
     {
         None,
-        CommittingText,
         DrawingShape,
         ManipulatingShape
     }
@@ -175,13 +174,10 @@ public class AnnotationCanvas : Control
             }
             else
             {
-                // Clic fuera: confirmar edición previa
-                _interaction = CanvasInteraction.CommittingText;
+                // Clic fuera: confirmar o descartar edición previa y continuar con el evento en la nueva coordenada
                 _isSelectingText = false;
                 ViewModel.CommitTextEditing();
                 UpdateCursor(point);
-                InvalidateVisual();
-                return;
             }
         }
 
@@ -414,9 +410,6 @@ public class AnnotationCanvas : Control
                     // Arrastre completado
                     shouldSave = true;
                 }
-                break;
-
-            case CanvasInteraction.CommittingText:
                 break;
         }
 
