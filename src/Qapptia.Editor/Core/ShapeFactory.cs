@@ -10,7 +10,7 @@ namespace Qapptia.Editor.Core;
 /// </summary>
 public static class ShapeFactory
 {
-    public static VectorShape? Create(ToolType tool, Point startPoint, Color color)
+    public static VectorShape? Create(ToolType tool, Point startPoint, Color color, float textSize = 24f)
     {
         return tool switch
         {
@@ -19,14 +19,14 @@ public static class ShapeFactory
             ToolType.Rectangle => new RectangleShape { Start = startPoint, End = startPoint, Color = color },
             ToolType.Ellipse => new EllipseShape { Start = startPoint, End = startPoint, Color = color },
             ToolType.Highlighter => new HighlighterShape { Start = startPoint, End = startPoint, Color = color },
-            ToolType.Text => CreateAlignedTextInputShape(startPoint, color),
+            ToolType.Text => CreateAlignedTextInputShape(startPoint, color, textSize),
             _ => null
         };
     }
 
-    private static TextShape CreateAlignedTextInputShape(Point clickPoint, Color color)
+    private static TextShape CreateAlignedTextInputShape(Point clickPoint, Color color, float textSize)
     {
-        using var font = TextShape.CreateSKFont(24);
+        using var font = TextShape.CreateSKFont(textSize);
         font.GetFontMetrics(out var metrics);
         float caretHeight = Math.Max(metrics.Descent - metrics.Ascent, font.Spacing * 0.9f);
 
@@ -40,7 +40,7 @@ public static class ShapeFactory
             Start = alignedPoint,
             End = new Point(startX + Constants.TextToolDefaultWidth, startY + 30),
             Color = color,
-            TextSize = 24
+            TextSize = textSize
         };
     }
 }

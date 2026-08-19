@@ -273,7 +273,7 @@ public class AnnotationCanvas : Control
         }
         else
         {
-            var newShape = ShapeFactory.Create(ViewModel.ActiveTool, point, ViewModel.ActiveColor);
+            var newShape = ShapeFactory.Create(ViewModel.ActiveTool, point, ViewModel.ActiveColor, ViewModel.ActiveTextSize);
             if (newShape != null)
             {
                 if (newShape.AutoStartsTextInputOnCreation && newShape is ITextInputShape inputShape)
@@ -389,6 +389,12 @@ public class AnnotationCanvas : Control
                     if (distance > 3)
                     {
                         ViewModel?.Store.AddShape(_currentDrawingShape);
+                        
+                        // Seleccionamos la figura automáticamente para que pueda cambiar de color/editarse de inmediato
+                        ViewModel?.Store.ClearSelection();
+                        _currentDrawingShape.IsSelected = true;
+                        _selectedShape = _currentDrawingShape;
+                        
                         shouldSave = true;
                     }
                     _currentDrawingShape = null;

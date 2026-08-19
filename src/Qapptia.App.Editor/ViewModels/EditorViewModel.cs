@@ -60,20 +60,21 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         _savePath = savePath;
         _clipboardService = clipboardService;
         var state = _stateStore.Load();
+        ActiveTextSize = state.Tools.TextToolSize;
 
         // Cargar última herramienta seleccionada
-        if (System.Enum.TryParse<ToolType>(state.ActiveTool, true, out var savedTool))
+        if (System.Enum.TryParse<ToolType>(state.Tools.ActiveTool, true, out var savedTool))
         {
             _activeTool = savedTool;
         }
 
         // Cargar color activo: de la herramienta guardada, o global, o primer favorito
-        if (state.ToolFavoriteColors.TryGetValue(_activeTool.ToString().ToLowerInvariant(), out var toolColorHex) &&
+        if (state.Palette.ToolFavoriteColors.TryGetValue(_activeTool.ToString().ToLowerInvariant(), out var toolColorHex) &&
             Avalonia.Media.Color.TryParse(toolColorHex, out var parsedToolColor))
         {
             _activeColor = parsedToolColor;
         }
-        else if (Avalonia.Media.Color.TryParse(state.ActiveFavoriteColor, out var color))
+        else if (Avalonia.Media.Color.TryParse(state.Palette.ActiveFavoriteColor, out var color))
         {
             _activeColor = color;
         }
@@ -119,7 +120,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
 
         // Persistir herramienta activa
         var state = _stateStore.Load();
-        state.ActiveTool = value.ToString();
+        state.Tools.ActiveTool = value.ToString();
         _stateStore.Save(state);
     }
 
@@ -139,6 +140,8 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     private Avalonia.Rect _currentTextBounds;
 
     public ITextInputShape? ActiveTextInputShape { get; private set; }
+    
+    public float ActiveTextSize { get; private set; } = 24f;
     
     public event EventHandler? TextInputFocusRequested;
 
@@ -278,7 +281,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
                 HasImage = true;
                 
                 var state = _stateStore.Load();
-                state.LastSelectedFile = NormalizePath(file.FullPath);
+                state.Session.LastSelectedFile = NormalizePath(file.FullPath);
                 _stateStore.Save(state);
 
                 ImageLoaded?.Invoke(this, EventArgs.Empty);
@@ -343,6 +346,15 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             }
             
             IsEditingText = false;
+            
+            if (ActiveTextInputShape.TextSize != ActiveTextSize)
+            {
+                ActiveTextSize = ActiveTextInputShape.TextSize;
+                var state = _stateStore.Load();
+                state.Tools.TextToolSize = ActiveTextSize;
+                _stateStore.Save(state);
+            }
+            
             ActiveTextInputShape = null;
             Store.ClearSelection();
             SaveCurrentAnnotations();
@@ -370,7 +382,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             ActiveTool = tool;
             
             var state = _stateStore.Load();
-            if (state.ToolFavoriteColors.TryGetValue(toolName.ToLowerInvariant(), out var colorName) && 
+            if (state.Palette.ToolFavoriteColors.TryGetValue(toolName.ToLowerInvariant(), out var colorName) && 
                 Avalonia.Media.Color.TryParse(colorName, out var parsedColor))
             {
                 ActiveColor = parsedColor;
@@ -384,9 +396,8 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         ActiveColor = item.Color;
         
         var state = _stateStore.Load();
-        var colorHex = Qapptia.Editor.Core.Constants.GetColorName(ActiveColor);
-        state.ActiveFavoriteColor = colorHex;
-        state.ToolFavoriteColors[ActiveTool.ToString().ToLowerInvariant()] = colorHex;
+        state.Palette.ActiveFavoriteColor = $"#{item.Color.A:X2}{item.Color.R:X2}{item.Color.G:X2}{item.Color.B:X2}";
+        state.Palette.ToolFavoriteColors[ActiveTool.ToString().ToLowerInvariant()] = state.Palette.ActiveFavoriteColor;
         _stateStore.Save(state);
         
         bool needsRedraw = false;
@@ -544,7 +555,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     public void LoadSidebarImages()
     {
         SidebarFolders.Clear();
-        var expandedFolders = _stateStore.Load().ExpandedFolders;
+        var expandedFolders = _stateStore.Load().Layout.ExpandedFolders;
 
         try
         {
@@ -567,9 +578,9 @@ public partial class EditorViewModel : ObservableObject, IDisposable
                 if (rootFolder.IsExpanded && expandedFolders.Count == 0)
                 {
                     var stateToUpdate = _stateStore.Load();
-                    if (!stateToUpdate.ExpandedFolders.Contains(normalizedSavePath))
+                    if (!stateToUpdate.Layout.ExpandedFolders.Contains(normalizedSavePath))
                     {
-                        stateToUpdate.ExpandedFolders.Add(normalizedSavePath);
+                        stateToUpdate.Layout.ExpandedFolders.Add(normalizedSavePath);
                         _stateStore.Save(stateToUpdate);
                     }
                 }
@@ -579,9 +590,9 @@ public partial class EditorViewModel : ObservableObject, IDisposable
                 SidebarFolders.Add(rootFolder);
                 
                 var state = _stateStore.Load();
-                if (!string.IsNullOrEmpty(state.LastSelectedFile))
+                if (!string.IsNullOrEmpty(state.Session.LastSelectedFile))
                 {
-                    var normalizedLastFile = NormalizePath(state.LastSelectedFile);
+                    var normalizedLastFile = NormalizePath(state.Session.LastSelectedFile);
                     var nodeToSelect = FindNodeByPath(SidebarFolders, normalizedLastFile);
                     if (nodeToSelect != null)
                     {
@@ -664,19 +675,24 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         {
             var state = _stateStore.Load();
             var normalizedPath = NormalizePath(folder.FullPath);
-            var exists = state.ExpandedFolders.Any(p => string.Equals(p, normalizedPath, StringComparison.OrdinalIgnoreCase));
+            var exists = state.Layout.ExpandedFolders.Any(p => string.Equals(p, normalizedPath, StringComparison.OrdinalIgnoreCase));
             
             if (folder.IsExpanded)
             {
                 if (!exists)
-                    state.ExpandedFolders.Add(normalizedPath);
+                {
+                    state.Layout.ExpandedFolders.Add(normalizedPath);
+                    _stateStore.Save(state);
+                }
             }
             else
             {
                 if (exists)
-                    state.ExpandedFolders.RemoveAll(p => string.Equals(p, normalizedPath, StringComparison.OrdinalIgnoreCase));
+                {
+                    state.Layout.ExpandedFolders.RemoveAll(p => string.Equals(p, normalizedPath, StringComparison.OrdinalIgnoreCase));
+                    _stateStore.Save(state);
+                }
             }
-            _stateStore.Save(state);
         }
     }
 
