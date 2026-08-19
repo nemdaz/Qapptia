@@ -165,8 +165,22 @@ public class AnnotationCanvas : Control
         if (ViewModel.IsEditingText && ViewModel.EditingTextShape != null)
         {
             var activeShape = ViewModel.EditingTextShape;
-            if (activeShape.HitTest(point) != HandleType.None)
+            var handle = activeShape.HitTest(point);
+            if (handle != HandleType.None)
             {
+                if (handle == HandleType.LeftCenter || handle == HandleType.RightCenter)
+                {
+                    // Arrastre en caliente de la maneta de ancho sin salir de la edición
+                    _selectedShape = activeShape;
+                    _activeHandle = handle;
+                    _interaction = CanvasInteraction.ManipulatingShape;
+                    InvalidateVisual();
+                    e.Handled = true;
+                    return;
+                }
+
+                // Clic en el cuerpo: posicionar cursor o selección de caracteres
+                _interaction = CanvasInteraction.None;
                 activeShape.OnPointerPressedInTextInput(point, e.KeyModifiers, e.ClickCount, out _isSelectingText);
                 InvalidateVisual();
                 e.Handled = true;
@@ -174,10 +188,19 @@ public class AnnotationCanvas : Control
             }
             else
             {
-                // Clic fuera: confirmar o descartar edición previa y continuar con el evento en la nueva coordenada
+                bool wasEmpty = string.IsNullOrWhiteSpace(activeShape.Text);
                 _isSelectingText = false;
                 ViewModel.CommitTextEditing();
                 UpdateCursor(point);
+
+                // Si el texto contenía contenido, el clic fuera solo confirma y cierra la edición actual
+                if (!wasEmpty)
+                {
+                    InvalidateVisual();
+                    e.Handled = true;
+                    return;
+                }
+                // Si estaba vacío, continúa el flujo para crear/abrir el nuevo texto en la nueva posición
             }
         }
 
@@ -203,11 +226,19 @@ public class AnnotationCanvas : Control
         if (_selectedShape != null)
         {
             _selectedShape.IsSelected = true;
-            // Si la figura admite ingreso de texto y la interacción contextual lo solicita:
-            if (_selectedShape.SupportsTextInput && (ViewModel.ActiveTool == ToolType.Text || e.ClickCount >= 2))
+            // Si la figura es un texto, entrar a edición inmediatamente en 1 solo clic (con sus nodos y caret activos):
+            if (_selectedShape.SupportsTextInput && _selectedShape is TextShape textShape)
             {
-                _interaction = CanvasInteraction.None;
-                ViewModel.StartTextEditing((TextShape)_selectedShape);
+                ViewModel.StartTextEditing(textShape);
+                if (_activeHandle == HandleType.LeftCenter || _activeHandle == HandleType.RightCenter)
+                {
+                    _interaction = CanvasInteraction.ManipulatingShape;
+                }
+                else
+                {
+                    _interaction = CanvasInteraction.None;
+                    textShape.OnPointerPressedInTextInput(point, e.KeyModifiers, e.ClickCount, out _isSelectingText);
+                }
                 InvalidateVisual();
                 e.Handled = true;
                 return;
@@ -299,68 +330,13 @@ public class AnnotationCanvas : Control
             double dx = point.X - _lastMousePos.X;
             double dy = point.Y - _lastMousePos.Y;
             
-            if (_activeHandle == HandleType.Body)
+            _selectedShape.DragHandle(_activeHandle, dx, dy, ref _activeHandle);
+
+            if (_selectedShape is TextShape textShape && ViewModel != null && ViewModel.IsEditingText)
             {
-                _selectedShape.Start = new Point(_selectedShape.Start.X + dx, _selectedShape.Start.Y + dy);
-                _selectedShape.End = new Point(_selectedShape.End.X + dx, _selectedShape.End.Y + dy);
-            }
-            else if (_activeHandle == HandleType.Start)
-            {
-                _selectedShape.Start = new Point(_selectedShape.Start.X + dx, _selectedShape.Start.Y + dy);
-            }
-            else if (_activeHandle == HandleType.End)
-            {
-                _selectedShape.End = new Point(_selectedShape.End.X + dx, _selectedShape.End.Y + dy);
-            }
-            else if (_activeHandle != HandleType.None)
-            {
-                double minX = Math.Min(_selectedShape.Start.X, _selectedShape.End.X);
-                double maxX = Math.Max(_selectedShape.Start.X, _selectedShape.End.X);
-                double minY = Math.Min(_selectedShape.Start.Y, _selectedShape.End.Y);
-                double maxY = Math.Max(_selectedShape.Start.Y, _selectedShape.End.Y);
-
-                bool flipX = false;
-                bool flipY = false;
-
-                if (_activeHandle == HandleType.TopLeft) { minX += dx; minY += dy; if (minX > maxX) flipX = true; if (minY > maxY) flipY = true; }
-                else if (_activeHandle == HandleType.TopRight) { maxX += dx; minY += dy; if (maxX < minX) flipX = true; if (minY > maxY) flipY = true; }
-                else if (_activeHandle == HandleType.BottomLeft) { minX += dx; maxY += dy; if (minX > maxX) flipX = true; if (maxY < minY) flipY = true; }
-                else if (_activeHandle == HandleType.BottomRight) { maxX += dx; maxY += dy; if (maxX < minX) flipX = true; if (maxY < minY) flipY = true; }
-                else if (_activeHandle == HandleType.TopCenter) { minY += dy; if (minY > maxY) flipY = true; }
-                else if (_activeHandle == HandleType.BottomCenter) { maxY += dy; if (maxY < minY) flipY = true; }
-                else if (_activeHandle == HandleType.LeftCenter) { minX += dx; if (minX > maxX) flipX = true; }
-                else if (_activeHandle == HandleType.RightCenter) { maxX += dx; if (maxX < minX) flipX = true; }
-                
-                bool startIsMinX = _selectedShape.Start.X <= _selectedShape.End.X;
-                bool startIsMinY = _selectedShape.Start.Y <= _selectedShape.End.Y;
-
-                double newMinX = Math.Min(minX, maxX);
-                double newMaxX = Math.Max(minX, maxX);
-                double newMinY = Math.Min(minY, maxY);
-                double newMaxY = Math.Max(minY, maxY);
-
-                _selectedShape.Start = new Point(startIsMinX ? newMinX : newMaxX, startIsMinY ? newMinY : newMaxY);
-                _selectedShape.End = new Point(startIsMinX ? newMaxX : newMinX, startIsMinY ? newMaxY : newMinY);
-
-                if (flipX)
-                {
-                    if (_activeHandle == HandleType.TopLeft) _activeHandle = HandleType.TopRight;
-                    else if (_activeHandle == HandleType.TopRight) _activeHandle = HandleType.TopLeft;
-                    else if (_activeHandle == HandleType.BottomLeft) _activeHandle = HandleType.BottomRight;
-                    else if (_activeHandle == HandleType.BottomRight) _activeHandle = HandleType.BottomLeft;
-                    else if (_activeHandle == HandleType.LeftCenter) _activeHandle = HandleType.RightCenter;
-                    else if (_activeHandle == HandleType.RightCenter) _activeHandle = HandleType.LeftCenter;
-                }
-
-                if (flipY)
-                {
-                    if (_activeHandle == HandleType.TopLeft) _activeHandle = HandleType.BottomLeft;
-                    else if (_activeHandle == HandleType.BottomLeft) _activeHandle = HandleType.TopLeft;
-                    else if (_activeHandle == HandleType.TopRight) _activeHandle = HandleType.BottomRight;
-                    else if (_activeHandle == HandleType.BottomRight) _activeHandle = HandleType.TopRight;
-                    else if (_activeHandle == HandleType.TopCenter) _activeHandle = HandleType.BottomCenter;
-                    else if (_activeHandle == HandleType.BottomCenter) _activeHandle = HandleType.TopCenter;
-                }
+                double left = Math.Min(textShape.Start.X, textShape.End.X);
+                double top = Math.Min(textShape.Start.Y, textShape.End.Y);
+                ViewModel.CurrentTextBounds = new Rect(left, top - 32, textShape.BoxWidth, 32);
             }
             
             _lastMousePos = point;

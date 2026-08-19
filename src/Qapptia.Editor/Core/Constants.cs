@@ -17,8 +17,9 @@ public static class Constants
     public const string TextToolFontFamilyName = "Segoe UI";
     public static readonly SkiaSharp.SKTypeface TextToolTypeface = SkiaSharp.SKTypeface.FromFamilyName(TextToolFontFamilyName) ?? SkiaSharp.SKTypeface.Default;
     public const double TextToolOffset = 5.0; // Margen interno de texto
-    public const double TextToolDefaultWidth = 300.0; // Ancho fijo (+50% sobre 200px base)
-    public const double TextToolUsableWidth = TextToolDefaultWidth - (TextToolOffset * 2); // 290.0 px de área de texto
+    public const double TextToolMinWidth = 100.0; // Ancho mínimo permitido para la caja de texto
+    public const double TextToolDefaultWidth = 300.0; // Ancho inicial predeterminado
+    public const double TextToolUsableWidth = TextToolDefaultWidth - (TextToolOffset * 2); // 290.0 px de área de texto base
 
     // Contornos de texto Skia (8 direcciones 360°)
     public static readonly SkiaSharp.SKColor TextToolDarkContourSKColor = new(0, 0, 0, 90);

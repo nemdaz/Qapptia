@@ -8,7 +8,7 @@ namespace Qapptia.Editor.Core;
 
 public static class HitTestEngine
 {
-    private static void DrawHandle(SKCanvas canvas, Point center)
+    public static void DrawHandle(SKCanvas canvas, Point center)
     {
         float size = (float)Constants.GripSize * 1.5f * 1.3f; // 30% larger
         float radius = size / 2.0f;
@@ -56,7 +56,13 @@ public static class HitTestEngine
         DrawHandle(canvas, new Point(boundingBox.Right, boundingBox.Center.Y));
     }
 
-    private static bool HitTestHandle(Point pt, Point center)
+    public static void DrawHandlesSkiaSides(SKCanvas canvas, Rect boundingBox)
+    {
+        DrawHandle(canvas, new Point(boundingBox.Left, boundingBox.Center.Y));
+        DrawHandle(canvas, new Point(boundingBox.Right, boundingBox.Center.Y));
+    }
+
+    public static bool HitTestHandle(Point pt, Point center)
     {
         float size = (float)Constants.GripSize * 2.0f * 1.3f; // 30% larger hit area
         var rect = new Rect(center.X - size / 2, center.Y - size / 2, size, size);
@@ -83,6 +89,13 @@ public static class HitTestEngine
     {
         if (HitTestHandle(pt, new Point(boundingBox.Center.X, boundingBox.Top))) return HandleType.TopCenter;
         if (HitTestHandle(pt, new Point(boundingBox.Center.X, boundingBox.Bottom))) return HandleType.BottomCenter;
+        if (HitTestHandle(pt, new Point(boundingBox.Left, boundingBox.Center.Y))) return HandleType.LeftCenter;
+        if (HitTestHandle(pt, new Point(boundingBox.Right, boundingBox.Center.Y))) return HandleType.RightCenter;
+        return HandleType.None;
+    }
+
+    public static HandleType HitTestHandlesSides(Point pt, Rect boundingBox)
+    {
         if (HitTestHandle(pt, new Point(boundingBox.Left, boundingBox.Center.Y))) return HandleType.LeftCenter;
         if (HitTestHandle(pt, new Point(boundingBox.Right, boundingBox.Center.Y))) return HandleType.RightCenter;
         return HandleType.None;

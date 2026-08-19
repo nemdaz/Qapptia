@@ -35,6 +35,88 @@ public abstract class VectorShape
     public abstract HandleType HitTest(Point point);
 
     /// <summary>
+    /// Traslada la figura en el lienzo por un diferencial (dx, dy).
+    /// </summary>
+    public virtual void Move(double dx, double dy)
+    {
+        Start = new Point(Start.X + dx, Start.Y + dy);
+        End = new Point(End.X + dx, End.Y + dy);
+    }
+
+    /// <summary>
+    /// Aplica una transformación por arrastre sobre una maneta de control seleccionada.
+    /// </summary>
+    public virtual void DragHandle(HandleType handle, double dx, double dy, ref HandleType activeHandle)
+    {
+        if (handle == HandleType.Body)
+        {
+            Move(dx, dy);
+            return;
+        }
+
+        if (handle == HandleType.Start)
+        {
+            Start = new Point(Start.X + dx, Start.Y + dy);
+            return;
+        }
+
+        if (handle == HandleType.End)
+        {
+            End = new Point(End.X + dx, End.Y + dy);
+            return;
+        }
+
+        // Transformación rectangular 2D estándar
+        double minX = Math.Min(Start.X, End.X);
+        double maxX = Math.Max(Start.X, End.X);
+        double minY = Math.Min(Start.Y, End.Y);
+        double maxY = Math.Max(Start.Y, End.Y);
+
+        bool flipX = false;
+        bool flipY = false;
+
+        if (handle == HandleType.TopLeft) { minX += dx; minY += dy; if (minX > maxX) flipX = true; if (minY > maxY) flipY = true; }
+        else if (handle == HandleType.TopRight) { maxX += dx; minY += dy; if (maxX < minX) flipX = true; if (minY > maxY) flipY = true; }
+        else if (handle == HandleType.BottomLeft) { minX += dx; maxY += dy; if (minX > maxX) flipX = true; if (maxY < minY) flipY = true; }
+        else if (handle == HandleType.BottomRight) { maxX += dx; maxY += dy; if (maxX < minX) flipX = true; if (maxY < minY) flipY = true; }
+        else if (handle == HandleType.TopCenter) { minY += dy; if (minY > maxY) flipY = true; }
+        else if (handle == HandleType.BottomCenter) { maxY += dy; if (maxY < minY) flipY = true; }
+        else if (handle == HandleType.LeftCenter) { minX += dx; if (minX > maxX) flipX = true; }
+        else if (handle == HandleType.RightCenter) { maxX += dx; if (maxX < minX) flipX = true; }
+        
+        bool startIsMinX = Start.X <= End.X;
+        bool startIsMinY = Start.Y <= End.Y;
+
+        double newMinX = Math.Min(minX, maxX);
+        double newMaxX = Math.Max(minX, maxX);
+        double newMinY = Math.Min(minY, maxY);
+        double newMaxY = Math.Max(minY, maxY);
+
+        Start = new Point(startIsMinX ? newMinX : newMaxX, startIsMinY ? newMinY : newMaxY);
+        End = new Point(startIsMinX ? newMaxX : newMinX, startIsMinY ? newMaxY : newMinY);
+
+        if (flipX)
+        {
+            if (activeHandle == HandleType.TopLeft) activeHandle = HandleType.TopRight;
+            else if (activeHandle == HandleType.TopRight) activeHandle = HandleType.TopLeft;
+            else if (activeHandle == HandleType.BottomLeft) activeHandle = HandleType.BottomRight;
+            else if (activeHandle == HandleType.BottomRight) activeHandle = HandleType.BottomLeft;
+            else if (activeHandle == HandleType.LeftCenter) activeHandle = HandleType.RightCenter;
+            else if (activeHandle == HandleType.RightCenter) activeHandle = HandleType.LeftCenter;
+        }
+
+        if (flipY)
+        {
+            if (activeHandle == HandleType.TopLeft) activeHandle = HandleType.BottomLeft;
+            else if (activeHandle == HandleType.BottomLeft) activeHandle = HandleType.TopLeft;
+            else if (activeHandle == HandleType.TopRight) activeHandle = HandleType.BottomRight;
+            else if (activeHandle == HandleType.BottomRight) activeHandle = HandleType.TopRight;
+            else if (activeHandle == HandleType.TopCenter) activeHandle = HandleType.BottomCenter;
+            else if (activeHandle == HandleType.BottomCenter) activeHandle = HandleType.TopCenter;
+        }
+    }
+
+    /// <summary>
     /// Maneja eventos de puntero cuando la figura está en modo de ingreso de texto activo.
     /// </summary>
     public virtual void OnPointerPressedInTextInput(Point point, KeyModifiers modifiers, int clickCount, out bool isSelecting)

@@ -345,7 +345,9 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         CurrentTextSize = shape.TextSize;
         
         // Posición del widget flotante (desfase 32px para la barra de herramientas)
-        CurrentTextBounds = new Avalonia.Rect(shape.Start.X, shape.Start.Y - 32, Qapptia.Editor.Core.Constants.TextToolDefaultWidth, 32); 
+        double left = Math.Min(shape.Start.X, shape.End.X);
+        double top = Math.Min(shape.Start.Y, shape.End.Y);
+        CurrentTextBounds = new Avalonia.Rect(left, top - 32, shape.BoxWidth, 32); 
         IsEditingText = true;
         RequestRedraw?.Invoke(this, EventArgs.Empty);
     }

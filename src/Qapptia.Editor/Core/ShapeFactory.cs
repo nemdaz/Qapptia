@@ -38,7 +38,7 @@ public static class ShapeFactory
         return new TextShape
         {
             Start = alignedPoint,
-            End = alignedPoint,
+            End = new Point(startX + Constants.TextToolDefaultWidth, startY + 30),
             Color = color,
             TextSize = 24
         };

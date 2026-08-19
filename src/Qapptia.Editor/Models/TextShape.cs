@@ -34,6 +34,9 @@ public class TextShape : VectorShape
     public bool IsEditing { get; set; }
     public bool IsCaretVisible { get; set; } = true;
 
+    public double BoxWidth => Math.Max(Constants.TextToolMinWidth, Math.Abs(End.X - Start.X));
+    public double UsableWidth => Math.Max(Constants.TextToolMinWidth - (Constants.TextToolOffset * 2), BoxWidth - (Constants.TextToolOffset * 2));
+
     public bool HasSelection => SelectionStart != SelectionEnd && !string.IsNullOrEmpty(Text);
     public int SelectionMin => Math.Clamp(Math.Min(SelectionStart, SelectionEnd), 0, Text.Length);
     public int SelectionMax => Math.Clamp(Math.Max(SelectionStart, SelectionEnd), 0, Text.Length);
@@ -408,18 +411,20 @@ public class TextShape : VectorShape
 
     public float CalculateHeight(SKFont font)
     {
-        var lines = GetLayoutLines(Text, font, (float)Constants.TextToolUsableWidth);
+        var lines = GetLayoutLines(Text, font, (float)UsableWidth);
         return Math.Max(lines.Count * font.Spacing, 30f) + (float)Constants.TextToolOffset * 2;
     }
 
     public void GetCaretPosition(SKFont font, out float caretX, out float caretY, out float caretHeight)
     {
-        float baseOffsetX = (float)(Start.X + Constants.TextToolOffset);
-        float baseOffsetY = (float)(Start.Y + Constants.TextToolOffset);
+        double left = Math.Min(Start.X, End.X);
+        double top = Math.Min(Start.Y, End.Y);
+        float baseOffsetX = (float)(left + Constants.TextToolOffset);
+        float baseOffsetY = (float)(top + Constants.TextToolOffset);
 
         font.GetFontMetrics(out var metrics);
         caretHeight = Math.Max(metrics.Descent - metrics.Ascent, font.Spacing * 0.9f);
-        float usableWidth = (float)Constants.TextToolUsableWidth;
+        float usableWidth = (float)UsableWidth;
 
         var lines = GetLayoutLines(Text, font, usableWidth);
         int targetIndex = Math.Clamp(CaretIndex, 0, Text.Length);
@@ -452,11 +457,13 @@ public class TextShape : VectorShape
     public int GetCaretIndexFromPoint(Point canvasPoint)
     {
         using var font = CreateSKFont(TextSize);
-        float usableWidth = (float)Constants.TextToolUsableWidth;
+        float usableWidth = (float)UsableWidth;
         var lines = GetLayoutLines(Text, font, usableWidth);
 
-        float relativeY = (float)(canvasPoint.Y - (Start.Y + Constants.TextToolOffset));
-        float relativeX = (float)(canvasPoint.X - (Start.X + Constants.TextToolOffset));
+        double left = Math.Min(Start.X, End.X);
+        double top = Math.Min(Start.Y, End.Y);
+        float relativeY = (float)(canvasPoint.Y - (top + Constants.TextToolOffset));
+        float relativeX = (float)(canvasPoint.X - (left + Constants.TextToolOffset));
 
         int lineIndex = (int)(relativeY / font.Spacing);
         lineIndex = Math.Clamp(lineIndex, 0, lines.Count - 1);
@@ -492,26 +499,33 @@ public class TextShape : VectorShape
     {
         using var font = CreateSKFont(TextSize);
         font.GetFontMetrics(out var metrics);
-        float usableWidth = (float)Constants.TextToolUsableWidth;
+        float usableWidth = (float)UsableWidth;
         var lines = GetLayoutLines(Text, font, usableWidth);
 
         float totalHeight = Math.Max(lines.Count * font.Spacing, 30f) + (float)Constants.TextToolOffset * 2;
-        float baseOffsetX = (float)(Start.X + Constants.TextToolOffset);
-        float baseOffsetY = (float)(Start.Y + Constants.TextToolOffset);
-        float startY = (float)(Start.Y + Constants.TextToolOffset - metrics.Ascent);
+        double left = Math.Min(Start.X, End.X);
+        double top = Math.Min(Start.Y, End.Y);
+        float baseOffsetX = (float)(left + Constants.TextToolOffset);
+        float baseOffsetY = (float)(top + Constants.TextToolOffset);
+        float startY = (float)(top + Constants.TextToolOffset - metrics.Ascent);
+        var boxRect = new Rect(left, top, BoxWidth, totalHeight);
 
-        // 1. Marco delimitador sutil de 300px durante la edición activa
-        if (IsEditing)
+        // 1. Marco delimitador y manetas laterales (activos simultáneamente en selección y edición)
+        if (IsSelected || IsEditing)
         {
             using var borderPaint = new SKPaint
             {
-                Color = Constants.TextToolBorderSKColor,
+                Color = IsEditing ? Constants.TextToolBorderSKColor : new SKColor(0, 120, 215, 140),
                 Style = SKPaintStyle.Stroke,
                 StrokeWidth = 1.0f,
+                PathEffect = IsEditing ? null : SKPathEffect.CreateDash([4f, 4f], 0),
                 IsAntialias = true
             };
-            var boxRect = new SKRect((float)Start.X, (float)Start.Y, (float)(Start.X + Constants.TextToolDefaultWidth), (float)(Start.Y + totalHeight));
-            canvas.DrawRoundRect(boxRect, 2f, 2f, borderPaint);
+            var skBoxRect = new SKRect((float)left, (float)top, (float)(left + BoxWidth), (float)(top + totalHeight));
+            canvas.DrawRoundRect(skBoxRect, 2f, 2f, borderPaint);
+
+            // Manetas laterales de control activas siempre durante la edición
+            HitTestEngine.DrawHandlesSkiaSides(canvas, boxRect);
         }
 
         // 2. Fondo de selección de texto (si hay selección activa)
@@ -622,21 +636,56 @@ public class TextShape : VectorShape
     {
         using var font = CreateSKFont(TextSize);
         float totalHeight = CalculateHeight(font);
-        return new Rect(Start.X, Start.Y, Constants.TextToolDefaultWidth, totalHeight);
+        double left = Math.Min(Start.X, End.X);
+        double top = Math.Min(Start.Y, End.Y);
+        return new Rect(left, top, BoxWidth, totalHeight);
     }
 
     public override HandleType HitTest(Point point)
     {
-        using var font = CreateSKFont(TextSize);
-        float totalHeight = CalculateHeight(font);
+        var boxRect = GetBoundingBox();
+        if (IsSelected || IsEditing)
+        {
+            var handle = HitTestEngine.HitTestHandlesSides(point, boxRect);
+            if (handle != HandleType.None) return handle;
+        }
 
-        var rect = new Rect(Start.X - 4, Start.Y - 4, Constants.TextToolDefaultWidth + 8, totalHeight + 8);
-        return rect.Contains(point) ? HandleType.Body : HandleType.None;
+        var inflatedRect = new Rect(boxRect.X - 4, boxRect.Y - 4, boxRect.Width + 8, boxRect.Height + 8);
+        return inflatedRect.Contains(point) ? HandleType.Body : HandleType.None;
+    }
+
+    public override void DragHandle(HandleType handle, double dx, double dy, ref HandleType activeHandle)
+    {
+        if (handle == HandleType.Body)
+        {
+            Move(dx, dy);
+            return;
+        }
+
+        if (handle == HandleType.RightCenter)
+        {
+            double newWidth = Math.Max(Constants.TextToolMinWidth, BoxWidth + dx);
+            End = new Point(Start.X + newWidth, Start.Y);
+        }
+        else if (handle == HandleType.LeftCenter)
+        {
+            double currentWidth = BoxWidth;
+            double newWidth = Math.Max(Constants.TextToolMinWidth, currentWidth - dx);
+            double shift = currentWidth - newWidth;
+            Start = new Point(Start.X + shift, Start.Y);
+            End = new Point(Start.X + newWidth, Start.Y);
+        }
     }
 
     public override StandardCursorType? GetCursorType(Point point)
     {
-        if (HitTest(point) != HandleType.None)
+        var handle = HitTest(point);
+        if (handle == HandleType.LeftCenter || handle == HandleType.RightCenter)
+        {
+            return StandardCursorType.LeftSide;
+        }
+
+        if (handle == HandleType.Body)
         {
             return IsEditing ? StandardCursorType.Ibeam : StandardCursorType.SizeAll;
         }
