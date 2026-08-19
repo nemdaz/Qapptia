@@ -19,11 +19,17 @@ public partial class MainWindow : Window
             savePath, 
             Qapptia.Core.AppConstants.EditorStateFileName);
         
-        var vm = new EditorViewModel(stateStore, savePath);
+#if WINDOWS
+        var clipboardService = new Qapptia.Platform.Windows.WindowsClipboardService(
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<Qapptia.Platform.Windows.WindowsClipboardService>.Instance);
+#else
+        Qapptia.Core.Abstractions.IClipboardService? clipboardService = null;
+#endif
+
+        var vm = new EditorViewModel(stateStore, savePath, clipboardService);
         DataContext = vm;
         
         vm.CopyRequested += Vm_CopyRequested;
-        vm.CopyFileRequested += Vm_CopyFileRequested;
         vm.RotateRequested += Vm_RotateRequested;
         vm.SaveRequested += Vm_SaveRequested;
 
@@ -40,6 +46,13 @@ public partial class MainWindow : Window
             Command = vm.CopyFileCommand
         };
         this.KeyBindings.Add(copyFileBinding);
+
+        var deleteBinding = new Avalonia.Input.KeyBinding
+        {
+            Gesture = new Avalonia.Input.KeyGesture(Avalonia.Input.Key.Delete),
+            Command = vm.DeleteSelectedCommand
+        };
+        this.KeyBindings.Add(deleteBinding);
 
         vm.LoadSidebarImagesCommand.Execute(null);
 
@@ -78,9 +91,9 @@ public partial class MainWindow : Window
         // Guardar edición pendiente al cerrar ventana
         this.Closing += (s, e) =>
         {
-            if (DataContext is EditorViewModel vm && vm.IsEditingText)
+            if (DataContext is EditorViewModel currentVm && currentVm.IsEditingText)
             {
-                vm.CommitTextEditing();
+                currentVm.CommitTextEditing();
             }
         };
         
@@ -93,20 +106,6 @@ public partial class MainWindow : Window
 
         // Registrar evento de rueda del ratón con Tunnel para interceptarlo antes que el ScrollViewer
         this.AddHandler(Avalonia.Input.InputElement.PointerWheelChangedEvent, EditorScrollViewer_PointerWheelChanged, Avalonia.Interactivity.RoutingStrategies.Tunnel);
-        this.AddHandler(Avalonia.Input.InputElement.KeyDownEvent, (s, e) =>
-        {
-            if (e.Key == Avalonia.Input.Key.Delete && !e.Handled && DataContext is EditorViewModel vm)
-            {
-                if (vm.IsEditingText) return; // No borrar si está editando texto
-                
-                vm.Store.RemoveSelected();
-                e.Handled = true;
-                
-                var canvas = this.FindControl<Qapptia.App.Editor.Controls.AnnotationCanvas>("MainCanvas");
-                canvas?.InvalidateVisual();
-                vm.SaveCurrentAnnotations();
-            }
-        }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
         
         var zoomCombo = this.FindControl<ComboBox>("ZoomComboBox");
         if (zoomCombo != null)
@@ -269,31 +268,6 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void Vm_CopyFileRequested(object? sender, EventArgs e)
-    {
-        if (DataContext is EditorViewModel vm)
-        {
-            string? filePath = (vm.SelectedNode as ExplorerFile)?.FullPath ?? vm.CurrentImagePath;
-            if (!string.IsNullOrEmpty(filePath) && System.IO.File.Exists(filePath))
-            {
-#if WINDOWS
-                try
-                {
-                    var clipboardService = new Qapptia.Platform.Windows.WindowsClipboardService(
-                        Microsoft.Extensions.Logging.Abstractions.NullLogger<Qapptia.Platform.Windows.WindowsClipboardService>.Instance);
-                    
-                    await clipboardService.SetFileDropListAsync(new[] { filePath });
-                    vm.ShowToast("Archivo copiado al portapapeles", Qapptia.Editor.Models.NotificationType.Success);
-                }
-                catch (Exception)
-                {
-                    vm.ShowToast("Error al copiar el archivo", Qapptia.Editor.Models.NotificationType.Error);
-                }
-#endif
-            }
-        }
-    }
-
     private async void Vm_SaveRequested(object? sender, EventArgs e)
     {
         if (DataContext is EditorViewModel vm && vm.SelectedNode is ExplorerFile fileNode)
@@ -303,84 +277,49 @@ public partial class MainWindow : Window
             
             if (string.IsNullOrEmpty(guid))
             {
-                // Respaldo por si aún no se inicializó
                 guid = await Qapptia.Core.Services.ImageMetadataService.EnsureImageIdAsync(filePath);
             }
 
             vm.CommitCurrentState();
             
             var canvas = this.FindControl<Qapptia.App.Editor.Controls.AnnotationCanvas>("MainCanvas");
-            if (canvas != null)
-            {
-                vm.Store.SetBurningMode(true);
-                canvas.InvalidateVisual();
-            }
+            if (canvas == null) return;
 
-            // 1. Crear backup comprimido (Save State)
-            string parentDir = System.IO.Path.GetDirectoryName(filePath) ?? string.Empty;
-            string fileName = System.IO.Path.GetFileName(filePath);
-            string dibujoDir = System.IO.Path.Combine(parentDir, Qapptia.Editor.Core.Constants.DrawingExtension);
-            
-            if (!System.IO.Directory.Exists(dibujoDir))
-            {
-                System.IO.Directory.CreateDirectory(dibujoDir);
-                System.IO.File.SetAttributes(dibujoDir, System.IO.File.GetAttributes(dibujoDir) | System.IO.FileAttributes.Hidden);
-            }
-
-            string timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss", System.Globalization.CultureInfo.InvariantCulture);
-            string backupName = $"{fileName}_{guid}_{timestamp}.bak.gz";
-            string backupPath = System.IO.Path.Combine(dibujoDir, backupName);
+            vm.Store.SetBurningMode(true);
+            canvas.InvalidateVisual();
 
             try
             {
-                using (var originalStream = System.IO.File.OpenRead(filePath))
-                using (var backupStream = System.IO.File.Create(backupPath))
-                using (var gzStream = new System.IO.Compression.GZipStream(backupStream, System.IO.Compression.CompressionLevel.Optimal))
+                // 1. Crear backup comprimido seguro (.bak.gz)
+                await Qapptia.Core.Services.ImageBurnService.CreateCompressedBackupAsync(filePath, guid);
+
+                // 2. Quemar Canvas a PNG
+                var bounds = canvas.Bounds;
+                int width = Math.Max(1, (int)bounds.Width);
+                int height = Math.Max(1, (int)bounds.Height);
+                var rtb = new Avalonia.Media.Imaging.RenderTargetBitmap(new Avalonia.PixelSize(width, height), new Avalonia.Vector(96, 96));
+                rtb.Render(canvas);
+
+                byte[] pngBytes;
+                using (var ms = new System.IO.MemoryStream())
                 {
-                    await originalStream.CopyToAsync(gzStream);
+                    var options = new Avalonia.Media.Imaging.PngBitmapEncoderOptions();
+                    rtb.Save(ms, options);
+                    pngBytes = ms.ToArray();
                 }
+
+                // 3. Persistir imagen quemada y preservar metadatos GUID
+                await Qapptia.Core.Services.ImageBurnService.SaveBurnedImageAsync(filePath, pngBytes, guid);
+
+                // 4. Limpiar UI y recargar
+                vm.OnBurnCompleted();
+                vm.ShowToast("Imagen guardada", Qapptia.Editor.Models.NotificationType.Success);
             }
             catch (Exception ex)
             {
-                vm.ShowToast($"Error al crear backup: {ex.Message}", Qapptia.Editor.Models.NotificationType.Error);
-                if (canvas != null)
-                {
-                    vm.Store.SetBurningMode(false);
-                    canvas.InvalidateVisual();
-                }
-                return; // Abortamos para no destruir la imagen sin backup
-            }
-
-            // 2. Quemar Canvas
-            if (canvas != null)
-            {
-                try
-                {
-                    var bounds = canvas.Bounds;
-                    int width = Math.Max(1, (int)bounds.Width);
-                    int height = Math.Max(1, (int)bounds.Height);
-                    var rtb = new Avalonia.Media.Imaging.RenderTargetBitmap(new Avalonia.PixelSize(width, height), new Avalonia.Vector(96, 96));
-                    rtb.Render(canvas);
-
-                    // Escribir a MemoryStream primero para evitar crash en Skia si el archivo está bloqueado
-                    using (var ms = new System.IO.MemoryStream())
-                    {
-                        var options = new Avalonia.Media.Imaging.PngBitmapEncoderOptions();
-                        rtb.Save(ms, options);
-                        System.IO.File.WriteAllBytes(filePath, ms.ToArray()); // Sobrescribe la imagen de forma segura
-                    }
-
-                    // 3. Re-inyectar GUID
-                    await Qapptia.Core.Services.ImageMetadataService.AppendImageIdAsync(filePath, guid);
-
-                    // 4. Limpiar UI y recargar
-                    vm.OnBurnCompleted();
-                    vm.ShowToast("Imagen guardada", Qapptia.Editor.Models.NotificationType.Success);
-                }
-                catch (Exception)
-                {
-                    vm.ShowToast("Error al quemar la imagen", Qapptia.Editor.Models.NotificationType.Error);
-                }
+                vm.ShowToast($"Error al guardar la imagen: {ex.Message}", Qapptia.Editor.Models.NotificationType.Error);
+                vm.Store.SetBurningMode(false);
+                canvas.InvalidateVisual();
             }
         }
     }

@@ -66,20 +66,18 @@ public partial class TextEditorWidget : UserControl
             double dx = currentPoint.X - _dragStartPoint.X;
             double dy = currentPoint.Y - _dragStartPoint.Y;
 
-            // Sincronizar posición del vector y overlay flotante
+            // Sincronizar posición del vector y overlay flotante preservando el ancho
             if (vm.EditingTextShape != null)
             {
-                var newStart = new Point(
-                    vm.EditingTextShape.Start.X + dx,
-                    vm.EditingTextShape.Start.Y + dy);
+                vm.EditingTextShape.Move(dx, dy);
 
-                vm.EditingTextShape.Start = newStart;
-                vm.EditingTextShape.End = newStart;
+                double left = Math.Min(vm.EditingTextShape.Start.X, vm.EditingTextShape.End.X);
+                double top = Math.Min(vm.EditingTextShape.Start.Y, vm.EditingTextShape.End.Y);
 
                 vm.CurrentTextBounds = new Rect(
-                    newStart.X,
-                    newStart.Y - 32,
-                    vm.CurrentTextBounds.Width,
+                    left,
+                    top - 32,
+                    vm.EditingTextShape.BoxWidth,
                     vm.CurrentTextBounds.Height);
 
                 vm.TriggerRedraw();

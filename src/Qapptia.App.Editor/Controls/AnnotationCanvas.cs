@@ -484,11 +484,10 @@ public class AnnotationCanvas : Control
                 e.Handled = true;
             }
         }
-        else if (e.Key == Key.Delete && _selectedShape != null && ViewModel != null)
+        else if (e.Key == Key.Delete && ViewModel != null)
         {
-            ViewModel.Store.RemoveShape(_selectedShape);
             _selectedShape = null;
-            ViewModel.SaveCurrentAnnotations();
+            ViewModel.DeleteSelectedCommand.Execute(null);
             InvalidateVisual();
             e.Handled = true;
         }

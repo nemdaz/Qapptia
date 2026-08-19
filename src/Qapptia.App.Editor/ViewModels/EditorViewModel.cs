@@ -50,13 +50,15 @@ public partial class EditorViewModel : ObservableObject, IDisposable
 {
     private readonly EditorStateStore _stateStore;
     private readonly string _savePath;
+    private readonly Qapptia.Core.Abstractions.IClipboardService? _clipboardService;
 
     private static string NormalizePath(string path) => path.Replace('\\', '/');
 
-    public EditorViewModel(EditorStateStore stateStore, string savePath)
+    public EditorViewModel(EditorStateStore stateStore, string savePath, Qapptia.Core.Abstractions.IClipboardService? clipboardService = null)
     {
         _stateStore = stateStore;
         _savePath = savePath;
+        _clipboardService = clipboardService;
         var state = _stateStore.Load();
 
         // Cargar última herramienta seleccionada
@@ -456,7 +458,6 @@ public partial class EditorViewModel : ObservableObject, IDisposable
 
     public event EventHandler? SaveRequested;
     public event EventHandler? CopyRequested;
-    public event EventHandler? CopyFileRequested;
     public event EventHandler? RotateRequested;
 
 
@@ -532,17 +533,41 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
+    public void DeleteSelected()
+    {
+        if (IsEditingText) return;
+
+        if (Store.Shapes.Any(s => s.IsSelected))
+        {
+            Store.RemoveSelected();
+            SaveCurrentAnnotations();
+            RequestRedraw?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    [RelayCommand]
     public void Copy()
     {
         CopyRequested?.Invoke(this, EventArgs.Empty);
     }
 
     [RelayCommand]
-    public void CopyFile()
+    public async System.Threading.Tasks.Task CopyFile()
     {
-        if (!string.IsNullOrEmpty(CurrentImagePath))
+        string? filePath = (SelectedNode as ExplorerFile)?.FullPath ?? CurrentImagePath;
+        if (string.IsNullOrEmpty(filePath) || !System.IO.File.Exists(filePath)) return;
+
+        if (_clipboardService != null)
         {
-            CopyFileRequested?.Invoke(this, EventArgs.Empty);
+            try
+            {
+                await _clipboardService.SetFileDropListAsync(new[] { filePath });
+                ShowToast("Archivo copiado al portapapeles", NotificationType.Success);
+            }
+            catch
+            {
+                ShowToast("Error al copiar el archivo", NotificationType.Error);
+            }
         }
     }
 
