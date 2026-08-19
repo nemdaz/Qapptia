@@ -153,12 +153,22 @@ public class TextShapeTests
     [Fact]
     public void ShapeFactoryCreatesExpectedShapeTypes()
     {
-        var text = Qapptia.Editor.Core.ShapeFactory.Create(ToolType.Text, new Avalonia.Point(10, 10), Avalonia.Media.Colors.Red);
+        var text = Qapptia.Editor.Core.ShapeFactory.Create(ToolType.Text, new Avalonia.Point(100, 200), Avalonia.Media.Colors.Red);
         var rect = Qapptia.Editor.Core.ShapeFactory.Create(ToolType.Rectangle, new Avalonia.Point(10, 10), Avalonia.Media.Colors.Red);
         var arrow = Qapptia.Editor.Core.ShapeFactory.Create(ToolType.Arrow, new Avalonia.Point(10, 10), Avalonia.Media.Colors.Red);
 
         Assert.IsType<TextShape>(text);
         Assert.IsType<RectangleShape>(rect);
         Assert.IsType<ArrowShape>(arrow);
+
+        var textShape = (TextShape)text!;
+        // El punto de inicio del texto debe estar desplazado para alinear el cursor/texto con (100, 200)
+        using var font = TextShape.CreateSKFont(24);
+        textShape.GetCaretPosition(font, out float caretX, out float caretY, out float caretHeight);
+
+        Assert.Equal(100.0f, caretX, 1.0f);
+        // El centro vertical del caret debe coincidir con el Y del clic (200)
+        float caretCenterY = caretY + (caretHeight / 2.0f);
+        Assert.Equal(200.0f, caretCenterY, 1.0f);
     }
 }
