@@ -30,8 +30,8 @@ public static class ShapeFactory
         font.GetFontMetrics(out var metrics);
         float caretHeight = Math.Max(metrics.Descent - metrics.Ascent, font.Spacing * 0.9f);
 
-        // Alinea el punto de clic exactamente con el inicio horizontal y el centro vertical de la primera línea de texto
-        double startX = Math.Max(0, clickPoint.X - Constants.TextToolOffset);
+        // Alinea el clic para que el ratón quede sobre el caret y evada el radio de colisión del nodo izquierdo.
+        double startX = Math.Max(0, clickPoint.X - Constants.TextToolOffset - 5);
         double startY = Math.Max(0, clickPoint.Y - Constants.TextToolOffset - (caretHeight / 2.0));
         var alignedPoint = new Point(startX, startY);
 

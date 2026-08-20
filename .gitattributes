@@ -15,3 +15,6 @@
 *.wav binary
 *.ttf binary
 *.otf binary
+
+# Ignore legacy python code for GitHub language stats
+legacy*/** linguist-detectable=false
