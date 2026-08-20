@@ -4,7 +4,7 @@ using System.Security.AccessControl;
 using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+using Serilog;
 
 namespace Qapptia.Core.Ipc;
 
@@ -16,11 +16,11 @@ namespace Qapptia.Core.Ipc;
 public sealed class IpcMessageDispatcher
 {
     private readonly Func<IpcMessage, CancellationToken, Task<IpcMessage>> _handler;
-    private readonly ILogger<IpcMessageDispatcher> _logger;
+    private readonly ILogger _logger;
 
     public IpcMessageDispatcher(
         Func<IpcMessage, CancellationToken, Task<IpcMessage>> handler,
-        ILogger<IpcMessageDispatcher> logger)
+        ILogger logger)
     {
         _handler = handler ?? throw new ArgumentNullException(nameof(handler));
         _logger = logger;
@@ -31,7 +31,7 @@ public sealed class IpcMessageDispatcher
         try
         {
             var request = await IpcWire.ReadFrameAsync(stream, ct).ConfigureAwait(false);
-            _logger.LogDebug("IPC req {Type}", request.Type);
+            _logger.Debug("IPC req {Type}", request.Type);
 
             IpcMessage response;
             try
@@ -40,7 +40,7 @@ public sealed class IpcMessageDispatcher
             }
             catch (Exception ex) when (!ct.IsCancellationRequested)
             {
-                _logger.LogError(ex, "Handler IPC lanzó para {Type}", request.Type);
+                _logger.Error(ex, "Handler IPC lanzó para {Type}", request.Type);
                 response = new ErrorResponse { Reason = ex.Message };
             }
 
@@ -49,7 +49,7 @@ public sealed class IpcMessageDispatcher
         catch (OperationCanceledException) { /* shutdown limpio */ }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
-            _logger.LogWarning(ex, "Conexión IPC fallida");
+            _logger.Warning(ex, "Conexión IPC fallida");
         }
     }
 }
@@ -64,7 +64,7 @@ public sealed class QapptiaIpcServer : IDisposable
 {
     private readonly string _pipeName;
     private readonly IpcMessageDispatcher _dispatcher;
-    private readonly ILogger<QapptiaIpcServer> _logger;
+    private readonly ILogger _logger;
     private readonly CancellationTokenSource _cts = new();
     private readonly string _token;
     private readonly string _channel;
@@ -79,7 +79,7 @@ public sealed class QapptiaIpcServer : IDisposable
         string channel,
         string pipeName,
         IpcMessageDispatcher dispatcher,
-        ILogger<QapptiaIpcServer> logger,
+        ILogger logger,
         string? token = null)
     {
         _channel = channel ?? throw new ArgumentNullException(nameof(channel));
@@ -98,7 +98,7 @@ public sealed class QapptiaIpcServer : IDisposable
             PipeName = _pipeName,
         };
         IpcChannelState.Save(_channel, state);
-        _logger.LogInformation("IPC server escuchando en {Pipe} (token {Token}…)", _pipeName, _token[..8]);
+        _logger.Information("IPC server escuchando en {Pipe} (token {Token}…)", _pipeName, _token[..8]);
 
         for (var i = 0; i < MaxConcurrentInstances; i++)
         {
@@ -146,7 +146,7 @@ public sealed class QapptiaIpcServer : IDisposable
                 }
                 catch (Exception ex) when (!_cts.IsCancellationRequested)
                 {
-                    _logger.LogWarning(ex, "Error en conexión IPC");
+                    _logger.Warning(ex, "Error en conexión IPC");
                 }
             }
 
@@ -181,7 +181,7 @@ public sealed class QapptiaIpcServer : IDisposable
         catch (OperationCanceledException) { }
         catch (AggregateException) { }
         IpcChannelState.Delete(_channel, expectedToken: _token);
-        _logger.LogInformation("IPC server detenido en {Pipe}", _pipeName);
+        _logger.Information("IPC server detenido en {Pipe}", _pipeName);
     }
 
     public void Dispose()
@@ -232,3 +232,4 @@ public static class QapptiaIpcClient
         return response;
     }
 }
+

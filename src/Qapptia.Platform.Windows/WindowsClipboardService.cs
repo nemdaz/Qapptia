@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Text;
-using Microsoft.Extensions.Logging;
+using Serilog;
 using Qapptia.Core.Abstractions;
 using Windows.Win32;
 using Windows.Win32.Foundation;
@@ -14,9 +14,9 @@ namespace Qapptia.Platform.Windows;
 
 public sealed class WindowsClipboardService : IClipboardService
 {
-    private readonly ILogger<WindowsClipboardService> _logger;
+    private readonly ILogger _logger;
 
-    public WindowsClipboardService(ILogger<WindowsClipboardService> logger)
+    public WindowsClipboardService(ILogger logger)
     {
         if (!OperatingSystem.IsWindows())
             throw new PlatformNotSupportedException("WindowsClipboardService requiere Windows.");
@@ -91,7 +91,7 @@ public sealed class WindowsClipboardService : IClipboardService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to set image to clipboard.");
+            _logger.Error(ex, "Failed to set image to clipboard.");
             throw; // Rethrow so the caller knows the operation failed
         }
 
@@ -175,10 +175,11 @@ public sealed class WindowsClipboardService : IClipboardService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to set file drop list to clipboard.");
+            _logger.Error(ex, "Failed to set file drop list to clipboard.");
             throw;
         }
 
         return Task.CompletedTask;
     }
 }
+

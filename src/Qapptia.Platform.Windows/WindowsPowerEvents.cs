@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging;
+using Serilog;
 using Qapptia.Core.Abstractions;
 
 namespace Qapptia.Platform.Windows;
@@ -12,10 +12,10 @@ namespace Qapptia.Platform.Windows;
 /// </summary>
 public sealed class WindowsPowerEvents : IPowerEvents
 {
-    private readonly ILogger<WindowsPowerEvents> _logger;
+    private readonly ILogger _logger;
     private bool _disposed;
 
-    public WindowsPowerEvents(ILogger<WindowsPowerEvents> logger)
+    public WindowsPowerEvents(ILogger logger)
     {
         if (!OperatingSystem.IsWindows())
             throw new PlatformNotSupportedException("WindowsPowerEvents requiere Windows.");
@@ -34,7 +34,7 @@ public sealed class WindowsPowerEvents : IPowerEvents
             Microsoft.Win32.PowerModes.Resume => PowerMode.Resume,
             _ => PowerMode.StatusChange,
         };
-        _logger.LogInformation("Power event: {Mode}", mode);
+        _logger.Information("Power event: {Mode}", mode);
         PowerModeChanged?.Invoke(this, mode);
     }
 
@@ -45,3 +45,4 @@ public sealed class WindowsPowerEvents : IPowerEvents
         Microsoft.Win32.SystemEvents.PowerModeChanged -= OnSystemPowerModeChanged;
     }
 }
+

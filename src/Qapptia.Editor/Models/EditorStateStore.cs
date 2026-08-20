@@ -25,7 +25,7 @@ public sealed class EditorStateStore
     {
         _basePath = basePath;
         _stateFileName = stateFileName;
-        _logger = logger;
+        _logger = logger ?? Serilog.Log.Logger;
     }
 
     private string GetStatePath()

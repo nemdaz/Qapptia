@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using Microsoft.Extensions.Logging;
+using Serilog;
 using Qapptia.Core.Abstractions;
 using Qapptia.Core.Capture;
 using Qapptia.Core.Configuration;
@@ -15,7 +15,7 @@ public sealed class FullscreenCaptureService : IFullscreenCaptureService
     private readonly IClipboardService _clipboard;
     private readonly IDesktopService _desktop;
     private readonly IConfigService _config;
-    private readonly ILogger<FullscreenCaptureService> _logger;
+    private readonly ILogger _logger;
 
     public FullscreenCaptureService(
         IScreenCapture screenCapture,
@@ -23,7 +23,7 @@ public sealed class FullscreenCaptureService : IFullscreenCaptureService
         IClipboardService clipboard,
         IDesktopService desktop,
         IConfigService config,
-        ILogger<FullscreenCaptureService> logger)
+        ILogger logger)
     {
         _screenCapture = screenCapture;
         _cursorCapture = cursorCapture;
@@ -97,7 +97,7 @@ public sealed class FullscreenCaptureService : IFullscreenCaptureService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Fallo overlay cursor");
+            _logger.Warning(ex, "Fallo overlay cursor");
         }
     }
 
@@ -113,7 +113,7 @@ public sealed class FullscreenCaptureService : IFullscreenCaptureService
             job.Mode == CaptureMode.Area && _config.Current.CopyToClipboardArea)
         {
             try { await _clipboard.SetImageAsync(pngBytes, ct); }
-            catch (Exception ex) { _logger.LogWarning(ex, "Fallo clipboard"); }
+            catch (Exception ex) { _logger.Warning(ex, "Fallo clipboard"); }
         }
 
         return new CaptureResult(path, pngBytes, w, h);

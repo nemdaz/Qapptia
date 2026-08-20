@@ -1,5 +1,5 @@
 using System.Runtime.InteropServices;
-using Microsoft.Extensions.Logging;
+using Serilog;
 using Qapptia.Core.Abstractions;
 using Windows.Win32;
 using Windows.Win32.Foundation;
@@ -14,9 +14,9 @@ namespace Qapptia.Platform.Windows;
 /// </summary>
 public sealed class WindowsScreenCapture : IScreenCapture
 {
-    private readonly ILogger<WindowsScreenCapture> _logger;
+    private readonly ILogger _logger;
 
-    public WindowsScreenCapture(ILogger<WindowsScreenCapture> logger)
+    public WindowsScreenCapture(ILogger logger)
     {
         if (!OperatingSystem.IsWindows())
             throw new PlatformNotSupportedException("WindowsScreenCapture requiere Windows.");
@@ -76,7 +76,7 @@ public sealed class WindowsScreenCapture : IScreenCapture
                         Marshal.FreeHGlobal(bmiPtr);
                     }
 
-                    _logger.LogDebug("Captura {W}x{H} @ ({X},{Y})", width, height, x, y);
+                    _logger.Debug("Captura {W}x{H} @ ({X},{Y})", width, height, x, y);
                     return new ScreenCaptureResult(pixels, width, height, x, y);
                 }
                 finally
@@ -93,3 +93,4 @@ public sealed class WindowsScreenCapture : IScreenCapture
         }, ct);
     }
 }
+

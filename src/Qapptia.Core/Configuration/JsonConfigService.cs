@@ -1,8 +1,8 @@
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
+using Serilog;
+
 
 namespace Qapptia.Core.Configuration;
 
@@ -21,14 +21,14 @@ public sealed class JsonConfigService : IConfigService
     };
 
     private readonly string _path;
-    private readonly ILogger<JsonConfigService> _logger;
+    private readonly ILogger _logger;
     private readonly object _gate = new();
     private QapptiaConfig _current;
 
-    public JsonConfigService(string path, ILogger<JsonConfigService>? logger = null)
+    public JsonConfigService(string path, ILogger? logger = null)
     {
         _path = path;
-        _logger = logger ?? NullLogger<JsonConfigService>.Instance;
+        _logger = logger ?? Serilog.Log.Logger;
         _current = LoadOrNew(path);
     }
 
@@ -46,11 +46,11 @@ public sealed class JsonConfigService : IConfigService
 
                 var json = JsonSerializer.Serialize(_current, s_jsonOptions);
                 File.WriteAllText(_path, json);
-                _logger.LogInformation("Config guardado en {Path}", _path);
+                _logger.Information("Config guardado en {Path}", _path);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error guardando config en {Path}", _path);
+                _logger.Error(ex, "Error guardando config en {Path}", _path);
                 throw;
             }
         }
@@ -61,7 +61,7 @@ public sealed class JsonConfigService : IConfigService
         lock (_gate)
         {
             _current = LoadOrNew(_path);
-            _logger.LogInformation("Config recargado desde {Path}", _path);
+            _logger.Information("Config recargado desde {Path}", _path);
         }
     }
 
@@ -69,7 +69,7 @@ public sealed class JsonConfigService : IConfigService
     {
         if (!File.Exists(path))
         {
-            _logger.LogInformation("config.json no existe en {Path}; usando defaults", path);
+            _logger.Information("config.json no existe en {Path}; usando defaults", path);
             return new QapptiaConfig();
         }
 
@@ -79,16 +79,17 @@ public sealed class JsonConfigService : IConfigService
             var config = JsonSerializer.Deserialize<QapptiaConfig>(json, s_jsonOptions);
             if (config is null)
             {
-                _logger.LogWarning("config.json vacio o invalido en {Path}; usando defaults", path);
+                _logger.Warning("config.json vacio o invalido en {Path}; usando defaults", path);
                 return new QapptiaConfig();
             }
-            _logger.LogInformation("Config cargado desde {Path}", path);
+            _logger.Information("Config cargado desde {Path}", path);
             return config;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error leyendo config.json desde {Path}; usando defaults", path);
+            _logger.Error(ex, "Error leyendo config.json desde {Path}; usando defaults", path);
             return new QapptiaConfig();
         }
     }
 }
+

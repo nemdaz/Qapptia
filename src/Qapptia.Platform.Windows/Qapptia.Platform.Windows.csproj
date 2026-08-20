@@ -11,7 +11,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Windows.CsWin32" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Serilog" />
     <PackageReference Include="NAudio" />
     <PackageReference Include="SkiaSharp" />
   </ItemGroup>

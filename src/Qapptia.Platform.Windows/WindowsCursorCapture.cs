@@ -1,6 +1,6 @@
 using Qapptia.Core.Capture;
 using System.Runtime.InteropServices;
-using Microsoft.Extensions.Logging;
+using Serilog;
 using Qapptia.Core.Abstractions;
 using Windows.Win32;
 using Windows.Win32.Foundation;
@@ -15,9 +15,9 @@ namespace Qapptia.Platform.Windows;
 /// </summary>
 public sealed class WindowsCursorCapture : ICursorCapture
 {
-    private readonly ILogger<WindowsCursorCapture> _logger;
+    private readonly ILogger _logger;
 
-    public WindowsCursorCapture(ILogger<WindowsCursorCapture> logger)
+    public WindowsCursorCapture(ILogger logger)
     {
         if (!OperatingSystem.IsWindows())
             throw new PlatformNotSupportedException("WindowsCursorCapture requiere Windows.");
@@ -60,7 +60,7 @@ public sealed class WindowsCursorCapture : ICursorCapture
                         if (!PInvoke.DrawIconEx(hdcMem, 0, 0, ci.hCursor, cw, ch, 0,
                             HBRUSH.Null, DI_FLAGS.DI_NORMAL))
                         {
-                            _logger.LogWarning("DrawIconEx failed");
+                            _logger.Warning("DrawIconEx failed");
                             return null;
                         }
 
@@ -145,3 +145,4 @@ public sealed class WindowsCursorCapture : ICursorCapture
         return false;
     }
 }
+

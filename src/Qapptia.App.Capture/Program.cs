@@ -3,7 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
+using Serilog;
 using Qapptia.Capture;
 using Qapptia.Core.Configuration;
 using Qapptia.Core.Ipc;
@@ -11,7 +11,7 @@ using Qapptia.Core.Logging;
 using Qapptia.Core.Platform;
 using Qapptia.Core.Abstractions;
 
-using Serilog;
+
 using Serilog.Events;
 using System.Diagnostics;
 using Avalonia.Platform;
@@ -43,7 +43,7 @@ internal static class Program
         using var _log = LoggingBootstrap.ConfigureGlobal(logDir, LogEventLevel.Information, "capture");
 
         using var host = BuildHost(args);
-        var appLogger = host.Services.GetRequiredService<ILogger<AppLoggerMarker>>();
+        var appLogger = host.Services.GetRequiredService<Serilog.ILogger>();
 
         var lifetime = new ClassicDesktopStyleApplicationLifetime
         {
@@ -69,11 +69,11 @@ internal static class Program
         {
             lifetime.Start(Array.Empty<string>());
             try { host.StopAsync().GetAwaiter().GetResult(); }
-            catch (Exception ex) { appLogger.LogHostStopError(ex); }
+            catch (Exception ex) { appLogger.Error(ex, "Error deteniendo host"); }
         }
         catch (Exception ex)
         {
-            appLogger.LogAppFatalError(ex);
+            appLogger.Error(ex, "Fatal en App.Capture");
             throw;
         }
     }
@@ -83,6 +83,7 @@ internal static class Program
         var builder = Host.CreateApplicationBuilder(args);
 
         builder.Logging.ClearProviders();
+        builder.Services.AddSingleton<Serilog.ILogger>(Log.Logger);
         builder.Logging.AddSerilog(Log.Logger, dispose: false);
 
         var configPath = Qapptia.Core.AppConstants.DefaultConfigPath;
@@ -127,7 +128,7 @@ internal sealed class HeadlessCaptureApp : Application
         
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var logger = AppHost?.Services.GetService<ILogger<HeadlessCaptureApp>>();
+            var logger = AppHost?.Services.GetService<Serilog.ILogger>();
             var captureHandler = AppHost?.Services.GetService<ICaptureActionHandler>();
             var trayService = AppHost?.Services.GetService<ITrayIconService>();
             
@@ -153,7 +154,7 @@ internal sealed class HeadlessCaptureApp : Application
             var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "app_icon.ico");
             trayService?.Initialize(menuDef, iconPath);
             
-            logger?.LogTrayIconAssigned();
+            logger?.Information("TrayIcon asignado a la aplicación de forma limpia.");
         }
     }
 
@@ -169,24 +170,12 @@ internal sealed class HeadlessCaptureApp : Application
             }
             else
             {
-                Console.WriteLine($"No se encontró la aplicación: {exePath}");
+                Log.Error("No se encontró la aplicación: {ExePath}", exePath);
             }
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine("Error al lanzar aplicación: " + ex.Message);
+            Log.Error(ex, "Error al lanzar aplicación");
         }
     }
-}
-
-internal static partial class CaptureLogMessages
-{
-    [LoggerMessage(EventId = 1, Level = LogLevel.Warning, Message = "Error deteniendo host")]
-    public static partial void LogHostStopError(this Microsoft.Extensions.Logging.ILogger logger, Exception ex);
-
-    [LoggerMessage(EventId = 2, Level = LogLevel.Error, Message = "Fatal en App.Capture")]
-    public static partial void LogAppFatalError(this Microsoft.Extensions.Logging.ILogger logger, Exception ex);
-
-    [LoggerMessage(EventId = 3, Level = LogLevel.Information, Message = "TrayIcon asignado a la aplicación de forma limpia.")]
-    public static partial void LogTrayIconAssigned(this Microsoft.Extensions.Logging.ILogger logger);
 }

@@ -2,14 +2,14 @@ using System;
 using System.Drawing;
 using System.Threading;
 using System.Windows.Forms;
-using Microsoft.Extensions.Logging;
+using Serilog;
 using Qapptia.Core.Abstractions;
 
 namespace Qapptia.Platform.Windows;
 
 public sealed class WindowsTrayIconService : ITrayIconService
 {
-    private readonly ILogger<WindowsTrayIconService> _logger;
+    private readonly ILogger _logger;
     private readonly Thread _staThread;
     private readonly ManualResetEventSlim _ready = new();
     
@@ -21,7 +21,7 @@ public sealed class WindowsTrayIconService : ITrayIconService
     private TrayMenuDefinition? _initialMenu;
     private string? _initialIconPath;
 
-    public WindowsTrayIconService(ILogger<WindowsTrayIconService> logger)
+    public WindowsTrayIconService(ILogger logger)
     {
         _logger = logger;
         
@@ -92,11 +92,11 @@ public sealed class WindowsTrayIconService : ITrayIconService
                 _notifyIcon.Icon = new Icon(_initialIconPath);
             }
             
-            _logger.LogInformation("WindowsTrayIconService inicializado (NotifyIcon nativo).");
+            _logger.Information("WindowsTrayIconService inicializado (NotifyIcon nativo).");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error al inicializar WindowsTrayIconService.");
+            _logger.Error(ex, "Error al inicializar WindowsTrayIconService.");
         }
         finally
         {
@@ -131,3 +131,4 @@ public sealed class WindowsTrayIconService : ITrayIconService
         _staThread.Join(1000); // Esperar brevemente a que cierre el hilo
     }
 }
+

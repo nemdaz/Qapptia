@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 using Avalonia.Controls.ApplicationLifetimes;
 using Qapptia.Core.Ipc;
 using Qapptia.Core.Platform;
+using Serilog;
+using Serilog.Events;
+using Qapptia.Core.Logging;
 
 namespace Qapptia.App.Config;
 
@@ -16,11 +19,14 @@ sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        var logDir = Qapptia.Core.AppConstants.DefaultLogDirectory;
+        using var _log = LoggingBootstrap.ConfigureGlobal(logDir, LogEventLevel.Information, "config");
+        Log.Information("Qapptia Config App iniciada");
+
         using var guard = new MutexSingleInstanceGuard("Config");
-        
         if (!guard.Acquire())
         {
-            // Ya hay una instancia, enviar petición para despertar
+            Log.Warning("Instancia de Config ya existente, intentando despertar...");
             Task.Run(async () =>
             {
                 using var client = new NamedPipeClientStream(".", PipeName, PipeDirection.InOut);
@@ -29,7 +35,7 @@ sealed class Program
                     await client.ConnectAsync(1000);
                     await IpcWire.WriteFrameAsync(client, new WakeUpRequest());
                 }
-                catch { /* Ignorar si no logra conectar */ }
+                catch (Exception ex) { Log.Warning(ex, "No se pudo despertar la otra instancia de Config"); }
             }).Wait(1500);
             return;
         }
@@ -76,10 +82,10 @@ sealed class Program
                         });
                     }
                 }
-                catch { /* Ignorar errores de lectura */ }
+                catch (Exception ex) { Log.Warning(ex, "Error al leer mensaje IPC en Config"); }
             }
             catch (OperationCanceledException) { break; }
-            catch { await Task.Delay(1000, ct); }
+            catch (Exception ex) { Log.Error(ex, "Fallo inesperado en IPC server Config"); await Task.Delay(1000, ct); }
         }
     }
 
@@ -92,3 +98,5 @@ sealed class Program
             .WithInterFont()
             .LogToTrace();
 }
+
+

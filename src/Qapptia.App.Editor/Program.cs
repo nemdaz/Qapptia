@@ -11,8 +11,8 @@ sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
-        var exeDir = AppContext.BaseDirectory;
-        using var log = Qapptia.Core.Logging.LoggingBootstrap.ConfigureGlobal(exeDir, Serilog.Events.LogEventLevel.Information, "editor");
+        var logDir = Qapptia.Core.AppConstants.DefaultLogDirectory;
+        using var log = Qapptia.Core.Logging.LoggingBootstrap.ConfigureGlobal(logDir, Serilog.Events.LogEventLevel.Information, "editor");
         
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }

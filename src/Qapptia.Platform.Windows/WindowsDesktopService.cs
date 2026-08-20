@@ -1,5 +1,5 @@
 using System.Runtime.InteropServices;
-using Microsoft.Extensions.Logging;
+using Serilog;
 using Qapptia.Core.Abstractions;
 using Windows.Win32;
 using Windows.Win32.Foundation;
@@ -14,9 +14,9 @@ namespace Qapptia.Platform.Windows;
 /// </summary>
 public sealed class WindowsDesktopService : IDesktopService
 {
-    private readonly ILogger<WindowsDesktopService> _logger;
+    private readonly ILogger _logger;
 
-    public WindowsDesktopService(ILogger<WindowsDesktopService> logger)
+    public WindowsDesktopService(ILogger logger)
     {
         if (!OperatingSystem.IsWindows())
             throw new PlatformNotSupportedException("WindowsDesktopService requiere Windows.");
@@ -84,3 +84,4 @@ public sealed class WindowsDesktopService : IDesktopService
         }
     }
 }
+

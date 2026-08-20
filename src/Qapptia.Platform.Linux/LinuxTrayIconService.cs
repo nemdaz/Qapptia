@@ -1,22 +1,22 @@
 using System;
-using Microsoft.Extensions.Logging;
+using Serilog;
 using Qapptia.Core.Abstractions;
 
 namespace Qapptia.Platform.Linux;
 
 public sealed class LinuxTrayIconService : ITrayIconService
 {
-    private readonly ILogger<LinuxTrayIconService> _logger;
+    private readonly ILogger _logger;
     private bool _disposed;
 
-    public LinuxTrayIconService(ILogger<LinuxTrayIconService> logger)
+    public LinuxTrayIconService(ILogger logger)
     {
         _logger = logger;
     }
 
     public void Initialize(TrayMenuDefinition menu, string iconPath)
     {
-        _logger.LogWarning("LinuxTrayIconService: Implementación nativa pendiente. El icono de la bandeja no se mostrará.");
+        _logger.Warning("LinuxTrayIconService: Implementación nativa pendiente. El icono de la bandeja no se mostrará.");
     }
 
     public void Dispose()
@@ -25,3 +25,4 @@ public sealed class LinuxTrayIconService : ITrayIconService
         _disposed = true;
     }
 }
+

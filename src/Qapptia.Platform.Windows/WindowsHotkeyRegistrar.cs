@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
-using Microsoft.Extensions.Logging;
+using Serilog;
 using Qapptia.Core.Abstractions;
 using Windows.Win32;
 using Windows.Win32.Foundation;
@@ -21,7 +21,7 @@ public sealed class WindowsHotkeyRegistrar : IHotkeyRegistrar, IDisposable
     private const uint WM_REGISTER = 0x0400 + 1;
     private const uint WM_UNREGISTER = 0x0400 + 2;
 
-    private readonly ILogger<WindowsHotkeyRegistrar> _logger;
+    private readonly ILogger _logger;
     private readonly Thread _messageThread;
     private readonly ManualResetEventSlim _ready = new();
     private readonly BlockingCollection<RegisterRequest> _pending = new();
@@ -31,7 +31,7 @@ public sealed class WindowsHotkeyRegistrar : IHotkeyRegistrar, IDisposable
     private readonly Dictionary<int, Registration> _registrations = new();
     private volatile bool _running = true;
 
-    public WindowsHotkeyRegistrar(ILogger<WindowsHotkeyRegistrar> logger)
+    public WindowsHotkeyRegistrar(ILogger logger)
     {
         if (!OperatingSystem.IsWindows())
             throw new PlatformNotSupportedException("WindowsHotkeyRegistrar requiere Windows.");
@@ -87,7 +87,7 @@ public sealed class WindowsHotkeyRegistrar : IHotkeyRegistrar, IDisposable
                     continue;
                 }
 
-                _logger.LogInformation("Hotkey registrado id={Id} mod={Mod} vk={Vk}",
+                _logger.Information("Hotkey registrado id={Id} mod={Mod} vk={Vk}",
                     req.Id, req.Modifiers, req.VirtualKey);
                 req.Task.SetResult(req.Registration);
             }
@@ -104,7 +104,7 @@ public sealed class WindowsHotkeyRegistrar : IHotkeyRegistrar, IDisposable
         {
             try { PInvoke.UnregisterHotKey(_hwnd, id); } catch { }
             lock (_registrations) { _registrations.Remove(id); }
-            _logger.LogDebug("Hotkey desregistrado id={Id}", id);
+            _logger.Debug("Hotkey desregistrado id={Id}", id);
         }
     }
 
@@ -173,7 +173,7 @@ public sealed class WindowsHotkeyRegistrar : IHotkeyRegistrar, IDisposable
                     if (reg is not null)
                     {
                         try { reg.OnClickInternal(); }
-                        catch (Exception ex) { _logger.LogError(ex, "Hotkey callback id={Id}", id); }
+                        catch (Exception ex) { _logger.Error(ex, "Hotkey callback id={Id}", id); }
                     }
                     break;
                 }

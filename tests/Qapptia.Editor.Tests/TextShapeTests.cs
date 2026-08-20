@@ -164,7 +164,7 @@ public class TextShapeTests
 
         var textShape = (TextShape)text!;
         // El punto de inicio del texto debe estar desplazado para alinear el cursor/texto con (100, 200)
-        using var font = TextShape.CreateSKFont(24);
+        using var font = textShape.CreateSKFont();
         textShape.GetCaretPosition(font, out float caretX, out float caretY, out float caretHeight);
 
         Assert.Equal(100.0f, caretX, 1.0f);
@@ -209,7 +209,7 @@ public class TextShapeTests
         Assert.True(box == HandleType.Body || box == HandleType.LeftCenter);
 
         // Hit en la maneta derecha (Left=100, Right=400, CenterY aprox 115)
-        using var font = TextShape.CreateSKFont(24);
+        using var font = shape.CreateSKFont();
         float h = shape.CalculateHeight(font);
         var handleRight = shape.HitTest(new Avalonia.Point(400, 100 + h / 2.0));
         Assert.Equal(HandleType.RightCenter, handleRight);
@@ -235,7 +235,7 @@ public class TextShapeTests
             IsEditing = true
         };
 
-        using var font = TextShape.CreateSKFont(24);
+        using var font = shape.CreateSKFont();
         float h = shape.CalculateHeight(font);
 
         // Durante IsEditing == true, las manetas laterales siguen activas e interactivas
@@ -288,7 +288,7 @@ public class TextShapeTests
         Assert.Equal(Avalonia.Input.StandardCursorType.SizeAll, shape.GetCursorType(borderPoint));
 
         // Interior profundo (X = 250, Y = 115) -> IsOnBorder debe ser false y cursor Ibeam
-        using var font = TextShape.CreateSKFont(24);
+        using var font = shape.CreateSKFont();
         float h = shape.CalculateHeight(font);
         var interiorPoint = new Avalonia.Point(250, 100 + h / 2.0);
         Assert.False(shape.IsOnBorder(interiorPoint));

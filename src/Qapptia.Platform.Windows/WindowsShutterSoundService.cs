@@ -1,6 +1,6 @@
 using System.IO;
 using System.Reflection;
-using Microsoft.Extensions.Logging;
+using Serilog;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
 using Qapptia.Core.Abstractions;
@@ -10,14 +10,14 @@ namespace Qapptia.Platform.Windows;
 public sealed class WindowsShutterSoundService : IShutterSoundService, IDisposable
 {
     private const string ResourceName = "Qapptia.Core.Assets.Sounds.shutter_a.wav";
-    private readonly ILogger<WindowsShutterSoundService> _logger;
+    private readonly ILogger _logger;
     
     private readonly WaveOutEvent? _waveOut;
     private readonly MixingSampleProvider? _mixer;
     private readonly float[]? _cachedAudioSamples;
     private readonly WaveFormat? _waveFormat;
 
-    public WindowsShutterSoundService(ILogger<WindowsShutterSoundService> logger)
+    public WindowsShutterSoundService(ILogger logger)
     {
         if (!OperatingSystem.IsWindows())
             throw new PlatformNotSupportedException("WindowsShutterSoundService requiere Windows.");
@@ -59,17 +59,17 @@ public sealed class WindowsShutterSoundService : IShutterSoundService, IDisposab
                 _waveOut.Init(_mixer);
                 _waveOut.Play(); // Comienza a reproducir silencio infinito en background
                 
-                _logger.LogInformation("Hot Audio Engine inicializado con {Samples} samples a {Rate}Hz", 
+                _logger.Information("Hot Audio Engine inicializado con {Samples} samples a {Rate}Hz", 
                     _cachedAudioSamples.Length, _waveFormat.SampleRate);
             }
             else
             {
-                _logger.LogWarning("Recurso embebido {Name} no encontrado", ResourceName);
+                _logger.Warning("Recurso embebido {Name} no encontrado", ResourceName);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error al inicializar el Hot Audio Engine");
+            _logger.Error(ex, "Error al inicializar el Hot Audio Engine");
         }
     }
 
@@ -86,7 +86,7 @@ public sealed class WindowsShutterSoundService : IShutterSoundService, IDisposab
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "No se pudo inyectar shutter sound en el mixer");
+            _logger.Error(ex, "No se pudo inyectar shutter sound en el mixer");
         }
         
         return Task.CompletedTask;

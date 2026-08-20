@@ -22,8 +22,7 @@ public partial class MainWindow : Window
             stateStoreLogger);
         
 #if WINDOWS
-        var clipboardService = new Qapptia.Platform.Windows.WindowsClipboardService(
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<Qapptia.Platform.Windows.WindowsClipboardService>.Instance);
+        var clipboardService = new Qapptia.Platform.Windows.WindowsClipboardService(Serilog.Log.Logger);
 #else
         Qapptia.Core.Abstractions.IClipboardService? clipboardService = null;
 #endif
@@ -222,8 +221,7 @@ public partial class MainWindow : Window
 #if WINDOWS
                 try
                 {
-                    var clipboardService = new Qapptia.Platform.Windows.WindowsClipboardService(
-                        Microsoft.Extensions.Logging.Abstractions.NullLogger<Qapptia.Platform.Windows.WindowsClipboardService>.Instance);
+                    var clipboardService = new Qapptia.Platform.Windows.WindowsClipboardService(Serilog.Log.Logger);
                     
                     await clipboardService.SetImageAsync(ms.ToArray());
                     vm.ShowToast("Imagen copiada al portapapeles", Qapptia.Editor.Models.NotificationType.Success);

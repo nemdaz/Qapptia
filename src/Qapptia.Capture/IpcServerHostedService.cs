@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
+using Serilog;
 using Qapptia.Core.Ipc;
 
 namespace Qapptia.Capture;
@@ -7,17 +7,16 @@ namespace Qapptia.Capture;
 public sealed class IpcServerHostedService : IHostedService, IDisposable
 {
     private readonly QapptiaIpcServer _server;
-    private readonly ILogger<IpcServerHostedService> _logger;
+    private readonly ILogger _logger;
 
     public IpcServerHostedService(
-        ILoggerFactory loggerFactory,
-        ILogger<IpcServerHostedService> logger,
+        ILogger logger,
         ICaptureActionHandler handler)
     {
-        _logger = logger;
+        _logger = logger.ForContext<IpcServerHostedService>();
 
-        var dispatcherLogger = loggerFactory.CreateLogger<IpcMessageDispatcher>();
-        var serverLogger = loggerFactory.CreateLogger<QapptiaIpcServer>();
+        var dispatcherLogger = logger.ForContext<IpcMessageDispatcher>();
+        var serverLogger = logger.ForContext<QapptiaIpcServer>();
 
         var dispatcher = new IpcMessageDispatcher(
             async (msg, ct) =>
@@ -50,13 +49,13 @@ public sealed class IpcServerHostedService : IHostedService, IDisposable
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Iniciando IPC server (capture)");
+        _logger.Information("Iniciando IPC server (capture)");
         return _server.StartAsync(cancellationToken);
     }
 
     public Task StopAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Deteniendo IPC server (capture)");
+        _logger.Information("Deteniendo IPC server (capture)");
         return _server.StopAsync(cancellationToken);
     }
 

@@ -1,6 +1,6 @@
 using System.Threading.Channels;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
+using Serilog;
 using Qapptia.Core.Abstractions;
 using Qapptia.Core.Capture;
 using Qapptia.Core.Configuration;
@@ -16,7 +16,7 @@ public sealed class CaptureWorker : BackgroundService, ICaptureActionHandler
     private readonly IConfigService _config;
     private readonly IPowerEvents _powerEvents;
     private readonly IShutterSoundService _shutterSound;
-    private readonly ILogger<CaptureWorker> _logger;
+    private readonly ILogger _logger;
     private readonly Channel<CaptureJob> _channel = Channel.CreateBounded<CaptureJob>(4);
 
     private IHotkeyHandle? _hotkeyScreen;
@@ -33,7 +33,7 @@ public sealed class CaptureWorker : BackgroundService, ICaptureActionHandler
         IConfigService config,
         IPowerEvents powerEvents,
         IShutterSoundService shutterSound,
-        ILogger<CaptureWorker> logger)
+        ILogger logger)
     {
         _hotkeys = hotkeys;
         _fullscreenCapture = fullscreenCapture;
@@ -46,7 +46,7 @@ public sealed class CaptureWorker : BackgroundService, ICaptureActionHandler
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("CaptureWorker iniciado");
+        _logger.Information("CaptureWorker iniciado");
         SetupPowerEvents();
         RegisterHotkeys();
 
@@ -55,18 +55,18 @@ public sealed class CaptureWorker : BackgroundService, ICaptureActionHandler
 
     public async Task HandleWakeUpAsync(CancellationToken ct)
     {
-        _logger.LogInformation("WakeUp recibido");
+        _logger.Information("WakeUp recibido");
     }
 
     public async Task HandleQuitAsync(CancellationToken ct)
     {
-        _logger.LogInformation("Quit recibido — deteniendo worker");
+        _logger.Information("Quit recibido — deteniendo worker");
         await StopAsync(ct);
     }
 
     public async Task HandleRefreshTrayAsync(CancellationToken ct)
     {
-        _logger.LogInformation("Refrescando tray y hotkeys");
+        _logger.Information("Refrescando tray y hotkeys");
         UnregisterHotkeys();
         RegisterHotkeys();
     }
@@ -105,14 +105,14 @@ public sealed class CaptureWorker : BackgroundService, ICaptureActionHandler
                     var area = await _areaCapture.SelectAreaAsync(ct);
                     if (area is null)
                     {
-                        _logger.LogInformation("Area selection cancelled");
+                        _logger.Information("Area selection cancelled");
                         continue;
                     }
                     effectiveJob = job with { Area = area };
                 }
 
                 var result = await _fullscreenCapture.CaptureAsync(effectiveJob, ct);
-                _logger.LogInformation("Captura {Mode} -> {Path} ({W}x{H})",
+                _logger.Information("Captura {Mode} -> {Path} ({W}x{H})",
                     effectiveJob.Mode, result.FilePath, result.Width, result.Height);
 
                 _ = _shutterSound.PlayAsync(CancellationToken.None);
@@ -120,7 +120,7 @@ public sealed class CaptureWorker : BackgroundService, ICaptureActionHandler
             catch (OperationCanceledException) { break; }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error en captura {Mode}", job.Mode);
+                _logger.Error(ex, "Error en captura {Mode}", job.Mode);
             }
             finally
             {
@@ -158,7 +158,7 @@ public sealed class CaptureWorker : BackgroundService, ICaptureActionHandler
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Fallo registro hotkeys");
+            _logger.Warning(ex, "Fallo registro hotkeys");
         }
     }
 
@@ -191,12 +191,12 @@ public sealed class CaptureWorker : BackgroundService, ICaptureActionHandler
     {
         _powerEvents.PowerModeChanged += (_, mode) =>
         {
-            _logger.LogInformation("Power event: {Mode}", mode);
+            _logger.Information("Power event: {Mode}", mode);
             if (mode == PowerMode.Resume && _powerEvents.RequiresHotkeyReRegistrationAfterResume)
             {
                 UnregisterHotkeys();
                 RegisterHotkeys();
-                _logger.LogInformation("Hotkeys re-registrados tras resume");
+                _logger.Information("Hotkeys re-registrados tras resume");
             }
         };
     }
