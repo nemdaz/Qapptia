@@ -10,6 +10,7 @@
         x:Class="Qapptia.App.Editor.MainWindow"
         x:DataType="vm:EditorViewModel"
         Title="Qapptia - Editor"
+        Icon="avares://Qapptia.App.Editor/Assets/app_icon.ico"
         Background="#1e1e1e"
         WindowStartupLocation="CenterScreen">
 
