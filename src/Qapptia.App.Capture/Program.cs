@@ -40,7 +40,12 @@ internal static class Program
         // Redirige logs a LocalAppData para evitar errores de permisos.
         var logDir = Qapptia.Core.AppConstants.DefaultLogDirectory;
         
-        using var _log = LoggingBootstrap.ConfigureGlobal(logDir, LogEventLevel.Information, "capture");
+#if DEBUG
+        var logLevel = LogEventLevel.Debug;
+#else
+        var logLevel = LogEventLevel.Information;
+#endif
+        using var _log = LoggingBootstrap.ConfigureGlobal(logDir, logLevel, "capture");
 
         using var host = BuildHost(args);
         var appLogger = host.Services.GetRequiredService<Serilog.ILogger>();

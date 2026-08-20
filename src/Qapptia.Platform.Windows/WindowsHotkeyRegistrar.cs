@@ -165,18 +165,24 @@ public sealed class WindowsHotkeyRegistrar : IHotkeyRegistrar, IDisposable
 
             switch (msg.message)
             {
-                case WM_HOTKEY:
-                {
-                    var id = (int)msg.wParam.Value;
-                    Registration? reg;
-                    lock (_registrations) { _registrations.TryGetValue(id, out reg); }
-                    if (reg is not null)
+                    case WM_HOTKEY:
                     {
-                        try { reg.OnClickInternal(); }
-                        catch (Exception ex) { _logger.Error(ex, "Hotkey callback id={Id}", id); }
+                        var id = (int)msg.wParam.Value;
+                        Registration? reg;
+                        lock (_registrations) { _registrations.TryGetValue(id, out reg); }
+                        if (reg is not null)
+                        {
+                            var now = DateTime.UtcNow;
+                            _logger.Debug("WM_HOTKEY recibido para id={Id}. LastFired={LastFired:HH:mm:ss.fff}, Now={Now:HH:mm:ss.fff}", id, reg.LastFired, now);
+                            if ((now - reg.LastFired).TotalMilliseconds > 400)
+                            {
+                                reg.LastFired = now;
+                                try { reg.OnClickInternal(); }
+                                catch (Exception ex) { _logger.Error(ex, "Hotkey callback id={Id}", id); }
+                            }
+                        }
+                        break;
                     }
-                    break;
-                }
                 case WM_REGISTER:
                     ProcessRegistrations();
                     break;
@@ -239,6 +245,7 @@ public sealed class WindowsHotkeyRegistrar : IHotkeyRegistrar, IDisposable
         public uint VirtualKey { get; }
         public bool IsRegistered => !_disposed;
         internal Action OnClickInternal { get; }
+        public DateTime LastFired { get; set; } = DateTime.MinValue;
 
         public void Dispose()
         {

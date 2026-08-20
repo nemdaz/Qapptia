@@ -12,7 +12,12 @@ sealed class Program
     public static void Main(string[] args)
     {
         var logDir = Qapptia.Core.AppConstants.DefaultLogDirectory;
-        using var log = Qapptia.Core.Logging.LoggingBootstrap.ConfigureGlobal(logDir, Serilog.Events.LogEventLevel.Information, "editor");
+#if DEBUG
+        var logLevel = Serilog.Events.LogEventLevel.Debug;
+#else
+        var logLevel = Serilog.Events.LogEventLevel.Information;
+#endif
+        using var log = Qapptia.Core.Logging.LoggingBootstrap.ConfigureGlobal(logDir, logLevel, "editor");
         
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }

@@ -12,7 +12,7 @@ public sealed class WindowsShutterSoundService : IShutterSoundService, IDisposab
     private const string ResourceName = "Qapptia.Core.Assets.Sounds.shutter_a.wav";
     private readonly ILogger _logger;
     
-    private readonly WaveOutEvent? _waveOut;
+    private readonly WasapiOut? _waveOut;
     private readonly MixingSampleProvider? _mixer;
     private readonly float[]? _cachedAudioSamples;
     private readonly WaveFormat? _waveFormat;
@@ -54,8 +54,8 @@ public sealed class WindowsShutterSoundService : IShutterSoundService, IDisposab
                     ReadFully = true // ¡CRÍTICO! Mantiene el stream vivo enviando silencio cuando no hay sonidos
                 };
                 
-                // Inicializamos WaveOutEvent (el driver de audio nativo) y lo mantenemos caliente
-                _waveOut = new WaveOutEvent { DesiredLatency = 100 };
+                // Inicializamos WasapiOut (driver moderno, usa MTA threads inmunes a asfixia del UI thread)
+                _waveOut = new WasapiOut(NAudio.CoreAudioApi.AudioClientShareMode.Shared, 200);
                 _waveOut.Init(_mixer);
                 _waveOut.Play(); // Comienza a reproducir silencio infinito en background
                 
@@ -75,14 +75,20 @@ public sealed class WindowsShutterSoundService : IShutterSoundService, IDisposab
 
     public Task PlayAsync(CancellationToken ct = default)
     {
+        _logger.Debug("WindowsShutterSoundService.PlayAsync() invocado");
+        
         if (_mixer is null || _cachedAudioSamples is null || _waveFormat is null)
+        {
+            _logger.Debug("PlayAsync abortado: mixer o samples nulos");
             return Task.CompletedTask;
+        }
 
         try
         {
             // Simplemente inyectamos un clon del sonido al canal del Mixer que ya está corriendo!
             var provider = new CachedSoundSampleProvider(_cachedAudioSamples, _waveFormat);
             _mixer.AddMixerInput(provider);
+            _logger.Debug("Sonido inyectado en el mixer exitosamente");
         }
         catch (Exception ex)
         {

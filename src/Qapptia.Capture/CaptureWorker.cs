@@ -115,6 +115,7 @@ public sealed class CaptureWorker : BackgroundService, ICaptureActionHandler
                 _logger.Information("Captura {Mode} -> {Path} ({W}x{H})",
                     effectiveJob.Mode, result.FilePath, result.Width, result.Height);
 
+                _logger.Debug("Invocando PlayAsync desde CaptureWorker (Mode={Mode})", effectiveJob.Mode);
                 _ = _shutterSound.PlayAsync(CancellationToken.None);
             }
             catch (OperationCanceledException) { break; }
