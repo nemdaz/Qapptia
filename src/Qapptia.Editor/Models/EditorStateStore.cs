@@ -2,8 +2,7 @@ using System;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
+using Serilog;
 
 namespace Qapptia.Editor.Models;
 
@@ -19,14 +18,14 @@ public sealed class EditorStateStore
 
     private readonly string _basePath;
     private readonly string _stateFileName;
-    private readonly ILogger<EditorStateStore> _logger;
+    private readonly ILogger? _logger;
     private readonly object _gate = new();
 
-    public EditorStateStore(string basePath, string stateFileName, ILogger<EditorStateStore>? logger = null)
+    public EditorStateStore(string basePath, string stateFileName, ILogger? logger = null)
     {
         _basePath = basePath;
         _stateFileName = stateFileName;
-        _logger = logger ?? NullLogger<EditorStateStore>.Instance;
+        _logger = logger;
     }
 
     private string GetStatePath()
@@ -56,7 +55,7 @@ public sealed class EditorStateStore
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Error reading {Path}. Returning default state.", path);
+                _logger?.Warning(ex, "Error reading {Path}. Returning default state.", path);
                 return new EditorState();
             }
         }
@@ -75,7 +74,7 @@ public sealed class EditorStateStore
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error saving to {Path}.", path);
+                _logger?.Error(ex, "Error saving to {Path}.", path);
             }
         }
     }

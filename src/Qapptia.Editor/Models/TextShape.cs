@@ -34,6 +34,8 @@ public class TextShape : VectorShape, ITextInputShape
         get => _textSize;
         set => _textSize = Math.Clamp(value, Constants.TextToolMinFontSize, Constants.TextToolMaxFontSize);
     }
+    
+    public SKTypeface Typeface { get; set; } = SKTypeface.Default;
 
     public int CaretIndex { get; set; }
     public int SelectionStart { get; set; }
@@ -303,9 +305,9 @@ public class TextShape : VectorShape, ITextInputShape
 
     #endregion
 
-    public static SKFont CreateSKFont(float textSize)
+    public SKFont CreateSKFont()
     {
-        return new SKFont(Constants.TextToolTypeface, textSize)
+        return new SKFont(Typeface ?? SKTypeface.Default, TextSize)
         {
             Subpixel = true,
             LinearMetrics = true,
@@ -468,7 +470,7 @@ public class TextShape : VectorShape, ITextInputShape
 
     public int GetCaretIndexFromPoint(Point canvasPoint)
     {
-        using var font = CreateSKFont(TextSize);
+        using var font = CreateSKFont();
         float usableWidth = (float)UsableWidth;
         var lines = GetLayoutLines(Text, font, usableWidth);
 
@@ -509,7 +511,7 @@ public class TextShape : VectorShape, ITextInputShape
 
     public override void RenderSkia(SKCanvas canvas)
     {
-        using var font = CreateSKFont(TextSize);
+        using var font = CreateSKFont();
         font.GetFontMetrics(out var metrics);
         float usableWidth = (float)UsableWidth;
         var lines = GetLayoutLines(Text, font, usableWidth);
@@ -646,7 +648,7 @@ public class TextShape : VectorShape, ITextInputShape
 
     protected override Rect GetBoundingBox()
     {
-        using var font = CreateSKFont(TextSize);
+        using var font = CreateSKFont();
         float totalHeight = CalculateHeight(font);
         double left = Math.Min(Start.X, End.X);
         double top = Math.Min(Start.Y, End.Y);

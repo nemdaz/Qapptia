@@ -7,9 +7,11 @@
   <ItemGroup>
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Avalonia.Skia" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
-    <PackageReference Include="Microsoft.Extensions.Options" />
+    <PackageReference Include="Serilog" />
     <PackageReference Include="SkiaSharp" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\Fonts\**\*.ttf" />
+  </ItemGroup>
 </Project>

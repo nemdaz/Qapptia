@@ -10,7 +10,7 @@ namespace Qapptia.Editor.Core;
 /// </summary>
 public static class ShapeFactory
 {
-    public static VectorShape? Create(ToolType tool, Point startPoint, Color color, float textSize = 24f)
+    public static VectorShape? Create(ToolType tool, Point startPoint, Color color, float textSize = 24f, SkiaSharp.SKTypeface? typeface = null)
     {
         return tool switch
         {
@@ -19,14 +19,21 @@ public static class ShapeFactory
             ToolType.Rectangle => new RectangleShape { Start = startPoint, End = startPoint, Color = color },
             ToolType.Ellipse => new EllipseShape { Start = startPoint, End = startPoint, Color = color },
             ToolType.Highlighter => new HighlighterShape { Start = startPoint, End = startPoint, Color = color },
-            ToolType.Text => CreateAlignedTextInputShape(startPoint, color, textSize),
+            ToolType.Text => CreateAlignedTextInputShape(startPoint, color, textSize, typeface),
             _ => null
         };
     }
 
-    private static TextShape CreateAlignedTextInputShape(Point clickPoint, Color color, float textSize)
+    private static TextShape CreateAlignedTextInputShape(Point clickPoint, Color color, float textSize, SkiaSharp.SKTypeface? typeface)
     {
-        using var font = TextShape.CreateSKFont(textSize);
+        var textShape = new TextShape
+        {
+            Color = color,
+            TextSize = textSize,
+            Typeface = typeface ?? SkiaSharp.SKTypeface.Default
+        };
+
+        using var font = textShape.CreateSKFont();
         font.GetFontMetrics(out var metrics);
         float caretHeight = Math.Max(metrics.Descent - metrics.Ascent, font.Spacing * 0.9f);
 
@@ -35,12 +42,8 @@ public static class ShapeFactory
         double startY = Math.Max(0, clickPoint.Y - Constants.TextToolOffset - (caretHeight / 2.0));
         var alignedPoint = new Point(startX, startY);
 
-        return new TextShape
-        {
-            Start = alignedPoint,
-            End = new Point(startX + Constants.TextToolDefaultWidth, startY + 30),
-            Color = color,
-            TextSize = textSize
-        };
+        textShape.Start = alignedPoint;
+        textShape.End = new Point(startX + Constants.TextToolDefaultWidth, startY + 30);
+        return textShape;
     }
 }

@@ -14,8 +14,7 @@ public static class Constants
     public const byte HighlighterAlpha = 102; // 40% opacity
     
     // Herramienta de texto (Anotaciones - Monomotor Skia)
-    public const string TextToolFontFamilyName = "Segoe UI";
-    public static readonly SkiaSharp.SKTypeface TextToolTypeface = SkiaSharp.SKTypeface.FromFamilyName(TextToolFontFamilyName) ?? SkiaSharp.SKTypeface.Default;
+    public const string DefaultFontFileName = "Roboto-Regular.ttf";
     public const float TextToolMinFontSize = 8f; // Tamaño mínimo de fuente
     public const float TextToolMaxFontSize = 200f; // Tamaño máximo de fuente
     public const float TextToolDefaultFontSize = 24f; // Tamaño inicial predeterminado

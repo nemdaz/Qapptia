@@ -51,13 +51,15 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     private readonly EditorStateStore _stateStore;
     private readonly string _savePath;
     private readonly Qapptia.Core.Abstractions.IClipboardService? _clipboardService;
+    private readonly Qapptia.Editor.Core.IFontProvider _fontProvider;
 
     private static string NormalizePath(string path) => path.Replace('\\', '/');
 
-    public EditorViewModel(EditorStateStore stateStore, string savePath, Qapptia.Core.Abstractions.IClipboardService? clipboardService = null)
+    public EditorViewModel(EditorStateStore stateStore, string savePath, Qapptia.Editor.Core.IFontProvider fontProvider, Qapptia.Core.Abstractions.IClipboardService? clipboardService = null)
     {
         _stateStore = stateStore;
         _savePath = savePath;
+        _fontProvider = fontProvider;
         _clipboardService = clipboardService;
         var state = _stateStore.Load();
         ActiveTextSize = state.Tools.TextToolSize;
@@ -95,7 +97,11 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         }
         
         _activeBrush = new SolidColorBrush(_activeColor);
+        _activeTypeface = _fontProvider.GetTypeface(Qapptia.Editor.Core.Constants.DefaultFontFileName);
     }
+
+    [ObservableProperty]
+    private SkiaSharp.SKTypeface _activeTypeface;
 
     [ObservableProperty]
     private ToolType _activeTool = ToolType.Arrow;

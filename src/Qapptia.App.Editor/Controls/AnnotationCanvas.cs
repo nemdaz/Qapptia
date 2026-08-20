@@ -273,7 +273,7 @@ public class AnnotationCanvas : Control
         }
         else
         {
-            var newShape = ShapeFactory.Create(ViewModel.ActiveTool, point, ViewModel.ActiveColor, ViewModel.ActiveTextSize);
+            var newShape = ShapeFactory.Create(ViewModel.ActiveTool, point, ViewModel.ActiveColor, ViewModel.ActiveTextSize, ViewModel.ActiveTypeface);
             if (newShape != null)
             {
                 if (newShape.AutoStartsTextInputOnCreation && newShape is ITextInputShape inputShape)

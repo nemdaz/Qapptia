@@ -15,9 +15,11 @@ public partial class MainWindow : Window
         
         var configService = new Qapptia.Core.Configuration.JsonConfigService(Qapptia.Core.AppConstants.DefaultConfigPath);
         var savePath = string.IsNullOrWhiteSpace(configService.Current.SavePath) ? Qapptia.Core.AppConstants.DefaultSavePath : configService.Current.SavePath;
+        var stateStoreLogger = Serilog.Log.Logger.ForContext<Qapptia.Editor.Models.EditorStateStore>();
         var stateStore = new Qapptia.Editor.Models.EditorStateStore(
             savePath, 
-            Qapptia.Core.AppConstants.EditorStateFileName);
+            Qapptia.Core.AppConstants.EditorStateFileName,
+            stateStoreLogger);
         
 #if WINDOWS
         var clipboardService = new Qapptia.Platform.Windows.WindowsClipboardService(
@@ -26,7 +28,10 @@ public partial class MainWindow : Window
         Qapptia.Core.Abstractions.IClipboardService? clipboardService = null;
 #endif
 
-        var vm = new EditorViewModel(stateStore, savePath, clipboardService);
+        var fontProviderLogger = Serilog.Log.Logger.ForContext<Qapptia.Editor.Core.AssetFontProvider>();
+        var fontProvider = new Qapptia.Editor.Core.AssetFontProvider(fontProviderLogger);
+
+        var vm = new EditorViewModel(stateStore, savePath, fontProvider, clipboardService);
         DataContext = vm;
         
         vm.CopyRequested += Vm_CopyRequested;
