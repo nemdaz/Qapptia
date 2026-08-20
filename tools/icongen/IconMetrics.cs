@@ -26,5 +26,5 @@ public static class IconMetrics
     public static int GetFontSize(int size) => (int)(size * 0.62);
     
     // Calcular el Inset del Tray Icon para maximizar visibilidad
-    public static int GetTrayIconInset() => Math.Max(6, AppIconMasterSize / 24);
+    public static int GetTrayIconInset() => 0;
 }

@@ -89,7 +89,8 @@ public sealed class WindowsTrayIconService : ITrayIconService
 
             if (!string.IsNullOrEmpty(_initialIconPath) && System.IO.File.Exists(_initialIconPath))
             {
-                _notifyIcon.Icon = new Icon(_initialIconPath);
+                // Especificar SmallIconSize evita el escalado borroso nativo de Windows en la bandeja del sistema.
+                _notifyIcon.Icon = new Icon(_initialIconPath, SystemInformation.SmallIconSize);
             }
             
             _logger.Information("WindowsTrayIconService inicializado (NotifyIcon nativo).");

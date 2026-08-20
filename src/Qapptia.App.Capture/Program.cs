@@ -156,7 +156,7 @@ internal sealed class HeadlessCaptureApp : Application
             }));
             menuDef.Items.Add(new TrayMenuActionItem("Salir", () => desktop.Shutdown()));
 
-            var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "app_icon.ico");
+            var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "tray_icon.ico");
             trayService?.Initialize(menuDef, iconPath);
             
             logger?.Information("TrayIcon asignado a la aplicación de forma limpia.");
