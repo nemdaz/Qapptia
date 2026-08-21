@@ -13,5 +13,6 @@
 
     <Application.Styles>
         <FluentTheme />
+        <StyleInclude Source="avares://Qapptia.UI.Components/Theme/MaterialTheme.axaml" />
     </Application.Styles>
 </Application>

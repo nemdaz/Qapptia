@@ -16,26 +16,6 @@
         Background="{DynamicResource M3SurfaceBrush}"
         WindowStartupLocation="CenterScreen">
 
-    <Window.Styles>
-        <!-- Hover para Botones -->
-        <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource M3HoverBrush}" />
-        </Style>
-        
-        <!-- Hover para RadioButtons (Herramientas) -->
-        <Style Selector="RadioButton:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource M3HoverBrush}" />
-        </Style>
-        
-        <!-- Estado Seleccionado (Checked) -->
-        <Style Selector="RadioButton:checked /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource M3SecondaryContainerBrush}" />
-        </Style>
-        <Style Selector="RadioButton:checked PathIcon">
-            <Setter Property="Foreground" Value="{DynamicResource M3OnSecondaryContainerBrush}" />
-        </Style>
-    </Window.Styles>
-
     <Grid RowDefinitions="Auto, *, Auto">
         
         <!-- Top Toolbar -->
@@ -43,18 +23,18 @@
             <StackPanel Orientation="Horizontal" Spacing="8">
                 <!-- Actions -->
                 <Button Command="{Binding SaveCommand}" ToolTip.Tip="Guardar" Background="Transparent" Padding="4">
-                    <PathIcon Data="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z" Foreground="{DynamicResource M3OnSurfaceVariantBrush}" Width="16" Height="16"/>
+                    <PathIcon Data="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z" Width="16" Height="16"/>
                 </Button>
                 <Button Command="{Binding RotateCommand}" ToolTip.Tip="Rotar imagen" Background="Transparent" Padding="4">
                     <Path Data="M16.75 22H12.25C8.5 22 7 20.5 7 16.75V12.25C7 8.5 8.5 7 12.25 7H16.75C20.5 7 22 8.5 22 12.25V16.75C22 20.5 20.5 22 16.75 22Z M2 9C2 5.13 5.13 2 9 2L7.95 3.75" 
-                          Stroke="{DynamicResource M3OnSurfaceVariantBrush}" StrokeThickness="1.5" StrokeJoin="Round" StrokeLineCap="Round" Fill="Transparent" 
+                          Stroke="{DynamicResource M3OnSurfaceBrush}" StrokeThickness="1.5" StrokeJoin="Round" StrokeLineCap="Round" Fill="Transparent" 
                           Width="16" Height="16" Stretch="Uniform" />
                 </Button>
                 <Button Command="{Binding CopyFileCommand}" ToolTip.Tip="Copiar archivo (Ctrl+F)" Background="Transparent" Padding="4">
-                    <PathIcon Data="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8V4h5v5h5v11z" Foreground="{DynamicResource M3OnSurfaceVariantBrush}" Width="16" Height="16"/>
+                    <PathIcon Data="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8V4h5v5h5v11z" Width="16" Height="16"/>
                 </Button>
                 <Button Command="{Binding CopyCommand}" ToolTip.Tip="Copiar captura al portapapeles (Ctrl+C)" Background="Transparent" Padding="4">
-                    <PathIcon Data="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" Foreground="{DynamicResource M3OnSurfaceVariantBrush}" Width="16" Height="16"/>
+                    <PathIcon Data="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" Width="16" Height="16"/>
                 </Button>
                 
                 <Separator Width="1" Background="{DynamicResource M3OutlineVariantBrush}" Margin="8,0" />
@@ -69,40 +49,40 @@
                     </ComboBox.Styles>
                 </ComboBox>
                 <Button Click="FitImage_Click" ToolTip.Tip="Ajustar imagen" Background="Transparent" Padding="4">
-                    <PathIcon Data="M5 5h4V3H3v6h2V5zm5 14H5v-4H3v6h6v-2zm9-14h-4V3h6v6h-2V5zm-4 14h4v-4h2v6h-6v-2z" Foreground="{DynamicResource M3OnSurfaceVariantBrush}" Width="16" Height="16"/>
+                    <PathIcon Data="M5 5h4V3H3v6h2V5zm5 14H5v-4H3v6h6v-2zm9-14h-4V3h6v6h-2V5zm-4 14h4v-4h2v6h-6v-2z" Width="16" Height="16"/>
                 </Button>
                 <Button Command="{Binding RealSizeCommand}" ToolTip.Tip="Ajustar imagen a tamaño real" Background="Transparent" Padding="4">
-                    <PathIcon Data="M15 3l2.3 2.3-2.89 2.87 1.42 1.42L18.7 6.7 21 9V3zM3 9l2.3-2.3 2.87 2.89 1.42-1.42L6.7 5.3 9 3H3zm6 12l-2.3-2.3 2.89-2.87-1.42-1.42L5.3 17.3 3 15v6zm12-6l-2.3 2.3-2.87-2.89-1.42 1.42 2.89 2.87L15 21h6z" Foreground="{DynamicResource M3OnSurfaceVariantBrush}" Width="16" Height="16"/>
+                    <PathIcon Data="M15 3l2.3 2.3-2.89 2.87 1.42 1.42L18.7 6.7 21 9V3zM3 9l2.3-2.3 2.87 2.89 1.42-1.42L6.7 5.3 9 3H3zm6 12l-2.3-2.3 2.89-2.87-1.42-1.42L5.3 17.3 3 15v6zm12-6l-2.3 2.3-2.87-2.89-1.42 1.42 2.89 2.87L15 21h6z" Width="16" Height="16"/>
                 </Button>
 
                 <Separator Width="1" Background="{DynamicResource M3OutlineVariantBrush}" Margin="8,0" />
 
                 <!-- Herramientas -->
                 <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" IsChecked="{Binding IsLineToolActive, Mode=OneWay}" Command="{Binding SelectToolCommand}" CommandParameter="Line" GroupName="Tools" Background="Transparent" ToolTip.Tip="Línea" Padding="4">
-                    <PathIcon Data="M4 11h16v2H4z" Foreground="{DynamicResource M3OnSurfaceVariantBrush}" Width="16" Height="16">
+                    <PathIcon Data="M4 11h16v2H4z" Width="16" Height="16">
                         <PathIcon.RenderTransform>
                             <RotateTransform Angle="-45" />
                         </PathIcon.RenderTransform>
                     </PathIcon>
                 </RadioButton>
                 <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" IsChecked="{Binding IsArrowToolActive, Mode=OneWay}" Command="{Binding SelectToolCommand}" CommandParameter="Arrow" GroupName="Tools" Background="Transparent" ToolTip.Tip="Flecha" Padding="4">
-                    <PathIcon Data="M16.01 11H4v2h12.01v3L20 12l-3.99-4v3z" Foreground="{DynamicResource M3OnSurfaceVariantBrush}" Width="16" Height="16">
+                    <PathIcon Data="M16.01 11H4v2h12.01v3L20 12l-3.99-4v3z" Width="16" Height="16">
                         <PathIcon.RenderTransform>
                             <RotateTransform Angle="-45" />
                         </PathIcon.RenderTransform>
                     </PathIcon>
                 </RadioButton>
                 <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" IsChecked="{Binding IsEllipseToolActive, Mode=OneWay}" Command="{Binding SelectToolCommand}" CommandParameter="Ellipse" GroupName="Tools" Background="Transparent" ToolTip.Tip="Elipse" Padding="4">
-                    <PathIcon Data="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" Foreground="{DynamicResource M3OnSurfaceVariantBrush}" Width="16" Height="16"/>
+                    <PathIcon Data="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" Width="16" Height="16"/>
                 </RadioButton>
                 <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" IsChecked="{Binding IsRectangleToolActive, Mode=OneWay}" Command="{Binding SelectToolCommand}" CommandParameter="Rectangle" GroupName="Tools" Background="Transparent" ToolTip.Tip="Rectángulo" Padding="4">
-                    <PathIcon Data="M4 4v16h16V4H4zm14 14H6V6h12v12z" Foreground="{DynamicResource M3OnSurfaceVariantBrush}" Width="16" Height="16"/>
+                    <PathIcon Data="M4 4v16h16V4H4zm14 14H6V6h12v12z" Width="16" Height="16"/>
                 </RadioButton>
                 <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" IsChecked="{Binding IsHighlighterToolActive, Mode=OneWay}" Command="{Binding SelectToolCommand}" CommandParameter="Highlighter" GroupName="Tools" Background="Transparent" ToolTip.Tip="Resaltador" Padding="4">
-                    <PathIcon Data="M20.71 5.63l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-3.12 3.12-1.93-1.91-1.41 1.41 1.42 1.42L3 16.25V21h4.75l8.92-8.92 1.42 1.42 1.41-1.41-1.92-1.92 3.12-3.12c.4-.4.4-1.03.01-1.42zM6.92 19L5 17.08l8.06-8.06 1.92 1.92L6.92 19z" Foreground="{DynamicResource M3OnSurfaceVariantBrush}" Width="16" Height="16"/>
+                    <PathIcon Data="M20.71 5.63l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-3.12 3.12-1.93-1.91-1.41 1.41 1.42 1.42L3 16.25V21h4.75l8.92-8.92 1.42 1.42 1.41-1.41-1.92-1.92 3.12-3.12c.4-.4.4-1.03.01-1.42zM6.92 19L5 17.08l8.06-8.06 1.92 1.92L6.92 19z" Width="16" Height="16"/>
                 </RadioButton>
                 <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" IsChecked="{Binding IsTextToolActive, Mode=OneWay}" Command="{Binding SelectToolCommand}" CommandParameter="Text" GroupName="Tools" Background="Transparent" ToolTip.Tip="Texto" Padding="4">
-                    <PathIcon Data="M5 4v3h5.5v12h3V7H19V4z" Foreground="{DynamicResource M3OnSurfaceVariantBrush}" Width="16" Height="16"/>
+                    <PathIcon Data="M5 4v3h5.5v12h3V7H19V4z" Width="16" Height="16"/>
                 </RadioButton>
                 
                 <Separator Width="1" Background="{DynamicResource M3OutlineVariantBrush}" Margin="8,0" />
@@ -174,7 +154,7 @@
                     <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="12,12,12,8">
                         <TextBlock Grid.Column="0" Text="Explorador" Foreground="{DynamicResource M3OnSurfaceBrush}" FontWeight="SemiBold" VerticalAlignment="Center" />
                         <Button Grid.Column="1" Command="{Binding LoadSidebarImagesCommand}" Background="Transparent" Padding="4,2" ToolTip.Tip="Recargar">
-                            <PathIcon Data="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" Width="14" Height="14" Foreground="{DynamicResource M3OnSurfaceVariantBrush}"/>
+                            <PathIcon Data="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" Width="14" Height="14"/>
                         </Button>
                     </Grid>
                     

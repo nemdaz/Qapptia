@@ -10,15 +10,10 @@
         CanResize="False"
         x:Class="Qapptia.App.Config.MainWindow"
         x:DataType="vm:ConfigViewModel"
+        Background="{DynamicResource M3SurfaceBrush}"
         Title="Qapptia - Configuración">
 
     <Window.Styles>
-        <!-- Reducir tamaño de fuente de los Tabs -->
-        <Style Selector="TabItem">
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="MinHeight" Value="32"/>
-        </Style>
-
         <!-- Footer Message Colors -->
         <Style Selector="TextBlock.footerMessage">
             <Setter Property="FontWeight" Value="SemiBold"/>
@@ -26,19 +21,6 @@
         </Style>
         <Style Selector="TextBlock.footerMessage.error">
             <Setter Property="Foreground" Value="#dc2626"/>
-        </Style>
-        
-        <!-- Separadores para las secciones adaptables a M3 -->
-        <Style Selector="HeaderedContentControl">
-            <Setter Property="Template">
-                <ControlTemplate>
-                    <StackPanel>
-                        <TextBlock Text="{TemplateBinding Header}" FontWeight="SemiBold" Margin="0,8,0,4" Foreground="{DynamicResource M3PrimaryBrush}"/>
-                        <Separator Margin="0,0,0,8" Height="1" Background="{DynamicResource M3OutlineVariantBrush}"/>
-                        <ContentPresenter Content="{TemplateBinding Content}" />
-                    </StackPanel>
-                </ControlTemplate>
-            </Setter>
         </Style>
     </Window.Styles>
 

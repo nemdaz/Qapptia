@@ -1,85 +1,95 @@
+<!-- Reference: https://m3.material.io/styles/color/static/baseline -->
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <ResourceDictionary.ThemeDictionaries>
         <ResourceDictionary x:Key="Default">
-            <!-- M3 Baseline Default / Light Palette -->
-            <SolidColorBrush x:Key="M3SurfaceBrush" Color="#FEF7FF" />
+            <!-- Superficie base y niveles de contenedor -->
+            <SolidColorBrush x:Key="M3SurfaceBrush" Color="#FFFFFF" />
             <SolidColorBrush x:Key="M3SurfaceContainerLowestBrush" Color="#FFFFFF" />
-            <SolidColorBrush x:Key="M3SurfaceContainerLowBrush" Color="#F7F2FA" />
-            <SolidColorBrush x:Key="M3SurfaceContainerBrush" Color="#F3EDF7" />
-            <SolidColorBrush x:Key="M3SurfaceContainerHighBrush" Color="#ECE6F0" />
-            <SolidColorBrush x:Key="M3SurfaceContainerHighestBrush" Color="#E6E0E9" />
+            <SolidColorBrush x:Key="M3SurfaceContainerLowBrush" Color="#F8F9FA" />
+            <SolidColorBrush x:Key="M3SurfaceContainerBrush" Color="#F1F3F5" />
+            <SolidColorBrush x:Key="M3SurfaceContainerHighBrush" Color="#E9ECEF" />
+            <SolidColorBrush x:Key="M3SurfaceContainerHighestBrush" Color="#DEE2E6" />
             
-            <SolidColorBrush x:Key="M3OnSurfaceBrush" Color="#1D1B20" />
-            <SolidColorBrush x:Key="M3OnSurfaceVariantBrush" Color="#49454F" />
+            <!-- Texto e iconos -->
+            <SolidColorBrush x:Key="M3OnSurfaceBrush" Color="#111827" />
+            <SolidColorBrush x:Key="M3OnSurfaceVariantBrush" Color="#374151" />
             
-            <SolidColorBrush x:Key="M3OutlineBrush" Color="#79747E" />
-            <SolidColorBrush x:Key="M3OutlineVariantBrush" Color="#CAC4D0" />
+            <!-- Bordes y divisores -->
+            <SolidColorBrush x:Key="M3OutlineBrush" Color="#9CA3AF" />
+            <SolidColorBrush x:Key="M3OutlineVariantBrush" Color="#E5E7EB" />
             
-            <SolidColorBrush x:Key="M3PrimaryBrush" Color="#6750A4" />
+            <!-- Acento y estado seleccionado -->
+            <SolidColorBrush x:Key="M3PrimaryBrush" Color="#0B57D0" />
             <SolidColorBrush x:Key="M3OnPrimaryBrush" Color="#FFFFFF" />
-            <SolidColorBrush x:Key="M3PrimaryContainerBrush" Color="#EADDFF" />
-            <SolidColorBrush x:Key="M3OnPrimaryContainerBrush" Color="#21005D" />
+            <SolidColorBrush x:Key="M3PrimaryContainerBrush" Color="#A8D1FF" />
+            <SolidColorBrush x:Key="M3OnPrimaryContainerBrush" Color="#002A5C" />
+            <SolidColorBrush x:Key="M3SecondaryContainerBrush" Color="#A8D1FF" />
+            <SolidColorBrush x:Key="M3OnSecondaryContainerBrush" Color="#002A5C" />
             
-            <SolidColorBrush x:Key="M3SecondaryContainerBrush" Color="#E8DEF8" />
-            <SolidColorBrush x:Key="M3OnSecondaryContainerBrush" Color="#1D192B" />
-            
-            <SolidColorBrush x:Key="M3HoverBrush" Color="#E6E0E9" />
+            <!-- Interaccion y controles -->
+            <SolidColorBrush x:Key="M3HoverBrush" Color="#E0EDFF" />
             <SolidColorBrush x:Key="M3ControlBgBrush" Color="#FFFFFF" />
         </ResourceDictionary>
 
         <ResourceDictionary x:Key="Light">
-            <!-- M3 Baseline Light Palette -->
-            <SolidColorBrush x:Key="M3SurfaceBrush" Color="#FEF7FF" />
+            <!-- Superficie base y niveles de contenedor -->
+            <SolidColorBrush x:Key="M3SurfaceBrush" Color="#FFFFFF" />
             <SolidColorBrush x:Key="M3SurfaceContainerLowestBrush" Color="#FFFFFF" />
-            <SolidColorBrush x:Key="M3SurfaceContainerLowBrush" Color="#F7F2FA" />
-            <SolidColorBrush x:Key="M3SurfaceContainerBrush" Color="#F3EDF7" />
-            <SolidColorBrush x:Key="M3SurfaceContainerHighBrush" Color="#ECE6F0" />
-            <SolidColorBrush x:Key="M3SurfaceContainerHighestBrush" Color="#E6E0E9" />
+            <SolidColorBrush x:Key="M3SurfaceContainerLowBrush" Color="#F8F9FA" />
+            <SolidColorBrush x:Key="M3SurfaceContainerBrush" Color="#F1F3F5" />
+            <SolidColorBrush x:Key="M3SurfaceContainerHighBrush" Color="#E9ECEF" />
+            <SolidColorBrush x:Key="M3SurfaceContainerHighestBrush" Color="#DEE2E6" />
             
-            <SolidColorBrush x:Key="M3OnSurfaceBrush" Color="#1D1B20" />
-            <SolidColorBrush x:Key="M3OnSurfaceVariantBrush" Color="#49454F" />
+            <!-- Texto e iconos -->
+            <SolidColorBrush x:Key="M3OnSurfaceBrush" Color="#111827" />
+            <SolidColorBrush x:Key="M3OnSurfaceVariantBrush" Color="#374151" />
             
-            <SolidColorBrush x:Key="M3OutlineBrush" Color="#79747E" />
-            <SolidColorBrush x:Key="M3OutlineVariantBrush" Color="#CAC4D0" />
+            <!-- Bordes y divisores -->
+            <SolidColorBrush x:Key="M3OutlineBrush" Color="#9CA3AF" />
+            <SolidColorBrush x:Key="M3OutlineVariantBrush" Color="#E5E7EB" />
             
-            <SolidColorBrush x:Key="M3PrimaryBrush" Color="#6750A4" />
+            <!-- Acento y estado seleccionado -->
+            <SolidColorBrush x:Key="M3PrimaryBrush" Color="#0B57D0" />
             <SolidColorBrush x:Key="M3OnPrimaryBrush" Color="#FFFFFF" />
-            <SolidColorBrush x:Key="M3PrimaryContainerBrush" Color="#EADDFF" />
-            <SolidColorBrush x:Key="M3OnPrimaryContainerBrush" Color="#21005D" />
+            <SolidColorBrush x:Key="M3PrimaryContainerBrush" Color="#A8D1FF" />
+            <SolidColorBrush x:Key="M3OnPrimaryContainerBrush" Color="#002A5C" />
+            <SolidColorBrush x:Key="M3SecondaryContainerBrush" Color="#A8D1FF" />
+            <SolidColorBrush x:Key="M3OnSecondaryContainerBrush" Color="#002A5C" />
             
-            <SolidColorBrush x:Key="M3SecondaryContainerBrush" Color="#E8DEF8" />
-            <SolidColorBrush x:Key="M3OnSecondaryContainerBrush" Color="#1D192B" />
-            
-            <SolidColorBrush x:Key="M3HoverBrush" Color="#E6E0E9" />
+            <!-- Interaccion y controles -->
+            <SolidColorBrush x:Key="M3HoverBrush" Color="#E0EDFF" />
             <SolidColorBrush x:Key="M3ControlBgBrush" Color="#FFFFFF" />
         </ResourceDictionary>
         
         <ResourceDictionary x:Key="Dark">
-            <!-- M3 Baseline Dark Palette -->
-            <SolidColorBrush x:Key="M3SurfaceBrush" Color="#141218" />
-            <SolidColorBrush x:Key="M3SurfaceContainerLowestBrush" Color="#0F0D13" />
-            <SolidColorBrush x:Key="M3SurfaceContainerLowBrush" Color="#1D1B20" />
-            <SolidColorBrush x:Key="M3SurfaceContainerBrush" Color="#211F26" />
-            <SolidColorBrush x:Key="M3SurfaceContainerHighBrush" Color="#2B2930" />
-            <SolidColorBrush x:Key="M3SurfaceContainerHighestBrush" Color="#36343B" />
+            <!-- Superficie base y niveles de contenedor -->
+            <SolidColorBrush x:Key="M3SurfaceBrush" Color="#121212" />
+            <SolidColorBrush x:Key="M3SurfaceContainerLowestBrush" Color="#0A0A0A" />
+            <SolidColorBrush x:Key="M3SurfaceContainerLowBrush" Color="#181818" />
+            <SolidColorBrush x:Key="M3SurfaceContainerBrush" Color="#1F1F1F" />
+            <SolidColorBrush x:Key="M3SurfaceContainerHighBrush" Color="#282828" />
+            <SolidColorBrush x:Key="M3SurfaceContainerHighestBrush" Color="#323232" />
             
-            <SolidColorBrush x:Key="M3OnSurfaceBrush" Color="#E6E0E9" />
-            <SolidColorBrush x:Key="M3OnSurfaceVariantBrush" Color="#CAC4D0" />
+            <!-- Texto e iconos -->
+            <SolidColorBrush x:Key="M3OnSurfaceBrush" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="M3OnSurfaceVariantBrush" Color="#D1D5DB" />
             
-            <SolidColorBrush x:Key="M3OutlineBrush" Color="#938F99" />
-            <SolidColorBrush x:Key="M3OutlineVariantBrush" Color="#44474E" />
+            <!-- Bordes y divisores -->
+            <SolidColorBrush x:Key="M3OutlineBrush" Color="#6B7280" />
+            <SolidColorBrush x:Key="M3OutlineVariantBrush" Color="#374151" />
             
-            <SolidColorBrush x:Key="M3PrimaryBrush" Color="#D0BCFF" />
-            <SolidColorBrush x:Key="M3OnPrimaryBrush" Color="#381E72" />
-            <SolidColorBrush x:Key="M3PrimaryContainerBrush" Color="#4F378B" />
-            <SolidColorBrush x:Key="M3OnPrimaryContainerBrush" Color="#EADDFF" />
+            <!-- Acento y estado seleccionado -->
+            <SolidColorBrush x:Key="M3PrimaryBrush" Color="#A8C7FA" />
+            <SolidColorBrush x:Key="M3OnPrimaryBrush" Color="#003062" />
+            <SolidColorBrush x:Key="M3PrimaryContainerBrush" Color="#004A77" />
+            <SolidColorBrush x:Key="M3OnPrimaryContainerBrush" Color="#C2E7FF" />
+            <SolidColorBrush x:Key="M3SecondaryContainerBrush" Color="#004A77" />
+            <SolidColorBrush x:Key="M3OnSecondaryContainerBrush" Color="#C2E7FF" />
             
-            <SolidColorBrush x:Key="M3SecondaryContainerBrush" Color="#4A4458" />
-            <SolidColorBrush x:Key="M3OnSecondaryContainerBrush" Color="#E8DEF8" />
-            
-            <SolidColorBrush x:Key="M3HoverBrush" Color="#36343B" />
-            <SolidColorBrush x:Key="M3ControlBgBrush" Color="#36343B" />
+            <!-- Interaccion y controles -->
+            <SolidColorBrush x:Key="M3HoverBrush" Color="#2D333B" />
+            <SolidColorBrush x:Key="M3ControlBgBrush" Color="#1F1F1F" />
         </ResourceDictionary>
     </ResourceDictionary.ThemeDictionaries>
 </ResourceDictionary>

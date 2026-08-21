@@ -1,0 +1,104 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Estilo global para todas las Ventanas -->
+    <Style Selector="Window">
+        <Setter Property="Background" Value="{DynamicResource M3SurfaceBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource M3OnSurfaceBrush}" />
+    </Style>
+
+    <!-- Botones estándar -->
+    <Style Selector="Button">
+        <Setter Property="Foreground" Value="{DynamicResource M3OnSurfaceBrush}" />
+    </Style>
+    <Style Selector="Button PathIcon">
+        <Setter Property="Foreground" Value="{DynamicResource M3OnSurfaceBrush}" />
+    </Style>
+    <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource M3HoverBrush}" />
+    </Style>
+
+    <!-- RadioButtons / Herramientas -->
+    <Style Selector="RadioButton">
+        <Setter Property="Foreground" Value="{DynamicResource M3OnSurfaceBrush}" />
+    </Style>
+    <Style Selector="RadioButton PathIcon">
+        <Setter Property="Foreground" Value="{DynamicResource M3OnSurfaceBrush}" />
+    </Style>
+    <Style Selector="RadioButton:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource M3HoverBrush}" />
+    </Style>
+    <Style Selector="RadioButton:checked /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource M3PrimaryContainerBrush}" />
+    </Style>
+    <Style Selector="RadioButton:checked">
+        <Setter Property="Foreground" Value="{DynamicResource M3OnPrimaryContainerBrush}" />
+    </Style>
+    <Style Selector="RadioButton:checked PathIcon">
+        <Setter Property="Foreground" Value="{DynamicResource M3OnPrimaryContainerBrush}" />
+    </Style>
+
+    <!-- ToggleButtons / Herramientas con tema ToggleButton -->
+    <Style Selector="ToggleButton">
+        <Setter Property="Foreground" Value="{DynamicResource M3OnSurfaceBrush}" />
+    </Style>
+    <Style Selector="ToggleButton PathIcon">
+        <Setter Property="Foreground" Value="{DynamicResource M3OnSurfaceBrush}" />
+    </Style>
+    <Style Selector="ToggleButton:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource M3HoverBrush}" />
+    </Style>
+    <Style Selector="ToggleButton:checked /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource M3PrimaryContainerBrush}" />
+    </Style>
+    <Style Selector="ToggleButton:checked">
+        <Setter Property="Foreground" Value="{DynamicResource M3OnPrimaryContainerBrush}" />
+    </Style>
+    <Style Selector="ToggleButton:checked PathIcon">
+        <Setter Property="Foreground" Value="{DynamicResource M3OnPrimaryContainerBrush}" />
+    </Style>
+
+    <!-- Pestañas (TabControl y TabItem) -->
+    <Style Selector="TabControl">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="TabItem">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="MinHeight" Value="34" />
+        <Setter Property="Foreground" Value="{DynamicResource M3OnSurfaceBrush}" />
+    </Style>
+    <Style Selector="TabItem:selected">
+        <Setter Property="Foreground" Value="{DynamicResource M3PrimaryBrush}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <!-- Encabezados de sección y separadores -->
+    <Style Selector="HeaderedContentControl">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <StackPanel>
+                    <TextBlock Text="{TemplateBinding Header}" FontWeight="SemiBold" Margin="0,8,0,4" Foreground="{DynamicResource M3PrimaryBrush}" />
+                    <Separator Margin="0,0,0,8" Height="1" Background="{DynamicResource M3OutlineVariantBrush}" />
+                    <ContentPresenter Content="{TemplateBinding Content}" />
+                </StackPanel>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <!-- Cuadros de texto, combos y selector numérico -->
+    <Style Selector="TextBox">
+        <Setter Property="Background" Value="{DynamicResource M3ControlBgBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource M3OutlineVariantBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource M3OnSurfaceBrush}" />
+    </Style>
+    <Style Selector="ComboBox">
+        <Setter Property="Background" Value="{DynamicResource M3ControlBgBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource M3OutlineVariantBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource M3OnSurfaceBrush}" />
+    </Style>
+    <Style Selector="NumericUpDown">
+        <Setter Property="Background" Value="{DynamicResource M3ControlBgBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource M3OutlineVariantBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource M3OnSurfaceBrush}" />
+    </Style>
+</Styles>
