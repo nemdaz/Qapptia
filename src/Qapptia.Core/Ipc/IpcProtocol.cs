@@ -51,6 +51,7 @@ public sealed class IpcMessageJsonConverterFactory : JsonConverterFactory
         [IpcMessageType.Ack] = typeof(Ack),
         [IpcMessageType.Error] = typeof(ErrorResponse),
         [IpcMessageType.Pong] = typeof(Pong),
+        [IpcMessageType.ThemeChanged] = typeof(ThemeChangedNotification),
     };
 
     public override bool CanConvert(Type typeToConvert) => typeToConvert == typeof(IpcMessage);

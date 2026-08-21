@@ -14,11 +14,6 @@ public static class AppConstants
     public const string MetadataTagStart = "<QapptiaID>";
     public const string MetadataTagEnd = "</QapptiaID>";
 
-#if DEBUG
-    public static string DefaultConfigPath => Path.Combine(AppContext.BaseDirectory, ConfigFileName);
-    
-    public static string DefaultLogDirectory => AppContext.BaseDirectory;
-#else
     public static string DefaultConfigPath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         AppName, 
@@ -27,7 +22,6 @@ public static class AppConstants
     public static string DefaultLogDirectory => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         AppName);
-#endif
 
     public static string DefaultSavePath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),

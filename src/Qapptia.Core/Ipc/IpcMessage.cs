@@ -1,4 +1,3 @@
-using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Qapptia.Core.Ipc;
@@ -77,6 +76,15 @@ public sealed class Pong : IpcMessage
 }
 
 /// <summary>
+/// Notifica un cambio de tema en tiempo real.
+/// </summary>
+public sealed class ThemeChangedNotification : IpcMessage
+{
+    public override IpcMessageType Type => IpcMessageType.ThemeChanged;
+    public string Theme { get; init; } = global::Qapptia.Core.Theme.ThemeConstants.System;
+}
+
+/// <summary>
 /// Enumera los tipos de mensaje del protocolo IPC de Qapptia.
 /// </summary>
 public enum IpcMessageType
@@ -88,4 +96,5 @@ public enum IpcMessageType
     Ack = 5,
     Error = 6,
     Pong = 7,
+    ThemeChanged = 8,
 }

@@ -32,6 +32,9 @@ public sealed class IpcServerHostedService : IHostedService, IDisposable
                     case RefreshTrayIconRequest:
                         await handler.HandleRefreshTrayAsync(ct);
                         return new Ack { OriginalType = msg.Type };
+                    case ThemeChangedNotification themeMsg:
+                        _logger.Information("Tema actualizado via IPC: {Theme}", themeMsg.Theme);
+                        return new Ack { OriginalType = msg.Type };
                     case Ping:
                         return new Pong { ServerPid = Environment.ProcessId };
                     default:

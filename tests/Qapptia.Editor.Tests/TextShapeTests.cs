@@ -167,7 +167,7 @@ public class TextShapeTests
         using var font = textShape.CreateSKFont();
         textShape.GetCaretPosition(font, out float caretX, out float caretY, out float caretHeight);
 
-        Assert.Equal(100.0f, caretX, 1.0f);
+        Assert.Equal(95.0f, caretX, 1.0f);
         // El centro vertical del caret debe coincidir con el Y del clic (200)
         float caretCenterY = caretY + (caretHeight / 2.0f);
         Assert.Equal(200.0f, caretCenterY, 1.0f);

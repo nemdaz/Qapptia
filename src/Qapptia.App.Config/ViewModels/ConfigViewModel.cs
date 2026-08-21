@@ -1,9 +1,14 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.IO.Pipes;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Qapptia.Core.Configuration;
+using Qapptia.Core.Ipc;
+using Qapptia.Core.Theme;
+using Qapptia.UI.Components.Theme;
 
 namespace Qapptia.App.Config.ViewModels;
 
@@ -11,6 +16,11 @@ public sealed partial class ConfigViewModel : ObservableObject
 {
     private readonly JsonConfigService _configService;
     private QapptiaConfig _config;
+
+    public IReadOnlyList<string> ThemeOptions { get; } = ThemeConstants.DisplayNames;
+
+    [ObservableProperty]
+    private string _selectedTheme = ThemeConstants.DisplayNameSystem;
 
     [ObservableProperty]
     private string _savePath = string.Empty;
@@ -59,7 +69,6 @@ public sealed partial class ConfigViewModel : ObservableObject
 
     public ConfigViewModel()
     {
-        var exeDir = AppContext.BaseDirectory;
         var configPath = Qapptia.Core.AppConstants.DefaultConfigPath;
         _configService = new JsonConfigService(configPath);
         _config = _configService.Current;
@@ -69,6 +78,7 @@ public sealed partial class ConfigViewModel : ObservableObject
 
     private void LoadFromConfig()
     {
+        SelectedTheme = ThemeConstants.ToDisplayName(_config.Theme);
         SavePath = _config.SavePath;
         FilenameFormat = _config.FilenameFormat;
         SubfolderMonth = _config.SubfolderMonth;
@@ -81,6 +91,12 @@ public sealed partial class ConfigViewModel : ObservableObject
         ShortcutArea = _config.ShortcutArea;
         CopyToClipboardScreen = _config.CopyToClipboardScreen;
         CopyToClipboardArea = _config.CopyToClipboardArea;
+    }
+
+    partial void OnSelectedThemeChanged(string value)
+    {
+        // Aplica el tema seleccionado en caliente en Configuración
+        ThemeManager.ApplyTheme(ThemeConstants.FromDisplayName(value));
     }
 
     [RelayCommand]
@@ -105,13 +121,14 @@ public sealed partial class ConfigViewModel : ObservableObject
             return;
         }
 
+        _config.Theme = ThemeConstants.FromDisplayName(SelectedTheme);
         _config.SavePath = SavePath;
         _config.FilenameFormat = string.IsNullOrWhiteSpace(FilenameFormat) ? "Qapptia_YYYYMMDD_HHmmSS" : FilenameFormat;
         _config.SubfolderMonth = SubfolderMonth;
         _config.SubfolderDay = SubfolderDay;
         _config.SubfolderHour = SubfolderHour;
         _config.ShowMouse = ShowMouse;
-        _config.HighlightMouse = HighlightMouse && ShowMouse; // Highlight depends on show
+        _config.HighlightMouse = HighlightMouse && ShowMouse;
         _config.ManualTimer = ManualTimer;
         _config.ShortcutScreen = string.IsNullOrWhiteSpace(ShortcutScreen) ? "ctrl+shift+q" : ShortcutScreen;
         _config.ShortcutArea = string.IsNullOrWhiteSpace(ShortcutArea) ? "ctrl+shift+a" : ShortcutArea;
@@ -123,8 +140,9 @@ public sealed partial class ConfigViewModel : ObservableObject
             _configService.Save();
             ShowFooter("Configuración guardada exitosamente.", isError: false);
             
-            // Send IPC message to main capture process to refresh config
-            NotifyCaptureApp();
+            // Difundir notificación de tema y refresco a Capture y Editor en caliente
+            NotifyProcesses(new ThemeChangedNotification { Theme = _config.Theme });
+            NotifyProcesses(new RefreshTrayIconRequest());
         }
         catch (Exception ex)
         {
@@ -132,18 +150,21 @@ public sealed partial class ConfigViewModel : ObservableObject
         }
     }
 
-    private static void NotifyCaptureApp()
+    private static void NotifyProcesses(IpcMessage message)
     {
-        // Enviar RefreshTrayIconRequest (u otra señal genérica) para que capture lea el config
         Task.Run(async () =>
         {
-            using var client = new System.IO.Pipes.NamedPipeClientStream(".", "Qapptia_IPC", System.IO.Pipes.PipeDirection.InOut);
-            try
+            string[] channels = [IpcChannels.Capture, IpcChannels.Editor];
+            foreach (var channel in channels)
             {
-                await client.ConnectAsync(500);
-                await Qapptia.Core.Ipc.IpcWire.WriteFrameAsync(client, new Qapptia.Core.Ipc.RefreshTrayIconRequest());
+                try
+                {
+                    using var client = new NamedPipeClientStream(".", IpcChannels.GetPipeName(channel), PipeDirection.InOut);
+                    await client.ConnectAsync(300);
+                    await IpcWire.WriteFrameAsync(client, message);
+                }
+                catch { }
             }
-            catch { }
         });
     }
 

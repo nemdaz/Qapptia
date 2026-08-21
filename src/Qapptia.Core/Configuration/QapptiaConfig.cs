@@ -15,4 +15,7 @@ public sealed partial class QapptiaConfig
     /// </summary>
     [JsonPropertyName("config_version")]
     public int ConfigVersion { get; set; } = 1;
+
+    [JsonPropertyName("theme")]
+    public string Theme { get; set; } = global::Qapptia.Core.Theme.ThemeConstants.System;
 }
