@@ -13,7 +13,7 @@ public partial class App : Application
     {
         AvaloniaXamlLoader.Load(this);
 
-        var configPath = AppConstants.DefaultConfigPath;
+        var configPath = Constants.DefaultConfigPath;
         var configService = new JsonConfigService(configPath);
         RequestedThemeVariant = ThemeManager.GetThemeVariant(configService.Current.Theme);
     }

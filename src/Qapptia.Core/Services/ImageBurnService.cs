@@ -22,7 +22,7 @@ public static class ImageBurnService
 
         string parentDir = Path.GetDirectoryName(filePath) ?? string.Empty;
         string fileName = Path.GetFileName(filePath);
-        string dibujoDir = Path.Combine(parentDir, AppConstants.DrawingExtension);
+        string dibujoDir = Path.Combine(parentDir, Constants.DrawingExtension);
 
         if (!Directory.Exists(dibujoDir))
         {

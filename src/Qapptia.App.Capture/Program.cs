@@ -38,7 +38,7 @@ internal static class Program
         }
 
         // Redirige logs a LocalAppData para evitar errores de permisos.
-        var logDir = Qapptia.Core.AppConstants.DefaultLogDirectory;
+        var logDir = Qapptia.Core.Constants.DefaultLogDirectory;
         
 #if DEBUG
         var logLevel = LogEventLevel.Debug;
@@ -91,7 +91,7 @@ internal static class Program
         builder.Services.AddSingleton<Serilog.ILogger>(Log.Logger);
         builder.Logging.AddSerilog(Log.Logger, dispose: false);
 
-        var configPath = Qapptia.Core.AppConstants.DefaultConfigPath;
+        var configPath = Qapptia.Core.Constants.DefaultConfigPath;
         builder.Services.AddSingleton<IConfigService>(_ => new JsonConfigService(configPath));
 
 #if WINDOWS
@@ -142,8 +142,8 @@ internal sealed class HeadlessCaptureApp : Application
             menuDef.Items.Add(new TrayMenuActionItem("Capturar pantalla", () => captureHandler?.HandleFullscreenCaptureAsync(CancellationToken.None)));
             menuDef.Items.Add(new TrayMenuActionItem("Capturar área", () => captureHandler?.HandleAreaCaptureAsync(CancellationToken.None)));
             menuDef.Items.Add(new TrayMenuSeparatorItem());
-            menuDef.Items.Add(new TrayMenuActionItem("Editor", () => LaunchApp(Qapptia.Core.AppConstants.EditorExecutableName, Qapptia.Core.AppConstants.ArgEditor)));
-            menuDef.Items.Add(new TrayMenuActionItem("Configuración", () => LaunchApp(Qapptia.Core.AppConstants.ConfigExecutableName, Qapptia.Core.AppConstants.ArgConfig)));
+            menuDef.Items.Add(new TrayMenuActionItem("Editor", () => LaunchApp(Qapptia.Core.Constants.EditorExecutableName, Qapptia.Core.Constants.ArgEditor)));
+            menuDef.Items.Add(new TrayMenuActionItem("Configuración", () => LaunchApp(Qapptia.Core.Constants.ConfigExecutableName, Qapptia.Core.Constants.ArgConfig)));
             menuDef.Items.Add(new TrayMenuSeparatorItem());
             menuDef.Items.Add(new TrayMenuActionItem("Reiniciar", () => 
             {
@@ -156,7 +156,7 @@ internal sealed class HeadlessCaptureApp : Application
             }));
             menuDef.Items.Add(new TrayMenuActionItem("Salir", () => desktop.Shutdown()));
 
-            var iconPath = Path.Combine(AppContext.BaseDirectory, Qapptia.Core.AppConstants.AssetsDirectoryName, Qapptia.Core.AppConstants.TrayIconFileName);
+            var iconPath = Path.Combine(AppContext.BaseDirectory, Qapptia.Core.Constants.AssetsDirectoryName, Qapptia.Core.Constants.TrayIconFileName);
             trayService?.Initialize(menuDef, iconPath);
             
             logger?.Information("TrayIcon asignado a la aplicación de forma limpia.");

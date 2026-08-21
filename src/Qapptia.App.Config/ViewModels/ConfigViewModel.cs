@@ -68,7 +68,7 @@ public sealed partial class ConfigViewModel : ObservableObject
 
     public ConfigViewModel()
     {
-        var configPath = Qapptia.Core.AppConstants.DefaultConfigPath;
+        var configPath = Qapptia.Core.Constants.DefaultConfigPath;
         _configService = new JsonConfigService(configPath);
         _config = _configService.Current;
         

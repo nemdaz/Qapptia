@@ -4,6 +4,8 @@ using Avalonia.Controls;
 using Avalonia.VisualTree;
 using System.Linq;
 using Qapptia.App.Editor.ViewModels;
+using Qapptia.Editor.Sidebar.Models;
+using Qapptia.Editor.Sidebar.Services;
 
 namespace Qapptia.App.Editor;
 
@@ -13,12 +15,12 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         
-        var configService = new Qapptia.Core.Configuration.JsonConfigService(Qapptia.Core.AppConstants.DefaultConfigPath);
-        var savePath = string.IsNullOrWhiteSpace(configService.Current.SavePath) ? Qapptia.Core.AppConstants.DefaultSavePath : configService.Current.SavePath;
+        var configService = new Qapptia.Core.Configuration.JsonConfigService(Qapptia.Core.Constants.DefaultConfigPath);
+        var savePath = string.IsNullOrWhiteSpace(configService.Current.SavePath) ? Qapptia.Core.Constants.DefaultSavePath : configService.Current.SavePath;
         var stateStoreLogger = Serilog.Log.Logger.ForContext<Qapptia.Editor.Models.EditorStateStore>();
         var stateStore = new Qapptia.Editor.Models.EditorStateStore(
             savePath, 
-            Qapptia.Core.AppConstants.EditorStateFileName,
+            Qapptia.Core.Constants.EditorStateFileName,
             stateStoreLogger);
         
 #if WINDOWS
@@ -30,7 +32,10 @@ public partial class MainWindow : Window
         var fontProviderLogger = Serilog.Log.Logger.ForContext<Qapptia.Editor.Core.AssetFontProvider>();
         var fontProvider = new Qapptia.Editor.Core.AssetFontProvider(fontProviderLogger);
 
-        var vm = new EditorViewModel(stateStore, savePath, fontProvider, clipboardService);
+        var sidebarServiceLogger = Serilog.Log.Logger.ForContext<SidebarService>();
+        var sidebarService = new SidebarService(sidebarServiceLogger);
+
+        var vm = new EditorViewModel(stateStore, savePath, fontProvider, clipboardService, sidebarService);
         DataContext = vm;
         
         vm.CopyRequested += Vm_CopyRequested;
@@ -39,14 +44,14 @@ public partial class MainWindow : Window
 
         var copyBinding = new Avalonia.Input.KeyBinding
         {
-            Gesture = Avalonia.Input.KeyGesture.Parse(Qapptia.Core.AppConstants.ShortcutCopyClipboard),
+            Gesture = Avalonia.Input.KeyGesture.Parse(Qapptia.Core.Constants.ShortcutCopyClipboard),
             Command = vm.CopyCommand
         };
         this.KeyBindings.Add(copyBinding);
 
         var copyFileBinding = new Avalonia.Input.KeyBinding
         {
-            Gesture = Avalonia.Input.KeyGesture.Parse(Qapptia.Core.AppConstants.ShortcutCopyFile),
+            Gesture = Avalonia.Input.KeyGesture.Parse(Qapptia.Core.Constants.ShortcutCopyFile),
             Command = vm.CopyFileCommand
         };
         this.KeyBindings.Add(copyFileBinding);
@@ -273,7 +278,7 @@ public partial class MainWindow : Window
 
     private async void Vm_SaveRequested(object? sender, EventArgs e)
     {
-        if (DataContext is EditorViewModel vm && vm.SelectedNode is ExplorerFile fileNode)
+        if (DataContext is EditorViewModel vm && vm.SelectedNode is SidebarFile fileNode)
         {
             string filePath = fileNode.FullPath;
             string? guid = vm.CurrentImageId;

@@ -31,7 +31,7 @@ public static class LoggingBootstrap
             .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
             .MinimumLevel.Override("System", LogEventLevel.Warning)
             .Enrich.FromLogContext()
-            .Enrich.WithProperty("App", Qapptia.Core.AppConstants.AppName)
+            .Enrich.WithProperty("App", Qapptia.Core.Constants.AppName)
             .WriteTo.Async(a => a.Console(outputTemplate: ConsoleOutputTemplate, formatProvider: System.Globalization.CultureInfo.InvariantCulture))
             .WriteTo.Async(a => a.File(
                 path: logPath,

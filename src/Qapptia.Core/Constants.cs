@@ -3,7 +3,7 @@ using System.IO;
 
 namespace Qapptia.Core;
 
-public static class AppConstants
+public static class Constants
 {
     public const string AppName = "Qapptia";
     public const string ConfigFileName = "config.json";
@@ -11,6 +11,7 @@ public static class AppConstants
     public const string ShortcutCopyClipboard = "Ctrl+C";
     public const string ShortcutCopyFile = "Ctrl+F";
     public const string DrawingExtension = ".dibujo";
+    public static readonly string[] SupportedImageExtensions = { ".png", ".jpg", ".jpeg" };
     public const string MetadataTagStart = "<QapptiaID>";
     public const string MetadataTagEnd = "</QapptiaID>";
 

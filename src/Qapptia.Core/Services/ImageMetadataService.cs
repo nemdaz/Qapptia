@@ -45,13 +45,13 @@ public static class ImageMetadataService
             if (bytesRead == 0) return null;
 
             string content = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-            int startIndex = content.LastIndexOf(AppConstants.MetadataTagStart, StringComparison.Ordinal);
+            int startIndex = content.LastIndexOf(Constants.MetadataTagStart, StringComparison.Ordinal);
             if (startIndex >= 0)
             {
-                int endIndex = content.IndexOf(AppConstants.MetadataTagEnd, startIndex, StringComparison.Ordinal);
+                int endIndex = content.IndexOf(Constants.MetadataTagEnd, startIndex, StringComparison.Ordinal);
                 if (endIndex > startIndex)
                 {
-                    return content.Substring(startIndex + AppConstants.MetadataTagStart.Length, endIndex - startIndex - AppConstants.MetadataTagStart.Length);
+                    return content.Substring(startIndex + Constants.MetadataTagStart.Length, endIndex - startIndex - Constants.MetadataTagStart.Length);
                 }
             }
         }
@@ -74,7 +74,7 @@ public static class ImageMetadataService
         {
             // Usamos FileShare.Read para no bloquear a otros procesos que solo lean
             using var fs = new FileStream(filePath, FileMode.Append, FileAccess.Write, FileShare.Read);
-            string payload = $"{AppConstants.MetadataTagStart}{id}{AppConstants.MetadataTagEnd}";
+            string payload = $"{Constants.MetadataTagStart}{id}{Constants.MetadataTagEnd}";
             var bytes = Encoding.UTF8.GetBytes(payload);
             await fs.WriteAsync(bytes.AsMemory());
         }

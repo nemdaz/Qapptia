@@ -123,7 +123,7 @@ public sealed class FullscreenCaptureService : IFullscreenCaptureService
     {
         var cfg = _config.Current;
         string baseDir = string.IsNullOrWhiteSpace(cfg.SavePath)
-            ? Qapptia.Core.AppConstants.DefaultSavePath
+            ? Qapptia.Core.Constants.DefaultSavePath
             : cfg.SavePath;
 
         var now = DateTime.Now;

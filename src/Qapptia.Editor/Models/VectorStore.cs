@@ -68,7 +68,7 @@ public class VectorStore : IDisposable
         
         string parentDir = Path.GetDirectoryName(imagePath) ?? string.Empty;
         string baseName = Path.GetFileNameWithoutExtension(imagePath);
-        string annotationDir = Path.Combine(parentDir, Qapptia.Editor.Core.Constants.DrawingExtension);
+        string annotationDir = Path.Combine(parentDir, Qapptia.Core.Constants.DrawingExtension);
         return Path.Combine(annotationDir, $"{baseName}.json");
     }
 

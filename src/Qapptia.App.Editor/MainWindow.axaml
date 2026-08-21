@@ -3,6 +3,8 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:Qapptia.App.Editor.ViewModels"
+        xmlns:sidebar="clr-namespace:Qapptia.Editor.Sidebar.Models;assembly=Qapptia.Editor"
+        xmlns:toolbar="clr-namespace:Qapptia.Editor.Toolbar.Models;assembly=Qapptia.Editor"
         xmlns:controls="clr-namespace:Qapptia.App.Editor.Controls"
         xmlns:core="clr-namespace:Qapptia.Core;assembly=Qapptia.Core"
         xmlns:shared="clr-namespace:Qapptia.UI.Components.Controls;assembly=Qapptia.UI.Components"
@@ -112,7 +114,7 @@
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="{x:Type vm:PaletteColorItem}">
+                        <DataTemplate DataType="{x:Type toolbar:PaletteColorItem}">
                             <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" 
                                          IsChecked="{Binding IsSelected, Mode=OneWay}"
                                          Command="{Binding $parent[ItemsControl].((vm:EditorViewModel)DataContext).SelectColorCommand}" 
@@ -178,7 +180,7 @@
                     
                     <TreeView Grid.Row="1" ItemsSource="{Binding SidebarFolders}" SelectedItem="{Binding SelectedNode}" Background="Transparent" BorderThickness="0">
                         <TreeView.ItemContainerTheme>
-                            <ControlTheme TargetType="TreeViewItem" BasedOn="{StaticResource {x:Type TreeViewItem}}" x:DataType="vm:ExplorerNode">
+                            <ControlTheme TargetType="TreeViewItem" BasedOn="{StaticResource {x:Type TreeViewItem}}" x:DataType="sidebar:SidebarItem">
                                 <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
                             </ControlTheme>
                         </TreeView.ItemContainerTheme>
@@ -205,12 +207,12 @@
                             </Style>
                         </TreeView.Styles>
                         <TreeView.DataTemplates>
-                            <TreeDataTemplate DataType="vm:ExplorerFolder" ItemsSource="{Binding Items}">
+                            <TreeDataTemplate DataType="sidebar:SidebarFolder" ItemsSource="{Binding Items}">
                                 <StackPanel Orientation="Horizontal" Spacing="6" Background="Transparent">
                                     <TextBlock Text="{Binding Name}" Foreground="{DynamicResource M3OnSurfaceBrush}" FontWeight="SemiBold" FontSize="13" Padding="0,2" VerticalAlignment="Center" />
                                 </StackPanel>
                             </TreeDataTemplate>
-                            <DataTemplate DataType="vm:ExplorerFile">
+                            <DataTemplate DataType="sidebar:SidebarFile">
                                 <StackPanel Orientation="Horizontal" Spacing="6" Background="Transparent" Margin="2,0,0,0">
                                     <PathIcon Data="M2 3.5C2 2.67157 2.67157 2 3.5 2H12.5C13.3284 2 14 2.67157 14 3.5V12.5C14 13.3284 14 13.5 13.5 13.5H2.5C1.67157 14 1 13.3284 1 12.5V3.5ZM13 12.5V11.2071L10.3536 8.56066C10.1583 8.3654 9.84171 8.3654 9.64645 8.56066L6.5 11.7071L5.35355 10.5607C5.15829 10.3654 4.84171 10.3654 4.64645 10.5607L3 12.2071V12.5C3 12.7761 3.22386 13 3.5 13H12.5C12.7761 13 13 12.7761 13 12.5Z" Width="14" Height="14" Foreground="{DynamicResource M3OnSurfaceVariantBrush}"/>
                                     <TextBlock Text="{Binding Name}" Foreground="{DynamicResource M3OnSurfaceBrush}" FontSize="13" Padding="0,2" VerticalAlignment="Center" />

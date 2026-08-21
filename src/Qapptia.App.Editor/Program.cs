@@ -16,7 +16,7 @@ sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
-        var logDir = Qapptia.Core.AppConstants.DefaultLogDirectory;
+        var logDir = Qapptia.Core.Constants.DefaultLogDirectory;
 #if DEBUG
         var logLevel = Serilog.Events.LogEventLevel.Debug;
 #else

@@ -12,7 +12,7 @@ public sealed partial class QapptiaConfig
 
     [JsonPropertyName("save_path")]
     [Required]
-    public string SavePath { get; set; } = Qapptia.Core.AppConstants.DefaultSavePath;
+    public string SavePath { get; set; } = Qapptia.Core.Constants.DefaultSavePath;
 
     [JsonPropertyName("filename_format")]
     [Required]

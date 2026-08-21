@@ -31,9 +31,6 @@ public static class Constants
     public static readonly SkiaSharp.SKColor TextToolCaretBlack = new(0, 0, 0, 255);
     public static readonly SkiaSharp.SKColor TextToolCaretWhite = new(255, 255, 255, 255);
 
-    // Persistence
-    public const string DrawingExtension = ".dibujo";
-
     // Shadows
     public static SkiaSharp.SKImageFilter CreateEditingShadow() => 
         SkiaSharp.SKImageFilter.CreateDropShadow(0, 1, 2, 2, SkiaSharp.SKColors.Black.WithAlpha(120));

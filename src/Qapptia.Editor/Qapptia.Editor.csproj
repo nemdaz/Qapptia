@@ -7,8 +7,13 @@
   <ItemGroup>
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Avalonia.Skia" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
     <PackageReference Include="Serilog" />
     <PackageReference Include="SkiaSharp" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Qapptia.Core\Qapptia.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

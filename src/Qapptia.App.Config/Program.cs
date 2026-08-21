@@ -17,7 +17,7 @@ sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
-        var logDir = Qapptia.Core.AppConstants.DefaultLogDirectory;
+        var logDir = Qapptia.Core.Constants.DefaultLogDirectory;
         using var _log = LoggingBootstrap.ConfigureGlobal(logDir, LogEventLevel.Information, "config");
         Log.Information("Qapptia Config App iniciada");
 

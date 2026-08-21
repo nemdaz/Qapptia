@@ -1,50 +1,19 @@
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
-using Qapptia.Editor.Models;
-using Avalonia.Media;
+using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Collections.Generic;
+using Avalonia.Media;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Qapptia.Core.Configuration;
-using System;
-using System.Globalization;
+using Qapptia.Editor.Models;
+using Qapptia.Editor.Sidebar.Models;
+using Qapptia.Editor.Sidebar.Services;
+using Qapptia.Editor.Toolbar.Models;
 
 namespace Qapptia.App.Editor.ViewModels;
-
-public abstract partial class ExplorerNode : ObservableObject
-{
-    public string Name { get; set; } = string.Empty;
-    public string FullPath { get; set; } = string.Empty;
-    
-    [ObservableProperty]
-    private bool _isExpanded;
-}
-
-public partial class ExplorerFolder : ExplorerNode
-{
-    public ObservableCollection<ExplorerNode> Items { get; } = new();
-}
-
-public partial class ExplorerFile : ExplorerNode
-{
-}
-
-public partial class PaletteColorItem : ObservableObject
-{
-    public Color Color { get; }
-    public SolidColorBrush Brush { get; }
-    
-    [ObservableProperty]
-    private bool _isSelected;
-
-    public PaletteColorItem(Color color, bool isSelected = false)
-    {
-        Color = color;
-        Brush = new SolidColorBrush(color);
-        _isSelected = isSelected;
-    }
-}
 
 public partial class EditorViewModel : ObservableObject, IDisposable
 {
@@ -52,15 +21,23 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     private readonly string _savePath;
     private readonly Qapptia.Core.Abstractions.IClipboardService? _clipboardService;
     private readonly Qapptia.Editor.Core.IFontProvider _fontProvider;
+    private readonly ISidebarService _sidebarService;
 
     private static string NormalizePath(string path) => path.Replace('\\', '/');
 
-    public EditorViewModel(EditorStateStore stateStore, string savePath, Qapptia.Editor.Core.IFontProvider fontProvider, Qapptia.Core.Abstractions.IClipboardService? clipboardService = null)
+    public EditorViewModel(
+        EditorStateStore stateStore,
+        string savePath,
+        Qapptia.Editor.Core.IFontProvider fontProvider,
+        Qapptia.Core.Abstractions.IClipboardService? clipboardService = null,
+        ISidebarService? sidebarService = null)
     {
         _stateStore = stateStore;
         _savePath = savePath;
         _fontProvider = fontProvider;
         _clipboardService = clipboardService;
+        _sidebarService = sidebarService ?? new SidebarService(Serilog.Log.Logger.ForContext<SidebarService>());
+
         var state = _stateStore.Load();
         ActiveTextSize = state.Tools.TextToolSize;
 
@@ -98,6 +75,11 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         
         _activeBrush = new SolidColorBrush(_activeColor);
         _activeTypeface = _fontProvider.GetTypeface(Qapptia.Editor.Core.Constants.DefaultFontFileName);
+
+        _sidebarService.StartWatching(_savePath, () =>
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(async () => await LoadSidebarImagesAsync());
+        });
     }
 
     [ObservableProperty]
@@ -231,10 +213,10 @@ public partial class EditorViewModel : ObservableObject, IDisposable
 
     public VectorStore Store { get; } = new VectorStore();
     
-    public ObservableCollection<ExplorerFolder> SidebarFolders { get; } = new();
+    public ObservableCollection<SidebarFolder> SidebarFolders { get; } = new();
 
     [ObservableProperty]
-    private ExplorerNode? _selectedNode;
+    private SidebarItem? _selectedNode;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasNoImage))]
@@ -253,11 +235,11 @@ public partial class EditorViewModel : ObservableObject, IDisposable
 
     private string? _currentImagePath;
 
-    public string? CurrentImagePath => (SelectedNode as ExplorerFile)?.FullPath ?? _currentImagePath;
+    public string? CurrentImagePath => (SelectedNode as SidebarFile)?.FullPath ?? _currentImagePath;
 
     public string? CurrentImageId { get; private set; }
 
-    partial void OnSelectedNodeChanged(ExplorerNode? value)
+    partial void OnSelectedNodeChanged(SidebarItem? value)
     {
         if (!string.IsNullOrEmpty(_currentImagePath))
         {
@@ -265,7 +247,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             _currentImagePath = null;
         }
 
-        if (value is ExplorerFile file)
+        if (value is SidebarFile file)
         {
             try
             {
@@ -474,7 +456,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public void Save()
     {
-        if (SelectedNode is ExplorerFile)
+        if (SelectedNode is SidebarFile)
         {
             SaveRequested?.Invoke(this, EventArgs.Empty);
         }
@@ -492,7 +474,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         string path = _currentImagePath;
         SelectedNode = null;
         
-        var nodeToSelect = FindNodeByPath(SidebarFolders, NormalizePath(path));
+        var nodeToSelect = _sidebarService.FindNodeByPath(SidebarFolders, NormalizePath(path));
         if (nodeToSelect != null)
         {
             SelectedNode = nodeToSelect;
@@ -521,7 +503,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public async System.Threading.Tasks.Task CopyFile()
     {
-        string? filePath = (SelectedNode as ExplorerFile)?.FullPath ?? CurrentImagePath;
+        string? filePath = (SelectedNode as SidebarFile)?.FullPath ?? CurrentImagePath;
         if (string.IsNullOrEmpty(filePath) || !System.IO.File.Exists(filePath)) return;
 
         if (_clipboardService != null)
@@ -558,126 +540,66 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    public void LoadSidebarImages()
+    public async Task LoadSidebarImagesAsync()
     {
-        SidebarFolders.Clear();
+        var savePath = _savePath;
+        if (!Directory.Exists(savePath))
+        {
+            SidebarFolders.Clear();
+            return;
+        }
+
         var expandedFolders = _stateStore.Load().Layout.ExpandedFolders;
+        var normalizedSavePath = NormalizePath(savePath);
 
-        try
+        var rootFolder = await _sidebarService.BuildTreeAsync(savePath, expandedFolders);
+        if (rootFolder == null)
         {
-            if (Directory.Exists(_savePath))
+            SidebarFolders.Clear();
+            return;
+        }
+
+        AttachFolderExpandedEvents(rootFolder);
+
+        SidebarFolders.Clear();
+        SidebarFolders.Add(rootFolder);
+
+        if (rootFolder.IsExpanded && expandedFolders.Count == 0)
+        {
+            var stateToUpdate = _stateStore.Load();
+            if (!stateToUpdate.Layout.ExpandedFolders.Contains(normalizedSavePath))
             {
-                var normalizedSavePath = NormalizePath(_savePath);
-                var rootFolder = new ExplorerFolder 
-                { 
-                    Name = Path.GetFileName(_savePath), 
-                    FullPath = normalizedSavePath,
-                    IsExpanded = expandedFolders.Any(p => string.Equals(p, normalizedSavePath, StringComparison.OrdinalIgnoreCase)) || expandedFolders.Count == 0 // Default true if empty
-                };
-                
-                if (string.IsNullOrEmpty(rootFolder.Name)) 
-                    rootFolder.Name = normalizedSavePath;
-
-                rootFolder.PropertyChanged += OnFolderExpandedChanged;
-
-                // Si se expandió por defecto (al estar vacía la lista), forzamos su guardado
-                if (rootFolder.IsExpanded && expandedFolders.Count == 0)
-                {
-                    var stateToUpdate = _stateStore.Load();
-                    if (!stateToUpdate.Layout.ExpandedFolders.Contains(normalizedSavePath))
-                    {
-                        stateToUpdate.Layout.ExpandedFolders.Add(normalizedSavePath);
-                        _stateStore.Save(stateToUpdate);
-                    }
-                }
-
-                PopulateFolder(rootFolder, _savePath, expandedFolders);
-                
-                SidebarFolders.Add(rootFolder);
-                
-                var state = _stateStore.Load();
-                if (!string.IsNullOrEmpty(state.Session.LastSelectedFile))
-                {
-                    var normalizedLastFile = NormalizePath(state.Session.LastSelectedFile);
-                    var nodeToSelect = FindNodeByPath(SidebarFolders, normalizedLastFile);
-                    if (nodeToSelect != null)
-                    {
-                        SelectedNode = nodeToSelect;
-                    }
-                }
+                stateToUpdate.Layout.ExpandedFolders.Add(normalizedSavePath);
+                _stateStore.Save(stateToUpdate);
             }
         }
-        catch (Exception)
+
+        var selectedPath = (SelectedNode as SidebarFile)?.FullPath ?? _currentImagePath ?? _stateStore.Load().Session.LastSelectedFile;
+        if (!string.IsNullOrEmpty(selectedPath))
         {
-            // Si hay error leyendo la config, fallamos silenciosamente
+            var nodeToSelect = _sidebarService.FindNodeByPath(SidebarFolders, selectedPath);
+            if (nodeToSelect != null)
+            {
+                SelectedNode = nodeToSelect;
+            }
         }
     }
 
-    private static ExplorerNode? FindNodeByPath(IEnumerable<ExplorerNode> nodes, string path)
+    private void AttachFolderExpandedEvents(SidebarFolder folder)
     {
-        foreach (var node in nodes)
+        folder.PropertyChanged += OnFolderExpandedChanged;
+        foreach (var item in folder.Items)
         {
-            if (string.Equals(node.FullPath, path, StringComparison.OrdinalIgnoreCase))
-                return node;
-                
-            if (node is ExplorerFolder folder)
+            if (item is SidebarFolder subFolder)
             {
-                var found = FindNodeByPath(folder.Items, path);
-                if (found != null)
-                    return found;
+                AttachFolderExpandedEvents(subFolder);
             }
-        }
-        return null;
-    }
-
-    private void PopulateFolder(ExplorerFolder folderNode, string path, List<string> expandedFolders)
-    {
-        try
-        {
-            // 1. Obtener directorios, omitiendo ocultos (ej. ".annotations")
-            var dirs = Directory.GetDirectories(path)
-                .Where(d => !new DirectoryInfo(d).Name.StartsWith('.'));
-
-            foreach (var d in dirs)
-            {
-                var normalizedD = NormalizePath(d);
-                var subFolder = new ExplorerFolder 
-                { 
-                    Name = Path.GetFileName(d), 
-                    FullPath = normalizedD,
-                    IsExpanded = expandedFolders.Any(p => string.Equals(p, normalizedD, StringComparison.OrdinalIgnoreCase))
-                };
-                
-                subFolder.PropertyChanged += OnFolderExpandedChanged;
-                
-                PopulateFolder(subFolder, d, expandedFolders);
-                
-                // Agregamos la carpeta solo si tiene contenido util
-                if (subFolder.Items.Count > 0)
-                {
-                    folderNode.Items.Add(subFolder);
-                }
-            }
-
-            // 2. Obtener imágenes (png, jpg, jpeg)
-            var extensions = new[] { ".png", ".jpg", ".jpeg" };
-            var files = Directory.GetFiles(path)
-                .Where(f => extensions.Contains(Path.GetExtension(f).ToLowerInvariant()));
-
-            foreach (var f in files)
-            {
-                folderNode.Items.Add(new ExplorerFile { Name = Path.GetFileName(f), FullPath = NormalizePath(f) });
-            }
-        }
-        catch (UnauthorizedAccessException)
-        {
-            // Ignorar carpetas sin permisos
         }
     }
 
     private void OnFolderExpandedChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(ExplorerNode.IsExpanded) && sender is ExplorerFolder folder)
+        if (e.PropertyName == nameof(SidebarItem.IsExpanded) && sender is SidebarFolder folder)
         {
             var state = _stateStore.Load();
             var normalizedPath = NormalizePath(folder.FullPath);
@@ -704,6 +626,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
+        _sidebarService.Dispose();
         _toastCts?.Dispose();
         _toastCts = null;
         GC.SuppressFinalize(this);
