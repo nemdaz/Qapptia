@@ -4,8 +4,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:Qapptia.App.Config.ViewModels"
         xmlns:controls="using:Qapptia.App.Config.Controls"
-        mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="550"
-        Width="580" Height="550"
+        mc:Ignorable="d" d:DesignWidth="580" d:DesignHeight="400"
+        Width="580" Height="400"
         WindowStartupLocation="CenterScreen"
         CanResize="False"
         x:Class="Qapptia.App.Config.MainWindow"
@@ -31,63 +31,61 @@
             
             <!-- Pestaña General -->
             <TabItem Header="General">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Spacing="10" Margin="8,8,8,8">
-                        
-                        <!-- Apariencia / Tema M3 -->
-                        <HeaderedContentControl Header="Apariencia">
-                            <Grid ColumnDefinitions="120,*" Margin="0,4,0,0">
-                                <TextBlock Grid.Column="0" Text="Tema:" VerticalAlignment="Center" Margin="0,0,8,0" />
-                                <ComboBox Grid.Column="1" ItemsSource="{Binding ThemeOptions}" SelectedItem="{Binding SelectedTheme}" HorizontalAlignment="Stretch" />
-                            </Grid>
-                        </HeaderedContentControl>
+                <StackPanel Spacing="8" Margin="8,8,8,8">
+                    
+                    <!-- Apariencia / Tema M3 -->
+                    <HeaderedContentControl Header="Apariencia">
+                        <Grid ColumnDefinitions="120,*" Margin="0,4,0,0">
+                            <TextBlock Grid.Column="0" Text="Tema:" VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <ComboBox Grid.Column="1" ItemsSource="{Binding ThemeOptions}" SelectedItem="{Binding SelectedTheme}" HorizontalAlignment="Stretch" />
+                        </Grid>
+                    </HeaderedContentControl>
 
-                        <!-- Guardado -->
-                        <HeaderedContentControl Header="Guardado">
-                            <Grid ColumnDefinitions="120,*,Auto" RowDefinitions="Auto,Auto" Margin="0,4,0,0">
-                                <!-- Directorio de guardado -->
-                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Guardar en:" VerticalAlignment="Center" Margin="0,0,8,0" />
-                                <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding SavePath}" Margin="0,0,8,0" />
-                                <Button Grid.Row="0" Grid.Column="2" Content="Examinar..." Command="{Binding BrowsePathCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
-                                
-                                <!-- Formato de archivo -->
-                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Formato archivo:" VerticalAlignment="Center" Margin="0,12,8,0" />
-                                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding FilenameFormat}" Margin="0,12,8,0" PlaceholderText="Ej. Qapptia_YYYYMMDD_HHmmSS" />
-                                <Button Grid.Row="1" Grid.Column="2" Content="?" Width="32" Height="32" Margin="0,12,0,0" Padding="0" HorizontalAlignment="Left" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
-                                    <Button.Flyout>
-                                        <Flyout>
-                                            <TextBlock Text="Usa los siguientes valores para formatear la fecha:&#x0a;&#x0a;YYYY = Año (4 digitos)&#x0a;MM = Mes (2 digitos)&#x0a;DD = Día (2 digitos)&#x0a;HH = Horas&#x0a;mm = Minutos&#x0a;SS = Segundos" />
-                                        </Flyout>
-                                    </Button.Flyout>
-                                </Button>
-                            </Grid>
-                        </HeaderedContentControl>
+                    <!-- Guardado -->
+                    <HeaderedContentControl Header="Guardado">
+                        <Grid ColumnDefinitions="120,*,Auto" RowDefinitions="Auto,Auto" Margin="0,4,0,0">
+                            <!-- Directorio de guardado -->
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Guardar en:" VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding SavePath}" Margin="0,0,8,0" />
+                            <Button Grid.Row="0" Grid.Column="2" Content="Examinar..." Command="{Binding BrowsePathCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+                            
+                            <!-- Formato de archivo -->
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Formato archivo:" VerticalAlignment="Center" Margin="0,12,8,0" />
+                            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding FilenameFormat}" Margin="0,12,8,0" PlaceholderText="Ej. Qapptia_YYYYMMDD_HHmmSS" />
+                            <Button Grid.Row="1" Grid.Column="2" Content="?" Width="32" Height="32" Margin="0,12,0,0" Padding="0" HorizontalAlignment="Left" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+                                <Button.Flyout>
+                                    <Flyout>
+                                        <TextBlock Text="Usa los siguientes valores para formatear la fecha:&#x0a;&#x0a;YYYY = Año (4 digitos)&#x0a;MM = Mes (2 digitos)&#x0a;DD = Día (2 digitos)&#x0a;HH = Horas&#x0a;mm = Minutos&#x0a;SS = Segundos" />
+                                    </Flyout>
+                                </Button.Flyout>
+                            </Button>
+                        </Grid>
+                    </HeaderedContentControl>
 
-                        <!-- Subcarpetas -->
-                        <HeaderedContentControl Header="Subcarpetas de guardado">
-                            <StackPanel Margin="0,4,0,0" Spacing="4">
-                                <CheckBox Content="Crear subcarpeta por Mes" IsChecked="{Binding SubfolderMonth}" />
-                                <CheckBox Content="Crear subcarpeta por Día" IsChecked="{Binding SubfolderDay}" />
-                                <CheckBox Content="Crear subcarpeta por Hora" IsChecked="{Binding SubfolderHour}" />
-                            </StackPanel>
-                        </HeaderedContentControl>
+                    <!-- Subcarpetas -->
+                    <HeaderedContentControl Header="Subcarpetas de guardado">
+                        <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,4,0,0">
+                            <CheckBox Content="Por Mes" IsChecked="{Binding SubfolderMonth}" />
+                            <CheckBox Content="Por Día" IsChecked="{Binding SubfolderDay}" />
+                            <CheckBox Content="Por Hora" IsChecked="{Binding SubfolderHour}" />
+                        </StackPanel>
+                    </HeaderedContentControl>
 
-                        <!-- Cursor -->
-                        <HeaderedContentControl Header="Cursor">
-                            <StackPanel Margin="0,4,0,0" Spacing="4">
-                                <CheckBox Content="Capturar" IsChecked="{Binding ShowMouse}" />
-                                <CheckBox Content="Resaltar (Halo)" IsChecked="{Binding HighlightMouse}" IsEnabled="{Binding ShowMouse}" />
-                            </StackPanel>
-                        </HeaderedContentControl>
-
-                    </StackPanel>
-                </ScrollViewer>
+                </StackPanel>
             </TabItem>
             
             <!-- Pestaña Captura -->
-            <TabItem Header="Capturas">
+            <TabItem Header="Captura">
                 <StackPanel Spacing="8" Margin="8,8,8,8">
                     
+                    <!-- Cursor -->
+                    <HeaderedContentControl Header="Cursor">
+                        <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,4,0,0">
+                            <CheckBox Content="Capturar cursor" IsChecked="{Binding ShowMouse}" />
+                            <CheckBox Content="Resaltar (Halo)" IsChecked="{Binding HighlightMouse}" IsEnabled="{Binding ShowMouse}" />
+                        </StackPanel>
+                    </HeaderedContentControl>
+
                     <!-- Modo Pantalla Completa -->
                     <HeaderedContentControl Header="Modo Pantalla Completa">
                         <Grid ColumnDefinitions="90,*,110,*" RowDefinitions="Auto,Auto" Margin="0,4,0,0">
@@ -112,6 +110,17 @@
                     </HeaderedContentControl>
 
                 </StackPanel>
+            </TabItem>
+
+            <!-- Pestaña Editor -->
+            <TabItem Header="Editor">
+                <Panel Margin="8">
+                    <TextBlock Text="Configuración del Editor" 
+                               HorizontalAlignment="Center" 
+                               VerticalAlignment="Center" 
+                               FontSize="14"
+                               Foreground="{DynamicResource M3OnSurfaceVariantBrush}" />
+                </Panel>
             </TabItem>
 
         </TabControl>
