@@ -70,9 +70,12 @@ public sealed class IpcMessageJsonConverterFactory : JsonConverterFactory
         {
             _typeMap = typeMap;
             _nameMap = new(StringComparer.OrdinalIgnoreCase);
+            var snakeCase = JsonNamingPolicy.SnakeCaseLower;
             foreach (var kv in typeMap)
             {
-                _nameMap[kv.Key.ToString()!] = kv.Key;
+                var name = kv.Key.ToString()!;
+                _nameMap[name] = kv.Key;
+                _nameMap[snakeCase.ConvertName(name)] = kv.Key;
             }
         }
 

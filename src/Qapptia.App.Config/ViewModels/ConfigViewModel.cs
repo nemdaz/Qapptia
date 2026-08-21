@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Pipes;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -93,12 +92,6 @@ public sealed partial class ConfigViewModel : ObservableObject
         CopyToClipboardArea = _config.CopyToClipboardArea;
     }
 
-    partial void OnSelectedThemeChanged(string value)
-    {
-        // Aplica el tema seleccionado en caliente en Configuración
-        ThemeManager.ApplyTheme(ThemeConstants.FromDisplayName(value));
-    }
-
     [RelayCommand]
     private async Task BrowsePathAsync()
     {
@@ -138,6 +131,10 @@ public sealed partial class ConfigViewModel : ObservableObject
         try
         {
             _configService.Save();
+            
+            // Aplicar el nuevo tema a la propia ventana de Configuración al guardar
+            ThemeManager.ApplyTheme(_config.Theme);
+            
             ShowFooter("Configuración guardada exitosamente.", isError: false);
             
             // Difundir notificación de tema y refresco a Capture y Editor en caliente
@@ -152,20 +149,18 @@ public sealed partial class ConfigViewModel : ObservableObject
 
     private static void NotifyProcesses(IpcMessage message)
     {
-        Task.Run(async () =>
+        string[] channels = [IpcChannels.Capture, IpcChannels.Editor];
+        foreach (var channel in channels)
         {
-            string[] channels = [IpcChannels.Capture, IpcChannels.Editor];
-            foreach (var channel in channels)
+            _ = Task.Run(async () =>
             {
                 try
                 {
-                    using var client = new NamedPipeClientStream(".", IpcChannels.GetPipeName(channel), PipeDirection.InOut);
-                    await client.ConnectAsync(300);
-                    await IpcWire.WriteFrameAsync(client, message);
+                    await QapptiaIpcClient.SendAsync(channel, message).ConfigureAwait(false);
                 }
                 catch { }
-            }
-        });
+            });
+        }
     }
 
     [RelayCommand]

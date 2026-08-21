@@ -1,7 +1,7 @@
 using System;
+using System.Collections.Generic;
+using System.IO;
 using System.IO.Pipes;
-using System.Security.AccessControl;
-using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
 using Serilog;
@@ -161,7 +161,7 @@ public sealed class QapptiaIpcServer : IDisposable
                 _pendingServers.Add(fresh);
                 _acceptTasks.Add(AcceptOneAsync(fresh));
             }
-            return; // este task termina; la continuación es el nuevo task
+            return;
         }
     }
 
@@ -197,39 +197,3 @@ public sealed class QapptiaIpcServer : IDisposable
         IpcChannelState.Delete(_channel, expectedToken: _token);
     }
 }
-
-/// <summary>
-/// Cliente de Named Pipes. Lee el <see cref="IpcChannelState"/> del canal, se conecta al
-/// pipe, envía un request y espera la respuesta. Si el state file no existe o la conexión
-/// falla, devuelve false.
-/// </summary>
-public static class QapptiaIpcClient
-{
-    public static async Task<IpcMessage?> SendAsync(
-        string channel,
-        IpcMessage request,
-        CancellationToken ct = default)
-    {
-        var state = IpcChannelState.Load(channel);
-        if (state is null)
-            return null;
-
-        using var client = new NamedPipeClientStream(
-            ".",
-            state.PipeName,
-            PipeDirection.InOut,
-            PipeOptions.Asynchronous);
-
-        try
-        {
-            await client.ConnectAsync(1000, ct).ConfigureAwait(false);
-        }
-        catch (TimeoutException) { return null; }
-        catch (IOException) { return null; }
-
-        await IpcWire.WriteFrameAsync(client, request, ct).ConfigureAwait(false);
-        var response = await IpcWire.ReadFrameAsync(client, ct).ConfigureAwait(false);
-        return response;
-    }
-}
-

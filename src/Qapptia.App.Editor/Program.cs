@@ -1,11 +1,11 @@
 using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
 using System;
-using System.IO.Pipes;
-using System.Threading;
 using System.Threading.Tasks;
 using Qapptia.Core.Configuration;
 using Qapptia.Core.Ipc;
+using Qapptia.Core.Platform;
 using Qapptia.UI.Components.Theme;
 using Serilog;
 
@@ -13,8 +13,6 @@ namespace Qapptia.App.Editor;
 
 sealed class Program
 {
-    private static readonly string PipeName = IpcChannels.GetPipeName(IpcChannels.Editor);
-
     [STAThread]
     public static void Main(string[] args)
     {
@@ -25,16 +23,63 @@ sealed class Program
         var logLevel = Serilog.Events.LogEventLevel.Information;
 #endif
         using var log = Qapptia.Core.Logging.LoggingBootstrap.ConfigureGlobal(logDir, logLevel, "editor");
-        
-        var configPath = Qapptia.Core.AppConstants.DefaultConfigPath;
-        var configService = new JsonConfigService(configPath, Log.Logger);
-        
-        // Aplicar tema configurado al iniciar
-        ThemeManager.ApplyTheme(configService.Current.Theme);
 
-        var cts = new CancellationTokenSource();
-        var ipcThread = new Thread(() => RunIpcServer(cts.Token)) { IsBackground = true };
-        ipcThread.Start();
+        using var guard = new MutexSingleInstanceGuard(IpcChannels.Editor);
+        if (!guard.Acquire())
+        {
+            Log.Warning("Instancia de Editor ya existente, intentando despertar...");
+            try
+            {
+                QapptiaIpcClient.SendAsync(IpcChannels.Editor, new WakeUpRequest(), timeoutMs: 1000).GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "No se pudo despertar la otra instancia de Editor");
+            }
+            return;
+        }
+
+        var dispatcher = new IpcMessageDispatcher(
+            (msg, ct) =>
+            {
+                switch (msg)
+                {
+                    case WakeUpRequest:
+                        Dispatcher.UIThread.Post(() =>
+                        {
+                            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop &&
+                                desktop.MainWindow != null)
+                            {
+                                desktop.MainWindow.Show();
+                                desktop.MainWindow.WindowState = Avalonia.Controls.WindowState.Normal;
+                                desktop.MainWindow.Activate();
+                                desktop.MainWindow.Topmost = true;
+                                desktop.MainWindow.Topmost = false;
+                            }
+                        });
+                        return Task.FromResult<IpcMessage>(new Ack { OriginalType = msg.Type });
+
+                    case ThemeChangedNotification themeMsg:
+                        Log.Information("Editor recibió cambio de tema vía IPC: {Theme}", themeMsg.Theme);
+                        Dispatcher.UIThread.Post(() =>
+                        {
+                            ThemeManager.ApplyTheme(themeMsg.Theme);
+                        });
+                        return Task.FromResult<IpcMessage>(new Ack { OriginalType = msg.Type });
+
+                    default:
+                        return Task.FromResult<IpcMessage>(new Ack { OriginalType = msg.Type });
+                }
+            },
+            Log.Logger.ForContext<IpcMessageDispatcher>());
+
+        using var ipcServer = new QapptiaIpcServer(
+            IpcChannels.Editor,
+            IpcChannels.GetPipeName(IpcChannels.Editor),
+            dispatcher,
+            Log.Logger.ForContext<QapptiaIpcServer>());
+
+        _ = ipcServer.StartAsync();
 
         try
         {
@@ -42,38 +87,7 @@ sealed class Program
         }
         finally
         {
-            cts.Cancel();
-        }
-    }
-
-    private static async void RunIpcServer(CancellationToken ct)
-    {
-        while (!ct.IsCancellationRequested)
-        {
-            try
-            {
-                using var server = new NamedPipeServerStream(PipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
-                await server.WaitForConnectionAsync(ct);
-
-                try
-                {
-                    var msg = await IpcWire.ReadFrameAsync(server, ct);
-                    if (msg is ThemeChangedNotification themeMsg)
-                    {
-                        Dispatcher.UIThread.Post(() =>
-                        {
-                            ThemeManager.ApplyTheme(themeMsg.Theme);
-                        });
-                    }
-                }
-                catch (Exception ex) { Log.Warning(ex, "Error al leer mensaje IPC en Editor"); }
-            }
-            catch (OperationCanceledException) { break; }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Fallo inesperado en IPC server Editor");
-                await Task.Delay(1000, ct);
-            }
+            try { ipcServer.StopAsync().GetAwaiter().GetResult(); } catch { }
         }
     }
 

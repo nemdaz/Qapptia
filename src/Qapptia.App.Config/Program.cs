@@ -1,21 +1,19 @@
 using Avalonia;
-using System;
-using System.IO.Pipes;
-using System.Threading;
-using System.Threading.Tasks;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Threading;
+using System;
+using System.Threading.Tasks;
 using Qapptia.Core.Ipc;
+using Qapptia.Core.Logging;
 using Qapptia.Core.Platform;
+using Qapptia.UI.Components.Theme;
 using Serilog;
 using Serilog.Events;
-using Qapptia.Core.Logging;
 
 namespace Qapptia.App.Config;
 
 sealed class Program
 {
-    private const string PipeName = "Qapptia_Config_IPC";
-
     [STAThread]
     public static void Main(string[] args)
     {
@@ -23,52 +21,28 @@ sealed class Program
         using var _log = LoggingBootstrap.ConfigureGlobal(logDir, LogEventLevel.Information, "config");
         Log.Information("Qapptia Config App iniciada");
 
-        using var guard = new MutexSingleInstanceGuard("Config");
+        using var guard = new MutexSingleInstanceGuard(IpcChannels.Config);
         if (!guard.Acquire())
         {
             Log.Warning("Instancia de Config ya existente, intentando despertar...");
-            Task.Run(async () =>
+            try
             {
-                using var client = new NamedPipeClientStream(".", PipeName, PipeDirection.InOut);
-                try
-                {
-                    await client.ConnectAsync(1000);
-                    await IpcWire.WriteFrameAsync(client, new WakeUpRequest());
-                }
-                catch (Exception ex) { Log.Warning(ex, "No se pudo despertar la otra instancia de Config"); }
-            }).Wait(1500);
+                QapptiaIpcClient.SendAsync(IpcChannels.Config, new WakeUpRequest(), timeoutMs: 1000).GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "No se pudo despertar la otra instancia de Config");
+            }
             return;
         }
 
-        var cts = new CancellationTokenSource();
-        var ipcThread = new Thread(() => RunIpcServer(cts.Token)) { IsBackground = true };
-        ipcThread.Start();
-
-        try
-        {
-            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
-        }
-        finally
-        {
-            cts.Cancel();
-        }
-    }
-
-    private static async void RunIpcServer(CancellationToken ct)
-    {
-        while (!ct.IsCancellationRequested)
-        {
-            try
+        var dispatcher = new IpcMessageDispatcher(
+            (msg, ct) =>
             {
-                using var server = new NamedPipeServerStream(PipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
-                await server.WaitForConnectionAsync(ct);
-                
-                try
+                switch (msg)
                 {
-                    var msg = await IpcWire.ReadFrameAsync(server, ct);
-                    if (msg is WakeUpRequest)
-                    {
-                        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                    case WakeUpRequest:
+                        Dispatcher.UIThread.Post(() =>
                         {
                             if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop &&
                                 desktop.MainWindow != null)
@@ -80,12 +54,36 @@ sealed class Program
                                 desktop.MainWindow.Topmost = false;
                             }
                         });
-                    }
+                        return Task.FromResult<IpcMessage>(new Ack { OriginalType = msg.Type });
+
+                    case ThemeChangedNotification themeMsg:
+                        Dispatcher.UIThread.Post(() =>
+                        {
+                            ThemeManager.ApplyTheme(themeMsg.Theme);
+                        });
+                        return Task.FromResult<IpcMessage>(new Ack { OriginalType = msg.Type });
+
+                    default:
+                        return Task.FromResult<IpcMessage>(new Ack { OriginalType = msg.Type });
                 }
-                catch (Exception ex) { Log.Warning(ex, "Error al leer mensaje IPC en Config"); }
-            }
-            catch (OperationCanceledException) { break; }
-            catch (Exception ex) { Log.Error(ex, "Fallo inesperado en IPC server Config"); await Task.Delay(1000, ct); }
+            },
+            Log.Logger.ForContext<IpcMessageDispatcher>());
+
+        using var ipcServer = new QapptiaIpcServer(
+            IpcChannels.Config,
+            IpcChannels.GetPipeName(IpcChannels.Config),
+            dispatcher,
+            Log.Logger.ForContext<QapptiaIpcServer>());
+
+        _ = ipcServer.StartAsync();
+
+        try
+        {
+            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+        }
+        finally
+        {
+            try { ipcServer.StopAsync().GetAwaiter().GetResult(); } catch { }
         }
     }
 
@@ -98,5 +96,3 @@ sealed class Program
             .WithInterFont()
             .LogToTrace();
 }
-
-
