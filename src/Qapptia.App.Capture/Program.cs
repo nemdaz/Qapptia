@@ -142,8 +142,8 @@ internal sealed class HeadlessCaptureApp : Application
             menuDef.Items.Add(new TrayMenuActionItem("Capturar pantalla", () => captureHandler?.HandleFullscreenCaptureAsync(CancellationToken.None)));
             menuDef.Items.Add(new TrayMenuActionItem("Capturar área", () => captureHandler?.HandleAreaCaptureAsync(CancellationToken.None)));
             menuDef.Items.Add(new TrayMenuSeparatorItem());
-            menuDef.Items.Add(new TrayMenuActionItem("Editor", () => LaunchApp("Qapptia.App.Editor.exe", "--editor")));
-            menuDef.Items.Add(new TrayMenuActionItem("Configuración", () => LaunchApp("Qapptia.App.Config.exe", "--config")));
+            menuDef.Items.Add(new TrayMenuActionItem("Editor", () => LaunchApp(Qapptia.Core.AppConstants.EditorExecutableName, Qapptia.Core.AppConstants.ArgEditor)));
+            menuDef.Items.Add(new TrayMenuActionItem("Configuración", () => LaunchApp(Qapptia.Core.AppConstants.ConfigExecutableName, Qapptia.Core.AppConstants.ArgConfig)));
             menuDef.Items.Add(new TrayMenuSeparatorItem());
             menuDef.Items.Add(new TrayMenuActionItem("Reiniciar", () => 
             {
@@ -156,7 +156,7 @@ internal sealed class HeadlessCaptureApp : Application
             }));
             menuDef.Items.Add(new TrayMenuActionItem("Salir", () => desktop.Shutdown()));
 
-            var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "tray_icon.ico");
+            var iconPath = Path.Combine(AppContext.BaseDirectory, Qapptia.Core.AppConstants.AssetsDirectoryName, Qapptia.Core.AppConstants.TrayIconFileName);
             trayService?.Initialize(menuDef, iconPath);
             
             logger?.Information("TrayIcon asignado a la aplicación de forma limpia.");

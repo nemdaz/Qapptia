@@ -14,6 +14,7 @@
 
   <ItemGroup>
     <AvaloniaResource Include="Assets\app_icon.ico" />
+    <None Update="Assets\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

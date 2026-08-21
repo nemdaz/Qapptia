@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Qapptia.Core/Qapptia.Core.csproj" />
     <Project Path="src/Qapptia.App.Capture/Qapptia.App.Capture.csproj" />
     <Project Path="src/Qapptia.App.Config/Qapptia.App.Config.csproj" />
     <Project Path="src/Qapptia.App.Editor/Qapptia.App.Editor.csproj" />

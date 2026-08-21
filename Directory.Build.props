@@ -30,6 +30,11 @@
     <!-- Análisis activo de Roslyn -->
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
+
+    <!-- Salida unificada de binarios para toda la suite -->
+    <Configuration Condition="'$(Configuration)' == ''">Debug</Configuration>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <OutputPath>$(MSBuildThisFileDirectory)bin\$(Configuration)\</OutputPath>
   </PropertyGroup>
 
 </Project>
