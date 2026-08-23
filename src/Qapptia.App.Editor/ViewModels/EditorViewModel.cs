@@ -178,7 +178,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<string> ZoomOptions { get; } = new()
     {
-        "25%", "50%", "75%", "100%", "125%", "150%", "200%", "300%", "400%", "500%"
+        "25%", "50%", "75%", "100%", "125%", "150%", "200%", "300%", "400%", "500%", "700%"
     };
 
     [ObservableProperty]
@@ -192,8 +192,8 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         {
             var newZoom = percentage / 100.0f;
             
-            // Limitamos a 500% (5.0f) y 10% (0.1f) para evitar números gigantescos
-            newZoom = Math.Max(0.1f, Math.Min(newZoom, 5.0f));
+            // Limitamos a 9999% (99.99f) y 10% (0.1f)
+            newZoom = Math.Max(0.1f, Math.Min(newZoom, 99.99f));
             percentage = (int)Math.Round(newZoom * 100);
 
             if (Math.Abs(newZoom - ZoomLevel) > 0.01f)
@@ -409,6 +409,29 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     public event EventHandler? CopyRequested;
     public event EventHandler? RotateRequested;
     public event EventHandler? FitImageRequested;
+
+    [RelayCommand]
+    public void OpenConfig()
+    {
+        try
+        {
+            var exeName = Qapptia.Core.Constants.ConfigExecutableName;
+            var exePath = System.IO.Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, exeName);
+            if (System.IO.File.Exists(exePath))
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(exePath) { UseShellExecute = true });
+            }
+            else
+            {
+                ShowToast("No se encontró la aplicación de configuración.", NotificationType.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast("Error al abrir configuración.", NotificationType.Error);
+            Serilog.Log.Error(ex, "Error opening config app from editor");
+        }
+    }
 
 
 

@@ -130,7 +130,7 @@ public partial class MainWindow : Window
 
                 float fitZoom = (float)Math.Min(scaleX, scaleY);
                 if (fitZoom <= 0) fitZoom = 0.1f;
-                if (fitZoom > 5.0f) fitZoom = 5.0f; // Max 500%
+                if (fitZoom > 99.99f) fitZoom = 99.99f; // Max 9999%
                 
                 vm.ZoomLevel = fitZoom;
             }
@@ -147,8 +147,8 @@ public partial class MainWindow : Window
 
             float newZoom = currentZoom + (step * direction);
             
-            // Clamp between min and max (0.1 to 5.0)
-            newZoom = Math.Max(0.1f, Math.Min(newZoom, 5.0f));
+            // Clamp between min and max (0.1 to 99.99)
+            newZoom = Math.Max(0.1f, Math.Min(newZoom, 99.99f));
 
             if (Math.Abs(newZoom - currentZoom) > 0.01f)
             {

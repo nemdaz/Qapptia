@@ -94,29 +94,29 @@ public partial class ToastWidget : UserControl
     {
         CurrentBackgroundBrush = Type switch
         {
-            ToastNotificationType.Success => Brush.Parse("#d1e7dd"),
-            ToastNotificationType.Error => Brush.Parse("#f8d7da"),
-            ToastNotificationType.Warning => Brush.Parse("#fff3cd"),
-            ToastNotificationType.Info => Brush.Parse("#cff4fc"),
-            _ => Brush.Parse("#d1e7dd")
+            ToastNotificationType.Success => Brush.Parse("#43a047"), // Material Green 600
+            ToastNotificationType.Error => Brush.Parse("#e53935"),   // Material Red 600
+            ToastNotificationType.Warning => Brush.Parse("#ffb300"), // Material Amber 600
+            ToastNotificationType.Info => Brush.Parse("#1e88e5"),    // Material Blue 600
+            _ => Brush.Parse("#43a047")
         };
 
         CurrentForegroundBrush = Type switch
         {
-            ToastNotificationType.Success => Brush.Parse("#0f5132"),
-            ToastNotificationType.Error => Brush.Parse("#842029"),
-            ToastNotificationType.Warning => Brush.Parse("#664d03"),
-            ToastNotificationType.Info => Brush.Parse("#055160"),
-            _ => Brush.Parse("#0f5132")
+            ToastNotificationType.Success => Brush.Parse("#ffffff"),
+            ToastNotificationType.Error => Brush.Parse("#ffffff"),
+            ToastNotificationType.Warning => Brush.Parse("#1a1a1a"), // Dark text for amber bg
+            ToastNotificationType.Info => Brush.Parse("#ffffff"),
+            _ => Brush.Parse("#ffffff")
         };
 
         CurrentBorderBrush = Type switch
         {
-            ToastNotificationType.Success => Brush.Parse("#badbcc"),
-            ToastNotificationType.Error => Brush.Parse("#f5c2c7"),
-            ToastNotificationType.Warning => Brush.Parse("#ffecb5"),
-            ToastNotificationType.Info => Brush.Parse("#b6effb"),
-            _ => Brush.Parse("#badbcc")
+            ToastNotificationType.Success => Brush.Parse("#2e7d32"), // Material Green 800
+            ToastNotificationType.Error => Brush.Parse("#c62828"),   // Material Red 800
+            ToastNotificationType.Warning => Brush.Parse("#ff8f00"), // Material Amber 800
+            ToastNotificationType.Info => Brush.Parse("#1565c0"),    // Material Blue 800
+            _ => Brush.Parse("#2e7d32")
         };
     }
 }

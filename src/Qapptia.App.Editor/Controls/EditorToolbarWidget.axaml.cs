@@ -25,6 +25,21 @@ public partial class EditorToolbarWidget : UserControl
         {
             if (string.IsNullOrEmpty(e.Text)) return;
 
+            var tb = zoomCombo.GetVisualDescendants().OfType<TextBox>().FirstOrDefault();
+            if (tb != null)
+            {
+                int currentDigits = tb.Text?.Count(char.IsDigit) ?? 0;
+                int incomingDigits = e.Text.Count(char.IsDigit);
+                string selectedText = tb.SelectedText ?? "";
+                int selectedDigits = selectedText.Count(char.IsDigit);
+                
+                if (currentDigits - selectedDigits + incomingDigits > 4)
+                {
+                    e.Handled = true;
+                    return;
+                }
+            }
+
             foreach (char c in e.Text)
             {
                 if (!char.IsDigit(c) && c != '%')
@@ -49,7 +64,9 @@ public partial class EditorToolbarWidget : UserControl
                     cb.IsDropDownOpen = false;
                     
                     // Remover el foco para confirmar la selección visualmente
+                    this.Focusable = true;
                     this.Focus();
+                    e.Handled = true;
                 }
             }
         }, RoutingStrategies.Tunnel);

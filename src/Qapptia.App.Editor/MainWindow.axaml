@@ -57,6 +57,15 @@
                 </Panel>
             </ScrollViewer>
 
+            <!-- Toast Overlay (Top Left of Canvas) -->
+            <shared:ToastWidget Grid.Column="0"
+                                HorizontalAlignment="Left" VerticalAlignment="Top"
+                                Margin="16,16,0,0"
+                                ZIndex="999"
+                                Message="{Binding ToastMessage}"
+                                Type="{Binding ToastType}"
+                                IsOpen="{Binding IsToastVisible}" />
+
             <GridSplitter Grid.Column="1" Width="4" Background="{DynamicResource M3OutlineVariantBrush}" ResizeDirection="Columns" />
 
             <!-- Right Sidebar (Explorador) -->
@@ -138,12 +147,5 @@
             </DockPanel>
         </Border>
 
-        <!-- Toast Overlay -->
-        <shared:ToastWidget Grid.Row="0" Grid.RowSpan="3"
-                            HorizontalAlignment="Center" VerticalAlignment="Center"
-                            ZIndex="999"
-                            Message="{Binding ToastMessage}"
-                            Type="{Binding ToastType}"
-                            IsOpen="{Binding IsToastVisible}" />
     </Grid>
 </Window>
