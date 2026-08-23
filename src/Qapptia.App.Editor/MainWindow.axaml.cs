@@ -14,89 +14,41 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        
-        var configService = new Qapptia.Core.Configuration.JsonConfigService(Qapptia.Core.Constants.DefaultConfigPath);
-        var savePath = string.IsNullOrWhiteSpace(configService.Current.SavePath) ? Qapptia.Core.Constants.DefaultSavePath : configService.Current.SavePath;
-        var stateStoreLogger = Serilog.Log.Logger.ForContext<Qapptia.Editor.Models.EditorStateStore>();
-        var stateStore = new Qapptia.Editor.Models.EditorStateStore(
-            savePath, 
-            Qapptia.Core.Constants.EditorStateFileName,
-            stateStoreLogger);
-        
-#if WINDOWS
-        var clipboardService = new Qapptia.Platform.Windows.WindowsClipboardService(Serilog.Log.Logger);
-#else
-        Qapptia.Core.Abstractions.IClipboardService? clipboardService = null;
-#endif
+        InitializeLayoutHandlers();
+        InitializeWindowEvents();
+        InitializeScrollHandlers();
+    }
 
-        var fontProviderLogger = Serilog.Log.Logger.ForContext<Qapptia.Editor.Core.AssetFontProvider>();
-        var fontProvider = new Qapptia.Editor.Core.AssetFontProvider(fontProviderLogger);
-
-        var sidebarServiceLogger = Serilog.Log.Logger.ForContext<SidebarService>();
-        var sidebarService = new SidebarService(sidebarServiceLogger);
-
-        var vm = new EditorViewModel(stateStore, savePath, fontProvider, clipboardService, sidebarService);
-        DataContext = vm;
-        
-        vm.CopyRequested += Vm_CopyRequested;
-        vm.RotateRequested += Vm_RotateRequested;
-        vm.SaveRequested += Vm_SaveRequested;
-
-        var copyBinding = new Avalonia.Input.KeyBinding
-        {
-            Gesture = Avalonia.Input.KeyGesture.Parse(Qapptia.Core.Constants.ShortcutCopyClipboard),
-            Command = vm.CopyCommand
-        };
-        this.KeyBindings.Add(copyBinding);
-
-        var copyFileBinding = new Avalonia.Input.KeyBinding
-        {
-            Gesture = Avalonia.Input.KeyGesture.Parse(Qapptia.Core.Constants.ShortcutCopyFile),
-            Command = vm.CopyFileCommand
-        };
-        this.KeyBindings.Add(copyFileBinding);
-
-        var deleteBinding = new Avalonia.Input.KeyBinding
-        {
-            Gesture = new Avalonia.Input.KeyGesture(Avalonia.Input.Key.Delete),
-            Command = vm.DeleteSelectedCommand
-        };
-        this.KeyBindings.Add(deleteBinding);
-
-        vm.LoadSidebarImagesCommand.Execute(null);
-
+    private void InitializeLayoutHandlers()
+    {
         bool isInitialSizeSet = false;
         this.SizeChanged += (s, e) =>
         {
             var grid = this.FindControl<Grid>("MainGrid");
-            if (grid != null && grid.ColumnDefinitions.Count >= 3)
+            if (grid == null || grid.ColumnDefinitions.Count < 3) return;
+            
+            var sidebarCol = grid.ColumnDefinitions[2];
+            var width = e.NewSize.Width;
+            sidebarCol.MinWidth = width * 0.10; // Mínimo 10%
+            sidebarCol.MaxWidth = width * 0.50; // Máximo 50%
+            
+            if (!isInitialSizeSet && width > 0)
             {
-                var sidebarCol = grid.ColumnDefinitions[2];
-                var width = e.NewSize.Width;
-                sidebarCol.MinWidth = width * 0.10; // Mínimo 10%
-                sidebarCol.MaxWidth = width * 0.50; // Máximo 50%
-                
-                if (!isInitialSizeSet && width > 0)
-                {
-                    sidebarCol.Width = new GridLength(width * 0.30);
-                    isInitialSizeSet = true;
-                }
-                else
-                {
-                    // Si el ancho actual es menor que el mínimo, lo forzamos al mínimo
-                    if (sidebarCol.Width.Value < sidebarCol.MinWidth)
-                    {
-                        sidebarCol.Width = new GridLength(sidebarCol.MinWidth);
-                    }
-                    // Si es mayor que el máximo, lo forzamos al máximo
-                    else if (sidebarCol.Width.Value > sidebarCol.MaxWidth)
-                    {
-                        sidebarCol.Width = new GridLength(sidebarCol.MaxWidth);
-                    }
-                }
+                sidebarCol.Width = new GridLength(width * 0.30);
+                isInitialSizeSet = true;
+            }
+            else
+            {
+                if (sidebarCol.Width.Value < sidebarCol.MinWidth)
+                    sidebarCol.Width = new GridLength(sidebarCol.MinWidth);
+                else if (sidebarCol.Width.Value > sidebarCol.MaxWidth)
+                    sidebarCol.Width = new GridLength(sidebarCol.MaxWidth);
             }
         };
+    }
 
+    private void InitializeWindowEvents()
+    {
         // Guardar edición pendiente al cerrar ventana
         this.Closing += (s, e) =>
         {
@@ -105,7 +57,10 @@ public partial class MainWindow : Window
                 currentVm.CommitCurrentState();
             }
         };
-        
+    }
+
+    private void InitializeScrollHandlers()
+    {
         // Evitar desplazamientos no deseados del ScrollViewer al hacer foco o clic en el lienzo
         var scrollViewer = this.FindControl<ScrollViewer>("EditorScrollViewer");
         scrollViewer?.AddHandler(Control.RequestBringIntoViewEvent, (s, e) =>
@@ -115,47 +70,48 @@ public partial class MainWindow : Window
 
         // Registrar evento de rueda del ratón con Tunnel para interceptarlo antes que el ScrollViewer
         this.AddHandler(Avalonia.Input.InputElement.PointerWheelChangedEvent, EditorScrollViewer_PointerWheelChanged, Avalonia.Interactivity.RoutingStrategies.Tunnel);
-        
-        var zoomCombo = this.FindControl<ComboBox>("ZoomComboBox");
-        if (zoomCombo != null)
-        {
-            zoomCombo.AddHandler(Avalonia.Input.InputElement.TextInputEvent, (s, e) =>
-            {
-                if (!string.IsNullOrEmpty(e.Text))
-                {
-                    foreach (char c in e.Text)
-                    {
-                        if (!char.IsDigit(c) && c != '%')
-                        {
-                            e.Handled = true;
-                            return;
-                        }
-                    }
-                }
-            }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
-
-            // Al presionar Enter, forzamos la actualización
-            zoomCombo.AddHandler(Avalonia.Input.InputElement.KeyDownEvent, (s, e) =>
-            {
-                if (e.Key == Avalonia.Input.Key.Enter && s is ComboBox cb)
-                {
-                    var tb = cb.GetVisualDescendants().OfType<TextBox>().FirstOrDefault();
-                    if (tb != null && DataContext is EditorViewModel vm)
-                    {
-                        vm.SelectedZoomString = tb.Text ?? string.Empty;
-                        
-                        // Cerrar el combo si está desplegado
-                        cb.IsDropDownOpen = false;
-                        
-                        // Remover el foco para confirmar la selección visualmente
-                        this.Focus();
-                    }
-                }
-            }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
-        }
     }
 
-    private void FitImage_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    public void InitializeWithViewModel(EditorViewModel vm)
+    {
+        DataContext = vm;
+        
+        SubscribeToViewModelEvents(vm);
+        InitializeKeyBindings(vm);
+
+        vm.LoadSidebarImagesCommand.Execute(null);
+    }
+
+    private void SubscribeToViewModelEvents(EditorViewModel vm)
+    {
+        vm.CopyRequested += Vm_CopyRequested;
+        vm.RotateRequested += Vm_RotateRequested;
+        vm.SaveRequested += Vm_SaveRequested;
+        vm.FitImageRequested += Vm_FitImageRequested;
+    }
+
+    private void InitializeKeyBindings(EditorViewModel vm)
+    {
+        this.KeyBindings.Add(new Avalonia.Input.KeyBinding
+        {
+            Gesture = Avalonia.Input.KeyGesture.Parse(Qapptia.Core.Constants.ShortcutCopyClipboard),
+            Command = vm.CopyCommand
+        });
+
+        this.KeyBindings.Add(new Avalonia.Input.KeyBinding
+        {
+            Gesture = Avalonia.Input.KeyGesture.Parse(Qapptia.Core.Constants.ShortcutCopyFile),
+            Command = vm.CopyFileCommand
+        });
+
+        this.KeyBindings.Add(new Avalonia.Input.KeyBinding
+        {
+            Gesture = new Avalonia.Input.KeyGesture(Avalonia.Input.Key.Delete),
+            Command = vm.DeleteSelectedCommand
+        });
+    }
+
+    private void Vm_FitImageRequested(object? sender, EventArgs e)
     {
         if (DataContext is EditorViewModel vm && vm.HasImage)
         {

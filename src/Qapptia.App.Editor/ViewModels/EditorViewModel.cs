@@ -408,6 +408,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     public event EventHandler? SaveRequested;
     public event EventHandler? CopyRequested;
     public event EventHandler? RotateRequested;
+    public event EventHandler? FitImageRequested;
 
 
 
@@ -529,7 +530,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public void FitImage()
     {
-        // TODO: Implement Fit Image
+        FitImageRequested?.Invoke(this, EventArgs.Empty);
     }
 #pragma warning restore CA1822
 

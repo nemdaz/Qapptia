@@ -22,7 +22,31 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = new MainWindow();
+            var configService = new Qapptia.Core.Configuration.JsonConfigService(Qapptia.Core.Constants.DefaultConfigPath);
+            var savePath = string.IsNullOrWhiteSpace(configService.Current.SavePath) ? Qapptia.Core.Constants.DefaultSavePath : configService.Current.SavePath;
+            var stateStoreLogger = Serilog.Log.Logger.ForContext<Qapptia.Editor.Models.EditorStateStore>();
+            var stateStore = new Qapptia.Editor.Models.EditorStateStore(
+                savePath, 
+                Qapptia.Core.Constants.EditorStateFileName,
+                stateStoreLogger);
+            
+#if WINDOWS
+            var clipboardService = new Qapptia.Platform.Windows.WindowsClipboardService(Serilog.Log.Logger);
+#else
+            Qapptia.Core.Abstractions.IClipboardService? clipboardService = null;
+#endif
+
+            var fontProviderLogger = Serilog.Log.Logger.ForContext<Qapptia.Editor.Core.AssetFontProvider>();
+            var fontProvider = new Qapptia.Editor.Core.AssetFontProvider(fontProviderLogger);
+
+            var sidebarServiceLogger = Serilog.Log.Logger.ForContext<Qapptia.Editor.Sidebar.Services.SidebarService>();
+            var sidebarService = new Qapptia.Editor.Sidebar.Services.SidebarService(sidebarServiceLogger);
+
+            var vm = new Qapptia.App.Editor.ViewModels.EditorViewModel(stateStore, savePath, fontProvider, clipboardService, sidebarService);
+
+            var mainWindow = new MainWindow();
+            mainWindow.InitializeWithViewModel(vm);
+            desktop.MainWindow = mainWindow;
         }
 
         base.OnFrameworkInitializationCompleted();

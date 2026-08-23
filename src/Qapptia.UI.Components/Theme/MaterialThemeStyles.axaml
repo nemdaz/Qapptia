@@ -18,6 +18,7 @@
             <!-- Bordes y divisores -->
             <SolidColorBrush x:Key="M3OutlineBrush" Color="#9CA3AF" />
             <SolidColorBrush x:Key="M3OutlineVariantBrush" Color="#E5E7EB" />
+            <SolidColorBrush x:Key="M3PaletteOutlineBrush" Color="#66000000" />
             
             <!-- Acento y estado seleccionado -->
             <SolidColorBrush x:Key="M3PrimaryBrush" Color="#0B57D0" />
@@ -48,6 +49,7 @@
             <!-- Bordes y divisores -->
             <SolidColorBrush x:Key="M3OutlineBrush" Color="#9CA3AF" />
             <SolidColorBrush x:Key="M3OutlineVariantBrush" Color="#E5E7EB" />
+            <SolidColorBrush x:Key="M3PaletteOutlineBrush" Color="#66000000" />
             
             <!-- Acento y estado seleccionado -->
             <SolidColorBrush x:Key="M3PrimaryBrush" Color="#0B57D0" />
@@ -78,6 +80,7 @@
             <!-- Bordes y divisores -->
             <SolidColorBrush x:Key="M3OutlineBrush" Color="#6B7280" />
             <SolidColorBrush x:Key="M3OutlineVariantBrush" Color="#374151" />
+            <SolidColorBrush x:Key="M3PaletteOutlineBrush" Color="#66FFFFFF" />
             
             <!-- Acento y estado seleccionado -->
             <SolidColorBrush x:Key="M3PrimaryBrush" Color="#A8C7FA" />
