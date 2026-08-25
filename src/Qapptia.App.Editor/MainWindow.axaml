@@ -31,7 +31,7 @@
             
             <!-- Canvas Viewer -->
             <ScrollViewer Grid.Column="0" x:Name="EditorScrollViewer" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-                <Panel Background="{DynamicResource M3SurfaceBrush}">
+                <Panel Background="{DynamicResource M3SurfaceContainerHighestBrush}">
                     <!-- Mensaje si NO hay imagen -->
                     <TextBlock Text="Selecciona una imagen del Explorador para comenzar a editar." 
                                Foreground="{DynamicResource M3OnSurfaceVariantBrush}" FontSize="16" 
