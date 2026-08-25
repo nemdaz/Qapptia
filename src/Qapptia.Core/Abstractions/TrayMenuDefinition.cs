@@ -11,11 +11,17 @@ public sealed class TrayMenuActionItem : TrayMenuItem
 {
     public string Text { get; }
     public Action OnClick { get; }
+    public bool IsDefault { get; }
+    public bool IsChecked { get; set; }
+    public Func<string?>? ShortcutTextProvider { get; }
 
-    public TrayMenuActionItem(string text, Action onClick)
+    public TrayMenuActionItem(string text, Action onClick, bool isDefault = false, bool isChecked = false, Func<string?>? shortcutTextProvider = null)
     {
         Text = text;
         OnClick = onClick;
+        IsDefault = isDefault;
+        IsChecked = isChecked;
+        ShortcutTextProvider = shortcutTextProvider;
     }
 }
 

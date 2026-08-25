@@ -1,9 +1,12 @@
 using System;
 using System.Drawing;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
 using Serilog;
 using Qapptia.Core.Abstractions;
+using Qapptia.Core.Extensions;
+using Qapptia.Platform.Windows.UI;
 
 namespace Qapptia.Platform.Windows;
 
@@ -55,7 +58,28 @@ public sealed class WindowsTrayIconService : ITrayIconService
             {
                 BackColor = Color.FromArgb(249, 249, 249),
                 ForeColor = Color.Black,
-                ShowImageMargin = false
+                ShowImageMargin = false,
+                ShowCheckMargin = false, // Desactivado porque solo hay acciones instantáneas
+                Renderer = new ModernTrayMenuRenderer(),
+                Font = new Font("Segoe UI", 9f, FontStyle.Regular)
+            };
+
+            _contextMenu.Opening += (s, e) =>
+            {
+                if (Environment.OSVersion.Version.Build >= 22000) // Windows 11
+                {
+                    int DWMWCP_ROUND = 2;
+                    _ = DwmSetWindowAttribute(_contextMenu.Handle, 33, ref DWMWCP_ROUND, sizeof(int));
+                }
+
+                foreach (ToolStripItem item in _contextMenu.Items)
+                {
+                    if (item is ToolStripMenuItem menuItem && menuItem.Tag is TrayMenuActionItem action && action.ShortcutTextProvider != null)
+                    {
+                        var rawShortcut = action.ShortcutTextProvider() ?? "";
+                        menuItem.ShortcutKeyDisplayString = rawShortcut.ToShortcutTitleCase();
+                    }
+                }
             };
             
             if (_initialMenu != null)
@@ -68,11 +92,13 @@ public sealed class WindowsTrayIconService : ITrayIconService
                     }
                     else if (item is TrayMenuActionItem actionItem)
                     {
-                        var menuItem = new ToolStripMenuItem(actionItem.Text);
+                        var menuItem = new ToolStripMenuItem(actionItem.Text)
+                        {
+                            Tag = actionItem,
+                            Checked = actionItem.IsChecked
+                        };
                         menuItem.Click += (s, e) => 
                         {
-                            // WinForms corre en su propio hilo, ejecutamos el action en el ThreadPool
-                            // para no bloquear el UI del menu
                             System.Threading.Tasks.Task.Run(() => actionItem.OnClick?.Invoke());
                         };
                         _contextMenu.Items.Add(menuItem);
@@ -131,5 +157,8 @@ public sealed class WindowsTrayIconService : ITrayIconService
         
         _staThread.Join(1000); // Esperar brevemente a que cierre el hilo
     }
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
 }
 

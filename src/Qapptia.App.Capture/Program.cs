@@ -139,8 +139,10 @@ internal sealed class HeadlessCaptureApp : Application
             
             var menuDef = new TrayMenuDefinition();
             
-            menuDef.Items.Add(new TrayMenuActionItem("Capturar pantalla", () => captureHandler?.HandleFullscreenCaptureAsync(CancellationToken.None)));
-            menuDef.Items.Add(new TrayMenuActionItem("Capturar área", () => captureHandler?.HandleAreaCaptureAsync(CancellationToken.None)));
+            var config = AppHost?.Services.GetService<IConfigService>();
+            
+            menuDef.Items.Add(new TrayMenuActionItem("Capturar pantalla", () => captureHandler?.HandleFullscreenCaptureAsync(CancellationToken.None), shortcutTextProvider: () => config?.Current.ShortcutScreen));
+            menuDef.Items.Add(new TrayMenuActionItem("Capturar área", () => captureHandler?.HandleAreaCaptureAsync(CancellationToken.None), shortcutTextProvider: () => config?.Current.ShortcutArea));
             menuDef.Items.Add(new TrayMenuSeparatorItem());
             menuDef.Items.Add(new TrayMenuActionItem("Editor", () => LaunchApp(Qapptia.Core.Constants.EditorExecutableName, Qapptia.Core.Constants.ArgEditor)));
             menuDef.Items.Add(new TrayMenuActionItem("Configuración", () => LaunchApp(Qapptia.Core.Constants.ConfigExecutableName, Qapptia.Core.Constants.ArgConfig)));
