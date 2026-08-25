@@ -11,6 +11,7 @@
         x:Class="Qapptia.App.Config.MainWindow"
         x:DataType="vm:ConfigViewModel"
         Background="{DynamicResource M3SurfaceBrush}"
+        Icon="avares://Qapptia.App.Config/Assets/config_icon.ico"
         Title="Qapptia - Configuración">
 
     <Window.Styles>

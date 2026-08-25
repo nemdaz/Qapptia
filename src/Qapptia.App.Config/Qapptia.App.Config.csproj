@@ -2,9 +2,14 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <RootNamespace>Qapptia.App.Config</RootNamespace>
+    <ApplicationIcon>Assets\config_icon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
   </PropertyGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\config_icon.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Avalonia" />
