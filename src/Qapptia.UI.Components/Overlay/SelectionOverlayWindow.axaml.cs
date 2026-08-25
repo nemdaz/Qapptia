@@ -1,3 +1,4 @@
+using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -7,7 +8,7 @@ using Qapptia.Core.Capture;
 
 namespace Qapptia.UI.Components.Overlay;
 
-public partial class SelectionOverlayWindow : Window
+public partial class SelectionOverlayWindow : Window, IDisposable
 {
     private bool _isDragging;
     private Point _dragStart;
@@ -19,24 +20,47 @@ public partial class SelectionOverlayWindow : Window
 
     private readonly TaskCompletionSource<AreaInfo?> _tcs;
 
-    public SelectionOverlayWindow(TaskCompletionSource<AreaInfo?> tcs)
+    private readonly Avalonia.Media.Imaging.WriteableBitmap? _backgroundImage;
+
+    public SelectionOverlayWindow(TaskCompletionSource<AreaInfo?> tcs, Qapptia.Core.Abstractions.ScreenCaptureResult? frozenScreen = null)
     {
         _tcs = tcs;
+        if (frozenScreen != null)
+        {
+            _backgroundImage = new Avalonia.Media.Imaging.WriteableBitmap(
+                new Avalonia.PixelSize(frozenScreen.Width, frozenScreen.Height),
+                new Avalonia.Vector(96, 96),
+                Avalonia.Platform.PixelFormat.Bgra8888,
+                Avalonia.Platform.AlphaFormat.Unpremul);
+
+            using var fb = _backgroundImage.Lock();
+            System.Runtime.InteropServices.Marshal.Copy(frozenScreen.BgraPixels, 0, fb.Address, frozenScreen.BgraPixels.Length);
+        }
+
         InitializeComponent();
 
         PointerPressed += OnPointerPressed;
         PointerMoved += OnPointerMoved;
         PointerReleased += OnPointerReleased;
         KeyDown += OnKeyDown;
-        Closed += (_, _) => _tcs.TrySetResult(null);
+        Closed += (_, _) => 
+        {
+            Dispose();
+            _tcs.TrySetResult(null);
+        };
     }
 
-#pragma warning disable CS8618 // For XAML previewer
+    public void Dispose()
+    {
+        _backgroundImage?.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
     public SelectionOverlayWindow()
     {
+        _tcs = null!; // For XAML previewer only
         InitializeComponent();
     }
-#pragma warning restore CS8618
 
     protected override void OnOpened(EventArgs e)
     {
@@ -44,10 +68,11 @@ public partial class SelectionOverlayWindow : Window
         var primary = Screens.Primary;
         if (primary is not null)
         {
-            var wa = primary.WorkingArea;
+            // Usar Bounds en lugar de WorkingArea para cubrir también la barra de tareas
+            var bounds = primary.Bounds;
             Position = new PixelPoint(0, 0);
-            Width = wa.Width;
-            Height = wa.Height;
+            Width = bounds.Width;
+            Height = bounds.Height;
         }
     }
 
@@ -103,6 +128,11 @@ public partial class SelectionOverlayWindow : Window
     {
         base.Render(context);
         var bounds = new Rect(0, 0, Width, Height);
+
+        if (_backgroundImage != null)
+        {
+            context.DrawImage(_backgroundImage, bounds);
+        }
 
         if (!_isDragging)
         {

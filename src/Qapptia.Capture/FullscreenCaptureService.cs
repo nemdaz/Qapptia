@@ -46,23 +46,47 @@ public sealed class FullscreenCaptureService : IFullscreenCaptureService
 
         if (job.IncludeCursor && _config.Current.ShowMouse)
         {
-            OverlayCursor(image);
-        }
-
-        if (job.Area is { } area)
-        {
-            using var cropped = new SKBitmap(area.Width, area.Height);
-            image.ExtractSubset(cropped, new SKRectI(area.X - screen.OriginX, area.Y - screen.OriginY,
-                area.X - screen.OriginX + area.Width, area.Y - screen.OriginY + area.Height));
-            using var pngData = cropped.Encode(SKEncodedImageFormat.Png, 100);
-            return await FinalizeAsync(pngData.ToArray(), cropped.Width, cropped.Height, job, ct);
+            OverlayCursor(image, screen.OriginX, screen.OriginY);
         }
 
         using var fullPng = image.Encode(SKEncodedImageFormat.Png, 100);
         return await FinalizeAsync(fullPng.ToArray(), screen.Width, screen.Height, job, ct);
     }
 
-    private void OverlayCursor(SKBitmap bitmap)
+    public async Task<ScreenCaptureResult> CaptureFrozenScreenAsync(bool includeCursor, CancellationToken ct = default)
+    {
+        var screen = await _screenCapture.CaptureScreenAsync(_config.Current.CaptureAllScreens, ct);
+
+        if (includeCursor && _config.Current.ShowMouse)
+        {
+            using var bitmap = new SKBitmap();
+            bitmap.InstallPixels(
+                new SKImageInfo(screen.Width, screen.Height, SKColorType.Bgra8888, SKAlphaType.Unpremul),
+                Marshal.UnsafeAddrOfPinnedArrayElement(screen.BgraPixels, 0),
+                screen.Width * 4);
+            OverlayCursor(bitmap, screen.OriginX, screen.OriginY);
+        }
+
+        return screen;
+    }
+
+    public async Task<CaptureResult> FinalizeFrozenAreaCaptureAsync(ScreenCaptureResult frozenScreen, AreaInfo area, CaptureJob job, CancellationToken ct = default)
+    {
+        using var fullBitmap = new SKBitmap();
+        fullBitmap.InstallPixels(
+            new SKImageInfo(frozenScreen.Width, frozenScreen.Height, SKColorType.Bgra8888, SKAlphaType.Unpremul),
+            Marshal.UnsafeAddrOfPinnedArrayElement(frozenScreen.BgraPixels, 0),
+            frozenScreen.Width * 4);
+        
+        using var cropped = new SKBitmap(area.Width, area.Height);
+        var sourceRect = new SKRectI(area.X - frozenScreen.OriginX, area.Y - frozenScreen.OriginY, area.X - frozenScreen.OriginX + area.Width, area.Y - frozenScreen.OriginY + area.Height);
+        fullBitmap.ExtractSubset(cropped, sourceRect);
+        
+        using var pngData = cropped.Encode(SKEncodedImageFormat.Png, 100);
+        return await FinalizeAsync(pngData.ToArray(), cropped.Width, cropped.Height, job, ct);
+    }
+
+    private void OverlayCursor(SKBitmap bitmap, int originX, int originY)
     {
         try
         {
@@ -77,8 +101,8 @@ public sealed class FullscreenCaptureService : IFullscreenCaptureService
                 return;
 
             var (cursorX, cursorY) = _desktop.GetCursorPosition();
-            var drawX = cursorX - cursor.HotspotX;
-            var drawY = cursorY - cursor.HotspotY;
+            var drawX = (cursorX - originX) - cursor.HotspotX;
+            var drawY = (cursorY - originY) - cursor.HotspotY;
 
             using var canvas = new SKCanvas(bitmap);
             canvas.DrawBitmap(cursorBmp, drawX, drawY);
@@ -92,7 +116,7 @@ public sealed class FullscreenCaptureService : IFullscreenCaptureService
                     IsAntialias = true,
                 };
                 var radius = Math.Max(cursor.Width, cursor.Height) * 0.6f + 8;
-                canvas.DrawCircle(cursorX, cursorY, radius, highlight);
+                canvas.DrawCircle(cursorX - originX, cursorY - originY, radius, highlight);
             }
         }
         catch (Exception ex)

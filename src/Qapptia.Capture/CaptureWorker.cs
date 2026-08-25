@@ -99,24 +99,37 @@ public sealed class CaptureWorker : BackgroundService, ICaptureActionHandler
             await _captureGate.WaitAsync(ct);
             try
             {
-                CaptureJob effectiveJob = job;
+                CaptureResult result;
 
                 if (job.Mode == CaptureMode.Area)
                 {
-                    var area = await _areaCapture.SelectAreaAsync(ct);
+                    // Si hay delay, esperamos antes de congelar la pantalla
+                    if (job.DelayMs > 0)
+                        await Task.Delay(job.DelayMs, ct);
+
+                    // 1. Tomar la foto de toda la pantalla y congelarla en memoria
+                    var frozenScreen = await _fullscreenCapture.CaptureFrozenScreenAsync(job.IncludeCursor, ct);
+                    
+                    // 2. Pasar la foto congelada al selector de área para que la dibuje de fondo
+                    var area = await _areaCapture.SelectAreaAsync(frozenScreen, ct);
                     if (area is null)
                     {
-                        _logger.Information("Area selection cancelled");
+                        _logger.Information("Selección de área cancelada");
                         continue;
                     }
-                    effectiveJob = job with { Area = area };
+                    
+                    // 3. Finalizar la captura procesando el recorte en base a la foto original congelada
+                    result = await _fullscreenCapture.FinalizeFrozenAreaCaptureAsync(frozenScreen, area, job, ct);
+                }
+                else
+                {
+                    result = await _fullscreenCapture.CaptureAsync(job, ct);
                 }
 
-                var result = await _fullscreenCapture.CaptureAsync(effectiveJob, ct);
                 _logger.Information("Captura {Mode} -> {Path} ({W}x{H})",
-                    effectiveJob.Mode, result.FilePath, result.Width, result.Height);
+                    job.Mode, result.FilePath, result.Width, result.Height);
 
-                _logger.Debug("Invocando PlayAsync desde CaptureWorker (Mode={Mode})", effectiveJob.Mode);
+                _logger.Debug("Invocando PlayAsync desde CaptureWorker (Mode={Mode})", job.Mode);
                 _ = _shutterSound.PlayAsync(CancellationToken.None);
             }
             catch (OperationCanceledException) { break; }
