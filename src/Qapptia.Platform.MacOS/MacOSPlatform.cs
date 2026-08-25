@@ -7,7 +7,7 @@ namespace Qapptia.Platform.MacOS;
 
 public sealed class MacScreenCapture : IScreenCapture
 {
-    public Task<ScreenCaptureResult> CaptureAllScreensAsync(CancellationToken ct = default)
+    public Task<ScreenCaptureResult> CaptureScreenAsync(bool captureAllScreens = false, CancellationToken ct = default)
         => throw new PlatformNotSupportedException("IScreenCapture en macOS se implementa en Fase 3 (CGDisplayCreateImage / ScreenCaptureKit).");
 }
 

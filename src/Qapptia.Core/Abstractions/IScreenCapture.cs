@@ -19,5 +19,5 @@ public sealed record ScreenCaptureResult(
 /// </summary>
 public interface IScreenCapture
 {
-    Task<ScreenCaptureResult> CaptureAllScreensAsync(CancellationToken ct = default);
+    Task<ScreenCaptureResult> CaptureScreenAsync(bool captureAllScreens = false, CancellationToken ct = default);
 }

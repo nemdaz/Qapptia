@@ -63,6 +63,11 @@ public sealed partial class QapptiaConfig
     [JsonPropertyName("copy_to_clipboard_area")]
     public bool CopyToClipboardArea { get; set; } = false;
 
+    // === Comportamiento de captura ===
+
+    [JsonPropertyName("capture_all_screens")]
+    public bool CaptureAllScreens { get; set; } = false;
+
     // === Scroll capture (omitido en esta migracion, conservado por compat) ===
 
     [JsonPropertyName("enable_scroll_capture")]

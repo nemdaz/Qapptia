@@ -8,7 +8,7 @@ namespace Qapptia.Platform.Linux;
 public sealed class LinuxScreenCapture : IScreenCapture
 {
     public LinuxScreenCapture() { }
-    public Task<ScreenCaptureResult> CaptureAllScreensAsync(CancellationToken ct = default)
+    public Task<ScreenCaptureResult> CaptureScreenAsync(bool captureAllScreens = false, CancellationToken ct = default)
         => throw Throw();
     private static PlatformNotSupportedException Throw()
         => new("IScreenCapture en Linux se implementa en Fase 3 (X11/XGetImage o XDamage).");

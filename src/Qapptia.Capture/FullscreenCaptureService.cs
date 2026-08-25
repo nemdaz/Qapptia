@@ -38,7 +38,7 @@ public sealed class FullscreenCaptureService : IFullscreenCaptureService
         if (job.DelayMs > 0)
             await Task.Delay(job.DelayMs, ct);
 
-        var screen = await _screenCapture.CaptureAllScreensAsync(ct);
+        var screen = await _screenCapture.CaptureScreenAsync(_config.Current.CaptureAllScreens, ct);
 
         using var image = SKBitmap.FromImage(SKImage.FromPixels(
             new SKImageInfo(screen.Width, screen.Height, SKColorType.Bgra8888, SKAlphaType.Unpremul),

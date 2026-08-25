@@ -58,6 +58,9 @@ public sealed partial class ConfigViewModel : ObservableObject
     private bool _copyToClipboardArea;
 
     [ObservableProperty]
+    private bool _captureAllScreens;
+
+    [ObservableProperty]
     private string _footerMessage = string.Empty;
 
     [ObservableProperty]
@@ -90,6 +93,7 @@ public sealed partial class ConfigViewModel : ObservableObject
         ShortcutArea = _config.ShortcutArea;
         CopyToClipboardScreen = _config.CopyToClipboardScreen;
         CopyToClipboardArea = _config.CopyToClipboardArea;
+        CaptureAllScreens = _config.CaptureAllScreens;
     }
 
     [RelayCommand]
@@ -127,6 +131,7 @@ public sealed partial class ConfigViewModel : ObservableObject
         _config.ShortcutArea = string.IsNullOrWhiteSpace(ShortcutArea) ? "ctrl+shift+a" : ShortcutArea;
         _config.CopyToClipboardScreen = CopyToClipboardScreen;
         _config.CopyToClipboardArea = CopyToClipboardArea;
+        _config.CaptureAllScreens = CaptureAllScreens;
 
         try
         {

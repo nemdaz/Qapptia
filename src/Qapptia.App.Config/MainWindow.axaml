@@ -88,7 +88,7 @@
 
                     <!-- Modo Pantalla Completa -->
                     <HeaderedContentControl Header="Modo Pantalla Completa">
-                        <Grid ColumnDefinitions="90,*,110,*" RowDefinitions="Auto,Auto" Margin="0,4,0,0">
+                        <Grid ColumnDefinitions="90,*,110,*" RowDefinitions="Auto,Auto,Auto" Margin="0,4,0,0">
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="Atajo:" VerticalAlignment="Center" Margin="0,0,8,4" />
                             <controls:ShortcutTextBox Grid.Row="0" Grid.Column="1" Text="{Binding ShortcutScreen}" Margin="0,0,16,4" />
                             
@@ -96,6 +96,7 @@
                             <NumericUpDown Grid.Row="0" Grid.Column="3" Value="{Binding ManualTimer}" Minimum="0" Maximum="999" Increment="1" Margin="0,0,0,4" HorizontalAlignment="Stretch" />
 
                             <CheckBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4" Content="Copiar al portapapeles automáticamente" IsChecked="{Binding CopyToClipboardScreen}" Margin="0,4,0,0" />
+                            <CheckBox Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="4" Content="Capturar todos los monitores en única imagen" IsChecked="{Binding CaptureAllScreens}" Margin="0,4,0,0" />
                         </Grid>
                     </HeaderedContentControl>
 

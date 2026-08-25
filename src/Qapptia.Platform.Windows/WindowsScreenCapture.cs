@@ -23,14 +23,39 @@ public sealed class WindowsScreenCapture : IScreenCapture
         _logger = logger;
     }
 
-    public unsafe Task<ScreenCaptureResult> CaptureAllScreensAsync(CancellationToken ct = default)
+    public unsafe Task<ScreenCaptureResult> CaptureScreenAsync(bool captureAllScreens = false, CancellationToken ct = default)
     {
         return Task.Run(() =>
         {
-            var x = PInvoke.GetSystemMetrics(SYSTEM_METRICS_INDEX.SM_XVIRTUALSCREEN);
-            var y = PInvoke.GetSystemMetrics(SYSTEM_METRICS_INDEX.SM_YVIRTUALSCREEN);
-            var width = PInvoke.GetSystemMetrics(SYSTEM_METRICS_INDEX.SM_CXVIRTUALSCREEN);
-            var height = PInvoke.GetSystemMetrics(SYSTEM_METRICS_INDEX.SM_CYVIRTUALSCREEN);
+            int x, y, width, height;
+
+            if (captureAllScreens)
+            {
+                x = PInvoke.GetSystemMetrics(SYSTEM_METRICS_INDEX.SM_XVIRTUALSCREEN);
+                y = PInvoke.GetSystemMetrics(SYSTEM_METRICS_INDEX.SM_YVIRTUALSCREEN);
+                width = PInvoke.GetSystemMetrics(SYSTEM_METRICS_INDEX.SM_CXVIRTUALSCREEN);
+                height = PInvoke.GetSystemMetrics(SYSTEM_METRICS_INDEX.SM_CYVIRTUALSCREEN);
+            }
+            else
+            {
+                PInvoke.GetCursorPos(out var pt);
+                var hMonitor = PInvoke.MonitorFromPoint(pt, MONITOR_FROM_FLAGS.MONITOR_DEFAULTTONEAREST);
+                var info = new MONITORINFO { cbSize = (uint)Marshal.SizeOf<MONITORINFO>() };
+                if (PInvoke.GetMonitorInfo(hMonitor, ref info))
+                {
+                    x = info.rcMonitor.left;
+                    y = info.rcMonitor.top;
+                    width = info.rcMonitor.right - info.rcMonitor.left;
+                    height = info.rcMonitor.bottom - info.rcMonitor.top;
+                }
+                else
+                {
+                    x = PInvoke.GetSystemMetrics(SYSTEM_METRICS_INDEX.SM_XVIRTUALSCREEN);
+                    y = PInvoke.GetSystemMetrics(SYSTEM_METRICS_INDEX.SM_YVIRTUALSCREEN);
+                    width = PInvoke.GetSystemMetrics(SYSTEM_METRICS_INDEX.SM_CXVIRTUALSCREEN);
+                    height = PInvoke.GetSystemMetrics(SYSTEM_METRICS_INDEX.SM_CYVIRTUALSCREEN);
+                }
+            }
 
             if (width <= 0 || height <= 0)
                 throw new InvalidOperationException("Virtual screen con dims inválidas");
