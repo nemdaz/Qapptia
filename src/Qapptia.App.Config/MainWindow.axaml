@@ -4,8 +4,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:Qapptia.App.Config.ViewModels"
         xmlns:controls="using:Qapptia.App.Config.Controls"
-        mc:Ignorable="d" d:DesignWidth="580" d:DesignHeight="400"
-        Width="580" Height="400"
+        mc:Ignorable="d" d:DesignWidth="580" d:DesignHeight="500"
+        Width="580" Height="550"
         WindowStartupLocation="CenterScreen"
         CanResize="False"
         x:Class="Qapptia.App.Config.MainWindow"
@@ -31,7 +31,7 @@
             
             <!-- Pestaña General -->
             <TabItem Header="General">
-                <StackPanel Spacing="8" Margin="8,8,8,8">
+                <StackPanel Spacing="24" Margin="16">
                     
                     <!-- Apariencia / Tema M3 -->
                     <HeaderedContentControl Header="Apariencia">
@@ -71,13 +71,13 @@
                         </StackPanel>
                     </HeaderedContentControl>
 
-                </StackPanel>
+                    </StackPanel>
             </TabItem>
             
             <!-- Pestaña Captura -->
             <TabItem Header="Captura">
-                <StackPanel Spacing="8" Margin="8,8,8,8">
-                    
+                <StackPanel Spacing="24" Margin="16">
+                        
                     <!-- Cursor -->
                     <HeaderedContentControl Header="Cursor">
                         <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,4,0,0">
@@ -110,7 +110,7 @@
                         </Grid>
                     </HeaderedContentControl>
 
-                </StackPanel>
+                    </StackPanel>
             </TabItem>
 
             <!-- Pestaña Editor -->
