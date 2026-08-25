@@ -47,45 +47,68 @@ public sealed class WindowsClipboardService : IClipboardService
             byte[] pixelBytes = bgraBitmap.Bytes;
             int dibSize = 40 + pixelBytes.Length; // 40 bytes para BITMAPINFOHEADER
 
-            nint hGlobal = PInvoke.GlobalAlloc(GLOBAL_ALLOC_FLAGS.GMEM_MOVEABLE | GLOBAL_ALLOC_FLAGS.GMEM_ZEROINIT, (nuint)dibSize);
-            if (hGlobal == 0) throw new System.ComponentModel.Win32Exception(Marshal.GetLastPInvokeError(), "GlobalAlloc failed to allocate memory for clipboard.");
+            nint hGlobalDib = PInvoke.GlobalAlloc(GLOBAL_ALLOC_FLAGS.GMEM_MOVEABLE | GLOBAL_ALLOC_FLAGS.GMEM_ZEROINIT, (nuint)dibSize);
+            if (hGlobalDib == 0) throw new System.ComponentModel.Win32Exception(Marshal.GetLastPInvokeError(), "GlobalAlloc failed to allocate memory for clipboard DIB.");
 
-            nint dest = (nint)PInvoke.GlobalLock(new global::Windows.Win32.Foundation.HGLOBAL((void*)hGlobal));
-            if (dest != 0)
+            nint destDib = (nint)PInvoke.GlobalLock(new global::Windows.Win32.Foundation.HGLOBAL((void*)hGlobalDib));
+            if (destDib != 0)
             {
                 // Escribir BITMAPINFOHEADER (40 bytes)
-                Marshal.WriteInt32(dest, 0, 40); // biSize
-                Marshal.WriteInt32(dest, 4, info.Width); // biWidth
-                Marshal.WriteInt32(dest, 8, -info.Height); // biHeight (negativo significa de arriba hacia abajo)
-                Marshal.WriteInt16(dest, 12, 1); // biPlanes
-                Marshal.WriteInt16(dest, 14, 32); // biBitCount
-                Marshal.WriteInt32(dest, 16, 0); // biCompression (BI_RGB)
-                Marshal.WriteInt32(dest, 20, pixelBytes.Length); // biSizeImage
-                Marshal.WriteInt32(dest, 24, 2835); // biXPelsPerMeter (72 DPI)
-                Marshal.WriteInt32(dest, 28, 2835); // biYPelsPerMeter
-                Marshal.WriteInt32(dest, 32, 0); // biClrUsed
-                Marshal.WriteInt32(dest, 36, 0); // biClrImportant
+                Marshal.WriteInt32(destDib, 0, 40); // biSize
+                Marshal.WriteInt32(destDib, 4, info.Width); // biWidth
+                Marshal.WriteInt32(destDib, 8, -info.Height); // biHeight (negativo significa de arriba hacia abajo)
+                Marshal.WriteInt16(destDib, 12, 1); // biPlanes
+                Marshal.WriteInt16(destDib, 14, 32); // biBitCount
+                Marshal.WriteInt32(destDib, 16, 0); // biCompression (BI_RGB)
+                Marshal.WriteInt32(destDib, 20, pixelBytes.Length); // biSizeImage
+                Marshal.WriteInt32(destDib, 24, 2835); // biXPelsPerMeter (72 DPI)
+                Marshal.WriteInt32(destDib, 28, 2835); // biYPelsPerMeter
+                Marshal.WriteInt32(destDib, 32, 0); // biClrUsed
+                Marshal.WriteInt32(destDib, 36, 0); // biClrImportant
                 
                 // Copiar los píxeles crudos BGRA
-                Marshal.Copy(pixelBytes, 0, dest + 40, pixelBytes.Length);
+                Marshal.Copy(pixelBytes, 0, destDib + 40, pixelBytes.Length);
                 
-                PInvoke.GlobalUnlock(new global::Windows.Win32.Foundation.HGLOBAL((void*)hGlobal));
+                PInvoke.GlobalUnlock(new global::Windows.Win32.Foundation.HGLOBAL((void*)hGlobalDib));
             }
             else
             {
-                PInvoke.GlobalFree(new global::Windows.Win32.Foundation.HGLOBAL((void*)hGlobal));
-                throw new System.ComponentModel.Win32Exception(Marshal.GetLastPInvokeError(), "GlobalLock failed.");
+                PInvoke.GlobalFree(new global::Windows.Win32.Foundation.HGLOBAL((void*)hGlobalDib));
+                throw new System.ComponentModel.Win32Exception(Marshal.GetLastPInvokeError(), "GlobalLock failed for DIB.");
+            }
+
+            // También guardar en formato PNG, requerido por aplicaciones modernas como Word, navegadores, etc.
+            uint pngFormatId = PInvoke.RegisterClipboardFormat("PNG");
+            nint hGlobalPng = PInvoke.GlobalAlloc(GLOBAL_ALLOC_FLAGS.GMEM_MOVEABLE | GLOBAL_ALLOC_FLAGS.GMEM_ZEROINIT, (nuint)pngBytes.Length);
+            if (hGlobalPng != 0)
+            {
+                nint destPng = (nint)PInvoke.GlobalLock(new global::Windows.Win32.Foundation.HGLOBAL((void*)hGlobalPng));
+                if (destPng != 0)
+                {
+                    Marshal.Copy(pngBytes, 0, destPng, pngBytes.Length);
+                    PInvoke.GlobalUnlock(new global::Windows.Win32.Foundation.HGLOBAL((void*)hGlobalPng));
+                }
             }
 
             if (PInvoke.OpenClipboard(default))
             {
                 PInvoke.EmptyClipboard();
-                PInvoke.SetClipboardData(8, new global::Windows.Win32.Foundation.HANDLE(hGlobal)); // 8 es CF_DIB
+                
+                // Set CF_DIB (8)
+                PInvoke.SetClipboardData(8, new global::Windows.Win32.Foundation.HANDLE(hGlobalDib));
+                
+                // Set PNG
+                if (hGlobalPng != 0 && pngFormatId != 0)
+                {
+                    PInvoke.SetClipboardData(pngFormatId, new global::Windows.Win32.Foundation.HANDLE(hGlobalPng));
+                }
+                
                 PInvoke.CloseClipboard();
             }
             else
             {
-                PInvoke.GlobalFree(new global::Windows.Win32.Foundation.HGLOBAL((void*)hGlobal));
+                PInvoke.GlobalFree(new global::Windows.Win32.Foundation.HGLOBAL((void*)hGlobalDib));
+                if (hGlobalPng != 0) PInvoke.GlobalFree(new global::Windows.Win32.Foundation.HGLOBAL((void*)hGlobalPng));
                 throw new System.ComponentModel.Win32Exception(Marshal.GetLastPInvokeError(), "OpenClipboard failed.");
             }
         }

@@ -66,7 +66,8 @@ public sealed class CaptureWorker : BackgroundService, ICaptureActionHandler
 
     public async Task HandleRefreshTrayAsync(CancellationToken ct)
     {
-        _logger.Information("Refrescando tray y hotkeys");
+        _logger.Information("Refrescando tray, config y hotkeys");
+        _config.Reload();
         UnregisterHotkeys();
         RegisterHotkeys();
     }
