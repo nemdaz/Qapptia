@@ -8,6 +8,8 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using Qapptia.Editor.Core;
 using Qapptia.Editor.Models;
+using Qapptia.Editor.Services;
+using Qapptia.Editor.Tools;
 using Qapptia.App.Editor.ViewModels;
 
 namespace Qapptia.App.Editor.Controls;
@@ -273,24 +275,28 @@ public class AnnotationCanvas : Control
         }
         else
         {
-            var newShape = ShapeFactory.Create(ViewModel.ActiveTool, point, ViewModel.ActiveColor, ViewModel.ActiveTextSize, ViewModel.ActiveTypeface);
-            if (newShape != null)
+            if (ViewModel.ActiveTool is VectorTool vectorTool)
             {
-                if (newShape.AutoStartsTextInputOnCreation && newShape is ITextInputShape inputShape)
+                var newShape = vectorTool.CreateShape(point, ViewModel.ActiveColor);
+                if (newShape != null)
+                {
+                    _interaction = CanvasInteraction.DrawingShape;
+                    _currentDrawingShape = newShape;
+                }
+            }
+            else if (ViewModel.ActiveTool is TextWidgetTool textTool)
+            {
+                var newShape = textTool.CreateTextShape(point, ViewModel.ActiveColor, ViewModel.ActiveTextSize, ViewModel.ActiveTypeface);
+                if (newShape != null)
                 {
                     _interaction = CanvasInteraction.None;
                     ViewModel.Store.AddShape(newShape);
                     newShape.IsSelected = true;
                     _selectedShape = newShape;
-                    ViewModel.StartTextInput(inputShape);
+                    ViewModel.StartTextInput(newShape);
                     InvalidateVisual();
                     e.Handled = true;
                     return;
-                }
-                else
-                {
-                    _interaction = CanvasInteraction.DrawingShape;
-                    _currentDrawingShape = newShape;
                 }
             }
         }
@@ -329,20 +335,9 @@ public class AnnotationCanvas : Control
 
         if (_interaction == CanvasInteraction.DrawingShape && _currentDrawingShape != null)
         {
-            if (e.KeyModifiers.HasFlag(KeyModifiers.Shift) &&
-                (_currentDrawingShape is RectangleShape || _currentDrawingShape is EllipseShape))
+            if (ViewModel.ActiveTool is VectorTool vectorTool)
             {
-                double dx = point.X - _currentDrawingShape.Start.X;
-                double dy = point.Y - _currentDrawingShape.Start.Y;
-                double size = Math.Max(Math.Abs(dx), Math.Abs(dy));
-                
-                double signX = dx >= 0 ? 1 : -1;
-                double signY = dy >= 0 ? 1 : -1;
-                
-                _currentDrawingShape.End = new Point(
-                    _currentDrawingShape.Start.X + size * signX,
-                    _currentDrawingShape.Start.Y + size * signY
-                );
+                vectorTool.UpdateDrawing(_currentDrawingShape, point, e.KeyModifiers);
             }
             else
             {
@@ -381,12 +376,11 @@ public class AnnotationCanvas : Control
             case CanvasInteraction.DrawingShape:
                 if (_currentDrawingShape != null)
                 {
-                    double dx = _currentDrawingShape.End.X - _currentDrawingShape.Start.X;
-                    double dy = _currentDrawingShape.End.Y - _currentDrawingShape.Start.Y;
-                    double distance = Math.Sqrt(dx * dx + dy * dy);
+                    bool shouldCommit = (ViewModel?.ActiveTool is VectorTool vectorTool)
+                        ? vectorTool.ShouldCommitOnRelease(_currentDrawingShape)
+                        : true;
 
-                    // Si el usuario solo hizo un clic mínimo sin arrastrar, no agregamos figura basura
-                    if (distance > 3)
+                    if (shouldCommit)
                     {
                         ViewModel?.Store.AddShape(_currentDrawingShape);
                         
@@ -562,10 +556,6 @@ public class AnnotationCanvas : Control
     private Cursor GetDefaultCursorForTool()
     {
         if (ViewModel == null) return Cursor.Default;
-        return ViewModel.ActiveTool switch
-        {
-            ToolType.Line or ToolType.Arrow or ToolType.Rectangle or ToolType.Ellipse or ToolType.Highlighter => new Cursor(StandardCursorType.Cross),
-            _ => Cursor.Default
-        };
+        return new Cursor(ViewModel.ActiveTool.DefaultCursor);
     }
 }

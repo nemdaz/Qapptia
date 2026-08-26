@@ -3,8 +3,9 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Serilog;
+using Qapptia.Editor.Models;
 
-namespace Qapptia.Editor.Models;
+namespace Qapptia.Editor.Services;
 
 public sealed class EditorStateStore
 {

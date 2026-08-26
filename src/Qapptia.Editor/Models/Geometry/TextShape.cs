@@ -5,6 +5,7 @@ using Avalonia;
 using Avalonia.Input;
 using SkiaSharp;
 using Qapptia.Editor.Core;
+using Qapptia.Editor.Services;
 
 namespace Qapptia.Editor.Models;
 

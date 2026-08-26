@@ -2,9 +2,10 @@ using System;
 using Avalonia;
 using Avalonia.Media;
 using SkiaSharp;
+using Qapptia.Editor.Core;
 using Qapptia.Editor.Models;
 
-namespace Qapptia.Editor.Core;
+namespace Qapptia.Editor.Services;
 
 public static class HitTestEngine
 {

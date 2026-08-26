@@ -24,8 +24,8 @@ public partial class App : Application
         {
             var configService = new Qapptia.Core.Configuration.JsonConfigService(Qapptia.Core.Constants.DefaultConfigPath);
             var savePath = string.IsNullOrWhiteSpace(configService.Current.SavePath) ? Qapptia.Core.Constants.DefaultSavePath : configService.Current.SavePath;
-            var stateStoreLogger = Serilog.Log.Logger.ForContext<Qapptia.Editor.Models.EditorStateStore>();
-            var stateStore = new Qapptia.Editor.Models.EditorStateStore(
+            var stateStoreLogger = Serilog.Log.Logger.ForContext<Qapptia.Editor.Services.EditorStateStore>();
+            var stateStore = new Qapptia.Editor.Services.EditorStateStore(
                 savePath, 
                 Qapptia.Core.Constants.EditorStateFileName,
                 stateStoreLogger);
@@ -39,10 +39,10 @@ public partial class App : Application
             var fontProviderLogger = Serilog.Log.Logger.ForContext<Qapptia.Editor.Core.AssetFontProvider>();
             var fontProvider = new Qapptia.Editor.Core.AssetFontProvider(fontProviderLogger);
 
-            var sidebarServiceLogger = Serilog.Log.Logger.ForContext<Qapptia.Editor.Sidebar.Services.SidebarService>();
-            var sidebarService = new Qapptia.Editor.Sidebar.Services.SidebarService(sidebarServiceLogger);
+            var navigationServiceLogger = Serilog.Log.Logger.ForContext<Qapptia.Editor.Services.NavigationService>();
+            var navigationService = new Qapptia.Editor.Services.NavigationService(navigationServiceLogger);
 
-            var vm = new Qapptia.App.Editor.ViewModels.EditorViewModel(stateStore, savePath, fontProvider, clipboardService, sidebarService);
+            var vm = new Qapptia.App.Editor.ViewModels.EditorViewModel(stateStore, savePath, fontProvider, clipboardService, navigationService);
 
             var mainWindow = new MainWindow();
             mainWindow.InitializeWithViewModel(vm);

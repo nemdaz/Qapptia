@@ -4,14 +4,16 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Qapptia.Core.Configuration;
+using Qapptia.Editor.Core;
 using Qapptia.Editor.Models;
-using Qapptia.Editor.Sidebar.Models;
-using Qapptia.Editor.Sidebar.Services;
-using Qapptia.Editor.Toolbar.Models;
+using Qapptia.Editor.Models.Navigation;
+using Qapptia.Editor.Services;
+using Qapptia.Editor.Tools;
 
 namespace Qapptia.App.Editor.ViewModels;
 
@@ -21,34 +23,42 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     private readonly string _savePath;
     private readonly Qapptia.Core.Abstractions.IClipboardService? _clipboardService;
     private readonly Qapptia.Editor.Core.IFontProvider _fontProvider;
-    private readonly ISidebarService _sidebarService;
+    private readonly INavigationService _navigationService;
 
     private static string NormalizePath(string path) => path.Replace('\\', '/');
+
+    public static IReadOnlyList<Tool> AvailableTools { get; } = new Tool[]
+    {
+        ShapeFactory.Line,
+        ShapeFactory.Arrow,
+        ShapeFactory.Ellipse,
+        ShapeFactory.Rectangle,
+        ShapeFactory.Highlighter,
+        ShapeFactory.Text
+    };
 
     public EditorViewModel(
         EditorStateStore stateStore,
         string savePath,
         Qapptia.Editor.Core.IFontProvider fontProvider,
         Qapptia.Core.Abstractions.IClipboardService? clipboardService = null,
-        ISidebarService? sidebarService = null)
+        INavigationService? navigationService = null)
     {
         _stateStore = stateStore;
         _savePath = savePath;
         _fontProvider = fontProvider;
         _clipboardService = clipboardService;
-        _sidebarService = sidebarService ?? new SidebarService(Serilog.Log.Logger.ForContext<SidebarService>());
+        _navigationService = navigationService ?? new NavigationService(Serilog.Log.Logger.ForContext<NavigationService>());
 
         var state = _stateStore.Load();
         ActiveTextSize = state.Tools.TextToolSize;
 
         // Cargar última herramienta seleccionada
-        if (System.Enum.TryParse<ToolType>(state.Tools.ActiveTool, true, out var savedTool))
-        {
-            _activeTool = savedTool;
-        }
+        var foundTool = AvailableTools.FirstOrDefault(t => string.Equals(t.Id, state.Tools.ActiveTool, StringComparison.OrdinalIgnoreCase));
+        _activeTool = foundTool ?? ShapeFactory.Arrow;
 
         // Cargar color activo: de la herramienta guardada, o global, o primer favorito
-        if (state.Palette.ToolFavoriteColors.TryGetValue(_activeTool.ToString().ToLowerInvariant(), out var toolColorHex) &&
+        if (state.Palette.ToolFavoriteColors.TryGetValue(_activeTool.Id.ToLowerInvariant(), out var toolColorHex) &&
             Avalonia.Media.Color.TryParse(toolColorHex, out var parsedToolColor))
         {
             _activeColor = parsedToolColor;
@@ -72,11 +82,11 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             AvailableColors[0].IsSelected = true;
             _activeColor = AvailableColors[0].Color;
         }
-        
+
         _activeBrush = new SolidColorBrush(_activeColor);
         _activeTypeface = _fontProvider.GetTypeface(Qapptia.Editor.Core.Constants.DefaultFontFileName);
 
-        _sidebarService.StartWatching(_savePath, () =>
+        _navigationService.StartWatching(_savePath, () =>
         {
             Avalonia.Threading.Dispatcher.UIThread.Post(async () => await LoadSidebarImagesAsync());
         });
@@ -86,16 +96,16 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     private SkiaSharp.SKTypeface _activeTypeface;
 
     [ObservableProperty]
-    private ToolType _activeTool = ToolType.Arrow;
+    private Tool _activeTool = ShapeFactory.Arrow;
 
-    public bool IsLineToolActive => ActiveTool == ToolType.Line;
-    public bool IsArrowToolActive => ActiveTool == ToolType.Arrow;
-    public bool IsEllipseToolActive => ActiveTool == ToolType.Ellipse;
-    public bool IsRectangleToolActive => ActiveTool == ToolType.Rectangle;
-    public bool IsHighlighterToolActive => ActiveTool == ToolType.Highlighter;
-    public bool IsTextToolActive => ActiveTool == ToolType.Text;
+    public bool IsLineToolActive => ActiveTool is LineTool;
+    public bool IsArrowToolActive => ActiveTool is ArrowTool;
+    public bool IsEllipseToolActive => ActiveTool is EllipseTool;
+    public bool IsRectangleToolActive => ActiveTool is RectangleTool;
+    public bool IsHighlighterToolActive => ActiveTool is HighlighterTool;
+    public bool IsTextToolActive => ActiveTool is TextWidgetTool;
 
-    partial void OnActiveToolChanged(ToolType value)
+    partial void OnActiveToolChanged(Tool value)
     {
         CommitCurrentState();
 
@@ -106,9 +116,16 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(IsHighlighterToolActive));
         OnPropertyChanged(nameof(IsTextToolActive));
 
-        // Persistir herramienta activa
+        // Persistir herramienta activa y restaurar su color favorito
         var state = _stateStore.Load();
-        state.Tools.ActiveTool = value.ToString();
+        state.Tools.ActiveTool = value.Id;
+
+        if (state.Palette.ToolFavoriteColors.TryGetValue(value.Id.ToLowerInvariant(), out var colorName) &&
+            Avalonia.Media.Color.TryParse(colorName, out var parsedColor))
+        {
+            ActiveColor = parsedColor;
+        }
+
         _stateStore.Save(state);
     }
 
@@ -128,9 +145,9 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     private Avalonia.Rect _currentTextBounds;
 
     public ITextInputShape? ActiveTextInputShape { get; private set; }
-    
+
     public float ActiveTextSize { get; private set; } = 24f;
-    
+
     public event EventHandler? TextInputFocusRequested;
 
     partial void OnActiveColorChanged(Color value)
@@ -156,7 +173,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             RequestRedraw?.Invoke(this, EventArgs.Empty);
         }
     }
-    
+
     partial void OnZoomLevelChanged(float value)
     {
         var newStr = $"{(int)Math.Round(value * 100)}%";
@@ -166,8 +183,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             {
                 ZoomOptions.Remove(_lastCustomZoom);
             }
-            
-            // Insertar ordenadamente (opcional) o al final
+
             ZoomOptions.Add(newStr);
             _lastCustomZoom = newStr;
         }
@@ -191,7 +207,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         if (int.TryParse(digits, out int percentage) && percentage > 0)
         {
             var newZoom = percentage / 100.0f;
-            
+
             // Limitamos a 9999% (99.99f) y 10% (0.1f)
             newZoom = Math.Max(0.1f, Math.Min(newZoom, 99.99f));
             percentage = (int)Math.Round(newZoom * 100);
@@ -202,7 +218,6 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             }
             else if (!value.EndsWith("%") || value != $"{percentage}%")
             {
-                // Dispatch para asegurar que se actualice la UI después de que termine la edición
                 Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                 {
                     SelectedZoomString = $"{percentage}%";
@@ -212,11 +227,11 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     }
 
     public VectorStore Store { get; } = new VectorStore();
-    
-    public ObservableCollection<SidebarFolder> SidebarFolders { get; } = new();
+
+    public ObservableCollection<FolderItem> SidebarFolders { get; } = new();
 
     [ObservableProperty]
-    private SidebarItem? _selectedNode;
+    private NavigationItem? _selectedNode;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasNoImage))]
@@ -235,11 +250,11 @@ public partial class EditorViewModel : ObservableObject, IDisposable
 
     private string? _currentImagePath;
 
-    public string? CurrentImagePath => (SelectedNode as SidebarFile)?.FullPath ?? _currentImagePath;
+    public string? CurrentImagePath => (SelectedNode as FileItem)?.FullPath ?? _currentImagePath;
 
     public string? CurrentImageId { get; private set; }
 
-    partial void OnSelectedNodeChanged(SidebarItem? value)
+    partial void OnSelectedNodeChanged(NavigationItem? value)
     {
         if (!string.IsNullOrEmpty(_currentImagePath))
         {
@@ -247,7 +262,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             _currentImagePath = null;
         }
 
-        if (value is SidebarFile file)
+        if (value is FileItem file)
         {
             try
             {
@@ -255,19 +270,19 @@ public partial class EditorViewModel : ObservableObject, IDisposable
                 var ms = new System.IO.MemoryStream(fileBytes);
                 var bitmap = new Avalonia.Media.Imaging.Bitmap(ms);
                 Store.SetBackground(bitmap);
-                
+
                 Store.LoadAnnotations(file.FullPath);
                 _currentImagePath = file.FullPath;
-                
+
                 System.Threading.Tasks.Task.Run(async () =>
                 {
                     CurrentImageId = await Qapptia.Core.Services.ImageMetadataService.EnsureImageIdAsync(file.FullPath);
                 });
-                
+
                 ImageWidth = bitmap.Size.Width;
                 ImageHeight = bitmap.Size.Height;
                 HasImage = true;
-                
+
                 var state = _stateStore.Load();
                 state.Session.LastSelectedFile = NormalizePath(file.FullPath);
                 _stateStore.Save(state);
@@ -276,7 +291,6 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             }
             catch
             {
-                // Fallar silenciosamente si la imagen no se puede cargar
                 Store.Shapes.Clear();
             }
         }
@@ -313,7 +327,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         shape.IsEditing = true;
         shape.CaretIndex = shape.Text.Length;
         shape.IsCaretVisible = true;
-        
+
         CurrentTextBounds = shape.TextBounds;
         IsEditingText = true;
         RequestRedraw?.Invoke(this, EventArgs.Empty);
@@ -327,14 +341,14 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         {
             ActiveTextInputShape.FocusRequested -= OnActiveShapeFocusRequested;
             ActiveTextInputShape.IsEditing = false;
-            
+
             if (ActiveTextInputShape.IsEmpty && ActiveTextInputShape is VectorShape vectorShape)
             {
                 Store.RemoveShape(vectorShape);
             }
-            
+
             IsEditingText = false;
-            
+
             if (ActiveTextInputShape.TextSize != ActiveTextSize)
             {
                 ActiveTextSize = ActiveTextInputShape.TextSize;
@@ -342,7 +356,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
                 state.Tools.TextToolSize = ActiveTextSize;
                 _stateStore.Save(state);
             }
-            
+
             ActiveTextInputShape = null;
             Store.ClearSelection();
             SaveCurrentAnnotations();
@@ -365,29 +379,29 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public void SelectTool(string toolName)
     {
-        if (System.Enum.TryParse<ToolType>(toolName, out var tool))
+        var tool = AvailableTools.FirstOrDefault(t => string.Equals(t.Id, toolName, StringComparison.OrdinalIgnoreCase));
+        if (tool != null)
         {
             ActiveTool = tool;
-            
-            var state = _stateStore.Load();
-            if (state.Palette.ToolFavoriteColors.TryGetValue(toolName.ToLowerInvariant(), out var colorName) && 
-                Avalonia.Media.Color.TryParse(colorName, out var parsedColor))
-            {
-                ActiveColor = parsedColor;
-            }
         }
+    }
+
+    public void SelectTool(Tool tool)
+    {
+        ArgumentNullException.ThrowIfNull(tool);
+        ActiveTool = tool;
     }
 
     [RelayCommand]
     public void SelectColor(PaletteColorItem item)
     {
         ActiveColor = item.Color;
-        
+
         var state = _stateStore.Load();
         state.Palette.ActiveFavoriteColor = $"#{item.Color.A:X2}{item.Color.R:X2}{item.Color.G:X2}{item.Color.B:X2}";
-        state.Palette.ToolFavoriteColors[ActiveTool.ToString().ToLowerInvariant()] = state.Palette.ActiveFavoriteColor;
+        state.Palette.ToolFavoriteColors[ActiveTool.Id.ToLowerInvariant()] = state.Palette.ActiveFavoriteColor;
         _stateStore.Save(state);
-        
+
         bool needsRedraw = false;
         foreach (var shape in Store.Shapes)
         {
@@ -397,7 +411,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
                 needsRedraw = true;
             }
         }
-        
+
         if (needsRedraw)
         {
             SaveCurrentAnnotations();
@@ -433,8 +447,6 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         }
     }
 
-
-
     [ObservableProperty]
     private bool _isToastVisible;
 
@@ -457,7 +469,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             NotificationType.Info => Qapptia.UI.Components.Controls.ToastNotificationType.Info,
             _ => Qapptia.UI.Components.Controls.ToastNotificationType.Success
         };
-        
+
         _toastCts?.Cancel();
         _toastCts = new System.Threading.CancellationTokenSource();
         var token = _toastCts.Token;
@@ -476,11 +488,11 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         }, token);
     }
 
-#pragma warning disable CA1822
+    #pragma warning disable CA1822
     [RelayCommand]
     public void Save()
     {
-        if (SelectedNode is SidebarFile)
+        if (SelectedNode is FileItem)
         {
             SaveRequested?.Invoke(this, EventArgs.Empty);
         }
@@ -489,16 +501,16 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     public void OnBurnCompleted()
     {
         if (string.IsNullOrEmpty(_currentImagePath)) return;
-        
+
         // Limpiamos los vectores actuales (ya que se quemaron en la imagen original)
         Store.Shapes.Clear();
         Store.SaveAnnotations(_currentImagePath);
-        
+
         // Forzamos la recarga de la imagen para que Avalonia la lea de nuevo
         string path = _currentImagePath;
         SelectedNode = null;
-        
-        var nodeToSelect = _sidebarService.FindNodeByPath(SidebarFolders, NormalizePath(path));
+
+        var nodeToSelect = _navigationService.FindNodeByPath(SidebarFolders, NormalizePath(path));
         if (nodeToSelect != null)
         {
             SelectedNode = nodeToSelect;
@@ -527,7 +539,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public async System.Threading.Tasks.Task CopyFile()
     {
-        string? filePath = (SelectedNode as SidebarFile)?.FullPath ?? CurrentImagePath;
+        string? filePath = (SelectedNode as FileItem)?.FullPath ?? CurrentImagePath;
         if (string.IsNullOrEmpty(filePath) || !System.IO.File.Exists(filePath)) return;
 
         if (_clipboardService != null)
@@ -555,7 +567,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     {
         FitImageRequested?.Invoke(this, EventArgs.Empty);
     }
-#pragma warning restore CA1822
+    #pragma warning restore CA1822
 
     [RelayCommand]
     public void RealSize()
@@ -576,7 +588,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         var expandedFolders = _stateStore.Load().Layout.ExpandedFolders;
         var normalizedSavePath = NormalizePath(savePath);
 
-        var rootFolder = await _sidebarService.BuildTreeAsync(savePath, expandedFolders);
+        var rootFolder = await _navigationService.BuildTreeAsync(savePath, expandedFolders);
         if (rootFolder == null)
         {
             SidebarFolders.Clear();
@@ -598,10 +610,10 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             }
         }
 
-        var selectedPath = (SelectedNode as SidebarFile)?.FullPath ?? _currentImagePath ?? _stateStore.Load().Session.LastSelectedFile;
+        var selectedPath = (SelectedNode as FileItem)?.FullPath ?? _currentImagePath ?? _stateStore.Load().Session.LastSelectedFile;
         if (!string.IsNullOrEmpty(selectedPath))
         {
-            var nodeToSelect = _sidebarService.FindNodeByPath(SidebarFolders, selectedPath);
+            var nodeToSelect = _navigationService.FindNodeByPath(SidebarFolders, selectedPath);
             if (nodeToSelect != null)
             {
                 SelectedNode = nodeToSelect;
@@ -609,12 +621,12 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         }
     }
 
-    private void AttachFolderExpandedEvents(SidebarFolder folder)
+    private void AttachFolderExpandedEvents(FolderItem folder)
     {
         folder.PropertyChanged += OnFolderExpandedChanged;
         foreach (var item in folder.Items)
         {
-            if (item is SidebarFolder subFolder)
+            if (item is FolderItem subFolder)
             {
                 AttachFolderExpandedEvents(subFolder);
             }
@@ -623,12 +635,12 @@ public partial class EditorViewModel : ObservableObject, IDisposable
 
     private void OnFolderExpandedChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(SidebarItem.IsExpanded) && sender is SidebarFolder folder)
+        if (e.PropertyName == nameof(NavigationItem.IsExpanded) && sender is FolderItem folder)
         {
             var state = _stateStore.Load();
             var normalizedPath = NormalizePath(folder.FullPath);
             var exists = state.Layout.ExpandedFolders.Any(p => string.Equals(p, normalizedPath, StringComparison.OrdinalIgnoreCase));
-            
+
             if (folder.IsExpanded)
             {
                 if (!exists)
@@ -650,7 +662,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
-        _sidebarService.Dispose();
+        _navigationService.Dispose();
         _toastCts?.Dispose();
         _toastCts = null;
         GC.SuppressFinalize(this);

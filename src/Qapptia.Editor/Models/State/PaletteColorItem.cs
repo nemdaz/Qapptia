@@ -1,8 +1,11 @@
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace Qapptia.Editor.Toolbar.Models;
+namespace Qapptia.Editor.Models;
 
+/// <summary>
+/// Representa un elemento de color en la paleta del editor.
+/// </summary>
 public partial class PaletteColorItem : ObservableObject
 {
     public Color Color { get; }

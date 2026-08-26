@@ -3,7 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:Qapptia.App.Editor.ViewModels"
-             xmlns:toolbar="clr-namespace:Qapptia.Editor.Toolbar.Models;assembly=Qapptia.Editor"
+             xmlns:models="clr-namespace:Qapptia.Editor.Models;assembly=Qapptia.Editor"
              mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="60"
              x:Class="Qapptia.App.Editor.Controls.EditorToolbarWidget"
              x:DataType="vm:EditorViewModel">
@@ -101,7 +101,7 @@
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="{x:Type toolbar:PaletteColorItem}">
+                        <DataTemplate DataType="{x:Type models:PaletteColorItem}">
                             <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" 
                                          IsChecked="{Binding IsSelected, Mode=OneWay}"
                                          Command="{Binding $parent[ItemsControl].((vm:EditorViewModel)DataContext).SelectColorCommand}" 

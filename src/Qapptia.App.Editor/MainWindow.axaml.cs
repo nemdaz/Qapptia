@@ -4,8 +4,8 @@ using Avalonia.Controls;
 using Avalonia.VisualTree;
 using System.Linq;
 using Qapptia.App.Editor.ViewModels;
-using Qapptia.Editor.Sidebar.Models;
-using Qapptia.Editor.Sidebar.Services;
+using Qapptia.Editor.Models.Navigation;
+using Qapptia.Editor.Services;
 
 namespace Qapptia.App.Editor;
 
@@ -234,7 +234,7 @@ public partial class MainWindow : Window
 
     private async void Vm_SaveRequested(object? sender, EventArgs e)
     {
-        if (DataContext is EditorViewModel vm && vm.SelectedNode is SidebarFile fileNode)
+        if (DataContext is EditorViewModel vm && vm.SelectedNode is FileItem fileNode)
         {
             string filePath = fileNode.FullPath;
             string? guid = vm.CurrentImageId;

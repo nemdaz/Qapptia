@@ -1,9 +1,12 @@
 using System;
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace Qapptia.Editor.Sidebar.Models;
+namespace Qapptia.Editor.Models.Navigation;
 
-public abstract partial class SidebarItem : ObservableObject
+/// <summary>
+/// Clase base para cualquier elemento navegable del explorador de capturas.
+/// </summary>
+public abstract partial class NavigationItem : ObservableObject
 {
     public string Name { get; set; } = string.Empty;
     public string FullPath { get; set; } = string.Empty;

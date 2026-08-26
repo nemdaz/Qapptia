@@ -154,9 +154,9 @@ public class TextShapeTests
     [Fact]
     public void ShapeFactoryCreatesExpectedShapeTypes()
     {
-        var text = Qapptia.Editor.Core.ShapeFactory.Create(ToolType.Text, new Avalonia.Point(100, 200), Avalonia.Media.Colors.Red);
-        var rect = Qapptia.Editor.Core.ShapeFactory.Create(ToolType.Rectangle, new Avalonia.Point(10, 10), Avalonia.Media.Colors.Red);
-        var arrow = Qapptia.Editor.Core.ShapeFactory.Create(ToolType.Arrow, new Avalonia.Point(10, 10), Avalonia.Media.Colors.Red);
+        var text = Qapptia.Editor.Services.ShapeFactory.Create(Qapptia.Editor.Services.ShapeFactory.Text, new Avalonia.Point(100, 200), Avalonia.Media.Colors.Red);
+        var rect = Qapptia.Editor.Services.ShapeFactory.Create(Qapptia.Editor.Services.ShapeFactory.Rectangle, new Avalonia.Point(10, 10), Avalonia.Media.Colors.Red);
+        var arrow = Qapptia.Editor.Services.ShapeFactory.Create(Qapptia.Editor.Services.ShapeFactory.Arrow, new Avalonia.Point(10, 10), Avalonia.Media.Colors.Red);
 
         Assert.IsType<TextShape>(text);
         Assert.IsType<RectangleShape>(rect);

@@ -6,8 +6,9 @@ using System.Text.Json;
 using Avalonia;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Qapptia.Editor.Models;
 
-namespace Qapptia.Editor.Models;
+namespace Qapptia.Editor.Services;
 
 public class VectorStore : IDisposable
 {

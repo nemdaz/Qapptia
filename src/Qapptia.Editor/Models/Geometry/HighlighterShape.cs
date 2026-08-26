@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Media;
 using Qapptia.Editor.Core;
+using Qapptia.Editor.Services;
 
 namespace Qapptia.Editor.Models;
 

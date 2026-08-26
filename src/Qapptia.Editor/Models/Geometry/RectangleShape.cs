@@ -1,11 +1,11 @@
-using System;
 using Avalonia;
 using Avalonia.Media;
 using Qapptia.Editor.Core;
+using Qapptia.Editor.Services;
 
 namespace Qapptia.Editor.Models;
 
-public class LineShape : VectorShape
+public class RectangleShape : VectorShape
 {
     public override void RenderSkia(SkiaSharp.SKCanvas canvas)
     {
@@ -15,27 +15,36 @@ public class LineShape : VectorShape
             StrokeWidth = (float)StrokeWidth,
             IsAntialias = true,
             Style = SkiaSharp.SKPaintStyle.Stroke,
-            StrokeCap = SkiaSharp.SKStrokeCap.Round,
+            StrokeJoin = SkiaSharp.SKStrokeJoin.Round,
             ImageFilter = IsBurning ? Constants.CreateBurnedShadow() : Constants.CreateEditingShadow()
         };
         
-        canvas.DrawLine((float)Start.X, (float)Start.Y, (float)End.X, (float)End.Y, paint);
+        var rect = GetBoundingBox();
+        var skRect = new SkiaSharp.SKRect((float)rect.Left, (float)rect.Top, (float)rect.Right, (float)rect.Bottom);
+        
+        canvas.DrawRect(skRect, paint);
 
         if (IsSelected)
         {
-            HitTestEngine.DrawHandlesSkiaEnds(canvas, Start, End);
+            HitTestEngine.DrawHandlesSkiaCorners(canvas, rect);
         }
     }
 
     public override HandleType HitTest(Point point)
     {
+        var rect = GetBoundingBox();
         if (IsSelected)
         {
-            var handle = HitTestEngine.HitTestHandlesEnds(point, Start, End);
+            var handle = HitTestEngine.HitTestHandlesCorners(point, rect);
             if (handle != HandleType.None) return handle;
         }
+
+        double tolerance = StrokeWidth + 8.0;
         
-        if (HitTestEngine.PointToLineDistance(point, Start, End, StrokeWidth + 8.0))
+        var outerRect = rect.Inflate(tolerance);
+        var innerRect = rect.Inflate(-tolerance);
+        
+        if (outerRect.Contains(point) && !innerRect.Contains(point))
         {
             return HandleType.Body;
         }

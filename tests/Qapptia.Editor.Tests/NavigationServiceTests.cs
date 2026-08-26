@@ -3,22 +3,22 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using FluentAssertions;
-using Qapptia.Editor.Sidebar.Models;
-using Qapptia.Editor.Sidebar.Services;
+using Qapptia.Editor.Models.Navigation;
+using Qapptia.Editor.Services;
 using Xunit;
 
 namespace Qapptia.Editor.Tests;
 
-public sealed class SidebarServiceTests : IDisposable
+public sealed class NavigationServiceTests : IDisposable
 {
     private readonly string _testDir;
-    private readonly SidebarService _sut;
+    private readonly NavigationService _sut;
 
-    public SidebarServiceTests()
+    public NavigationServiceTests()
     {
-        _testDir = Path.Combine(Path.GetTempPath(), "Qapptia_SidebarTests_" + Guid.NewGuid().ToString("N"));
+        _testDir = Path.Combine(Path.GetTempPath(), "Qapptia_NavigationTests_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_testDir);
-        _sut = new SidebarService();
+        _sut = new NavigationService();
     }
 
     public void Dispose()
@@ -59,8 +59,8 @@ public sealed class SidebarServiceTests : IDisposable
         tree.Should().NotBeNull();
         tree!.Items.Should().HaveCount(2);
 
-        var firstFile = tree.Items[0].Should().BeOfType<SidebarFile>().Subject;
-        var secondFile = tree.Items[1].Should().BeOfType<SidebarFile>().Subject;
+        var firstFile = tree.Items[0].Should().BeOfType<FileItem>().Subject;
+        var secondFile = tree.Items[1].Should().BeOfType<FileItem>().Subject;
 
         firstFile.Name.Should().Be("aaa_new_file.png");
         secondFile.Name.Should().Be("zzz_old_file.png");
@@ -90,7 +90,7 @@ public sealed class SidebarServiceTests : IDisposable
 
         // Assert: folderB (Z_RecentContent) debe aparecer ANTES que folderA (A_OldContent)
         tree.Should().NotBeNull();
-        var folders = tree!.Items.OfType<SidebarFolder>().ToList();
+        var folders = tree!.Items.OfType<FolderItem>().ToList();
         folders.Should().HaveCount(2);
         folders[0].Name.Should().Be("Z_RecentContent");
         folders[1].Name.Should().Be("A_OldContent");
@@ -113,8 +113,8 @@ public sealed class SidebarServiceTests : IDisposable
 
         // Assert
         tree.Should().NotBeNull();
-        tree!.Items.OfType<SidebarFolder>().Should().ContainSingle(f => f.Name == "2026-08");
-        tree.Items.OfType<SidebarFolder>().Should().NotContain(f => f.Name == ".annotations");
+        tree!.Items.OfType<FolderItem>().Should().ContainSingle(f => f.Name == "2026-08");
+        tree.Items.OfType<FolderItem>().Should().NotContain(f => f.Name == ".annotations");
     }
 
     [Fact]
