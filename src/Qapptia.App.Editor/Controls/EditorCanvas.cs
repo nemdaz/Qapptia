@@ -14,10 +14,10 @@ using Qapptia.App.Editor.ViewModels;
 
 namespace Qapptia.App.Editor.Controls;
 
-public class AnnotationCanvas : Control
+public class EditorCanvas : Control
 {
     public static readonly StyledProperty<EditorViewModel?> ViewModelProperty =
-        AvaloniaProperty.Register<AnnotationCanvas, EditorViewModel?>(nameof(ViewModel));
+        AvaloniaProperty.Register<EditorCanvas, EditorViewModel?>(nameof(ViewModel));
 
     public EditorViewModel? ViewModel
     {
@@ -27,7 +27,7 @@ public class AnnotationCanvas : Control
 
     private readonly DispatcherTimer _caretTimer;
 
-    public AnnotationCanvas()
+    public EditorCanvas()
     {
         ClipToBounds = true;
         Focusable = true;

@@ -166,7 +166,7 @@ public partial class MainWindow : Window
         {
             vm.CommitCurrentState();
 
-            var canvas = this.FindControl<Qapptia.App.Editor.Controls.AnnotationCanvas>("MainCanvas");
+            var canvas = this.FindControl<Qapptia.App.Editor.Controls.EditorCanvas>("MainCanvas");
             if (canvas != null && vm.ImageWidth > 0 && vm.ImageHeight > 0)
             {
                 vm.Store.SetBurningMode(true);
@@ -246,7 +246,7 @@ public partial class MainWindow : Window
 
             vm.CommitCurrentState();
             
-            var canvas = this.FindControl<Qapptia.App.Editor.Controls.AnnotationCanvas>("MainCanvas");
+            var canvas = this.FindControl<Qapptia.App.Editor.Controls.EditorCanvas>("MainCanvas");
             if (canvas == null) return;
 
             vm.Store.SetBurningMode(true);
