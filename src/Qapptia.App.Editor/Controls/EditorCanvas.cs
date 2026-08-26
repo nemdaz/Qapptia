@@ -104,17 +104,17 @@ public class EditorCanvas : Control
     {
         base.Render(context);
 
-        if (ViewModel?.Store == null) return;
+        if (ViewModel?.CanvasState == null) return;
 
         // Dibujar fondo si existe
-        if (ViewModel.Store.BackgroundImage != null)
+        if (ViewModel.CanvasState.BackgroundImage != null)
         {
-            var rect = new Rect(0, 0, ViewModel.Store.BackgroundImage.Size.Width, ViewModel.Store.BackgroundImage.Size.Height);
-            context.DrawImage(ViewModel.Store.BackgroundImage, rect);
+            var rect = new Rect(0, 0, ViewModel.CanvasState.BackgroundImage.Size.Width, ViewModel.CanvasState.BackgroundImage.Size.Height);
+            context.DrawImage(ViewModel.CanvasState.BackgroundImage, rect);
         }
 
         // Delegar el dibujado de vectores a SkiaSharp (Monomotor puro)
-        context.Custom(new SkiaCanvasDrawOperation(new Rect(Bounds.Size), ViewModel.Store.Shapes, _currentDrawingShape));
+        context.Custom(new SkiaCanvasDrawOperation(new Rect(Bounds.Size), ViewModel.CanvasState.Shapes, _currentDrawingShape));
     }
 
     private sealed class SkiaCanvasDrawOperation : Avalonia.Rendering.SceneGraph.ICustomDrawOperation
@@ -228,9 +228,9 @@ public class EditorCanvas : Control
         HandleType hitHandle = HandleType.None;
         VectorShape? hitShape = null;
 
-        for (int i = ViewModel.Store.Shapes.Count - 1; i >= 0; i--)
+        for (int i = ViewModel.CanvasState.Shapes.Count - 1; i >= 0; i--)
         {
-            var shape = ViewModel.Store.Shapes[i];
+            var shape = ViewModel.CanvasState.Shapes[i];
             var handle = shape.HitTest(point);
             if (handle != HandleType.None)
             {
@@ -240,7 +240,7 @@ public class EditorCanvas : Control
             }
         }
 
-        ViewModel.Store.ClearSelection();
+        ViewModel.CanvasState.ClearSelection();
         _selectedShape = hitShape;
         _activeHandle = hitHandle;
         
@@ -290,7 +290,7 @@ public class EditorCanvas : Control
                 if (newShape != null)
                 {
                     _interaction = CanvasInteraction.None;
-                    ViewModel.Store.AddShape(newShape);
+                    ViewModel.CanvasState.AddShape(newShape);
                     newShape.IsSelected = true;
                     _selectedShape = newShape;
                     ViewModel.StartTextInput(newShape);
@@ -382,10 +382,10 @@ public class EditorCanvas : Control
 
                     if (shouldCommit)
                     {
-                        ViewModel?.Store.AddShape(_currentDrawingShape);
+                        ViewModel?.CanvasState.AddShape(_currentDrawingShape);
                         
                         // Seleccionamos la figura automáticamente para que pueda cambiar de color/editarse de inmediato
-                        ViewModel?.Store.ClearSelection();
+                        ViewModel?.CanvasState.ClearSelection();
                         _currentDrawingShape.IsSelected = true;
                         _selectedShape = _currentDrawingShape;
                         
@@ -508,7 +508,7 @@ public class EditorCanvas : Control
         }
         else if (e.Key == Key.Escape && ViewModel != null)
         {
-            ViewModel.Store.ClearSelection();
+            ViewModel.CanvasState.ClearSelection();
             _selectedShape = null;
             InvalidateVisual();
             e.Handled = true;
@@ -524,7 +524,7 @@ public class EditorCanvas : Control
 
     private void UpdateCursor(Point point)
     {
-        if (ViewModel?.Store == null) return;
+        if (ViewModel?.CanvasState == null) return;
 
         // 1. Si hay una figura seleccionada (o en edición), delegar en su propio método polimórfico
         if (_selectedShape != null)
@@ -538,9 +538,9 @@ public class EditorCanvas : Control
         }
 
         // 2. Hover sobre las demás figuras del lienzo
-        for (int i = ViewModel.Store.Shapes.Count - 1; i >= 0; i--)
+        for (int i = ViewModel.CanvasState.Shapes.Count - 1; i >= 0; i--)
         {
-            var shape = ViewModel.Store.Shapes[i];
+            var shape = ViewModel.CanvasState.Shapes[i];
             var cursorType = shape.GetCursorType(point);
             if (cursorType != null)
             {

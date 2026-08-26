@@ -19,11 +19,12 @@ namespace Qapptia.App.Editor.ViewModels;
 
 public partial class EditorViewModel : ObservableObject, IDisposable
 {
-    private readonly EditorStateStore _stateStore;
+    private readonly IEditorStateService _stateService;
     private readonly string _savePath;
     private readonly Qapptia.Core.Abstractions.IClipboardService? _clipboardService;
     private readonly Qapptia.Editor.Core.IFontProvider _fontProvider;
     private readonly INavigationService _navigationService;
+    private readonly ICanvasStateService _canvasStateService;
 
     private static string NormalizePath(string path) => path.Replace('\\', '/');
 
@@ -38,19 +39,21 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     };
 
     public EditorViewModel(
-        EditorStateStore stateStore,
+        IEditorStateService stateService,
         string savePath,
         Qapptia.Editor.Core.IFontProvider fontProvider,
         Qapptia.Core.Abstractions.IClipboardService? clipboardService = null,
-        INavigationService? navigationService = null)
+        INavigationService? navigationService = null,
+        ICanvasStateService? canvasStateService = null)
     {
-        _stateStore = stateStore;
+        _stateService = stateService;
         _savePath = savePath;
         _fontProvider = fontProvider;
         _clipboardService = clipboardService;
         _navigationService = navigationService ?? new NavigationService(Serilog.Log.Logger.ForContext<NavigationService>());
+        _canvasStateService = canvasStateService ?? new CanvasStateService(Serilog.Log.Logger.ForContext<CanvasStateService>());
 
-        var state = _stateStore.Load();
+        var state = _stateService.Load();
         ActiveTextSize = state.Tools.TextToolSize;
 
         // Cargar última herramienta seleccionada
@@ -117,16 +120,17 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(IsTextToolActive));
 
         // Persistir herramienta activa y restaurar su color favorito
-        var state = _stateStore.Load();
+        var state = _stateService.Load();
         state.Tools.ActiveTool = value.Id;
 
-        if (state.Palette.ToolFavoriteColors.TryGetValue(value.Id.ToLowerInvariant(), out var colorName) &&
-            Avalonia.Media.Color.TryParse(colorName, out var parsedColor))
+        // Cargar color específico de la herramienta seleccionada si existe
+        if (state.Palette.ToolFavoriteColors.TryGetValue(value.Id.ToLowerInvariant(), out var toolColorHex) &&
+            Avalonia.Media.Color.TryParse(toolColorHex, out var parsedToolColor))
         {
-            ActiveColor = parsedColor;
+            ActiveColor = parsedToolColor;
         }
 
-        _stateStore.Save(state);
+        _stateService.Save(state);
     }
 
     [ObservableProperty]
@@ -226,7 +230,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         }
     }
 
-    public VectorStore Store { get; } = new VectorStore();
+    public CanvasState CanvasState { get; } = new();
 
     public ObservableCollection<FolderItem> SidebarFolders { get; } = new();
 
@@ -258,7 +262,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     {
         if (!string.IsNullOrEmpty(_currentImagePath))
         {
-            Store.SaveAnnotations(_currentImagePath);
+            _canvasStateService.SaveAnnotations(CanvasState, _currentImagePath);
             _currentImagePath = null;
         }
 
@@ -269,9 +273,9 @@ public partial class EditorViewModel : ObservableObject, IDisposable
                 byte[] fileBytes = System.IO.File.ReadAllBytes(file.FullPath);
                 var ms = new System.IO.MemoryStream(fileBytes);
                 var bitmap = new Avalonia.Media.Imaging.Bitmap(ms);
-                Store.SetBackground(bitmap);
+                CanvasState.SetBackground(bitmap);
 
-                Store.LoadAnnotations(file.FullPath);
+                _canvasStateService.LoadAnnotations(CanvasState, file.FullPath);
                 _currentImagePath = file.FullPath;
 
                 System.Threading.Tasks.Task.Run(async () =>
@@ -283,21 +287,21 @@ public partial class EditorViewModel : ObservableObject, IDisposable
                 ImageHeight = bitmap.Size.Height;
                 HasImage = true;
 
-                var state = _stateStore.Load();
+                var state = _stateService.Load();
                 state.Session.LastSelectedFile = NormalizePath(file.FullPath);
-                _stateStore.Save(state);
+                _stateService.Save(state);
 
                 ImageLoaded?.Invoke(this, EventArgs.Empty);
             }
             catch
             {
-                Store.Shapes.Clear();
+                CanvasState.Shapes.Clear();
             }
         }
         else
         {
-            Store.Shapes.Clear();
-            Store.SetBackground(null!);
+            CanvasState.Shapes.Clear();
+            CanvasState.SetBackground(null!);
             HasImage = false;
         }
     }
@@ -306,7 +310,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     {
         if (!string.IsNullOrEmpty(_currentImagePath))
         {
-            Store.SaveAnnotations(_currentImagePath);
+            _canvasStateService.SaveAnnotations(CanvasState, _currentImagePath);
         }
     }
 
@@ -344,7 +348,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
 
             if (ActiveTextInputShape.IsEmpty && ActiveTextInputShape is VectorShape vectorShape)
             {
-                Store.RemoveShape(vectorShape);
+                CanvasState.RemoveShape(vectorShape);
             }
 
             IsEditingText = false;
@@ -352,19 +356,19 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             if (ActiveTextInputShape.TextSize != ActiveTextSize)
             {
                 ActiveTextSize = ActiveTextInputShape.TextSize;
-                var state = _stateStore.Load();
+                var state = _stateService.Load();
                 state.Tools.TextToolSize = ActiveTextSize;
-                _stateStore.Save(state);
+                _stateService.Save(state);
             }
 
             ActiveTextInputShape = null;
-            Store.ClearSelection();
+            CanvasState.ClearSelection();
             SaveCurrentAnnotations();
             RequestRedraw?.Invoke(this, EventArgs.Empty);
         }
         else
         {
-            Store.ClearSelection();
+            CanvasState.ClearSelection();
             RequestRedraw?.Invoke(this, EventArgs.Empty);
         }
     }
@@ -397,13 +401,13 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     {
         ActiveColor = item.Color;
 
-        var state = _stateStore.Load();
+        var state = _stateService.Load();
         state.Palette.ActiveFavoriteColor = $"#{item.Color.A:X2}{item.Color.R:X2}{item.Color.G:X2}{item.Color.B:X2}";
         state.Palette.ToolFavoriteColors[ActiveTool.Id.ToLowerInvariant()] = state.Palette.ActiveFavoriteColor;
-        _stateStore.Save(state);
+        _stateService.Save(state);
 
         bool needsRedraw = false;
-        foreach (var shape in Store.Shapes)
+        foreach (var shape in CanvasState.Shapes)
         {
             if (shape.IsSelected)
             {
@@ -503,8 +507,8 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         if (string.IsNullOrEmpty(_currentImagePath)) return;
 
         // Limpiamos los vectores actuales (ya que se quemaron en la imagen original)
-        Store.Shapes.Clear();
-        Store.SaveAnnotations(_currentImagePath);
+        CanvasState.Shapes.Clear();
+        _canvasStateService.SaveAnnotations(CanvasState, _currentImagePath);
 
         // Forzamos la recarga de la imagen para que Avalonia la lea de nuevo
         string path = _currentImagePath;
@@ -522,9 +526,9 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     {
         if (IsEditingText) return;
 
-        if (Store.Shapes.Any(s => s.IsSelected))
+        if (CanvasState.Shapes.Any(s => s.IsSelected))
         {
-            Store.RemoveSelected();
+            CanvasState.RemoveSelected();
             SaveCurrentAnnotations();
             RequestRedraw?.Invoke(this, EventArgs.Empty);
         }
@@ -585,7 +589,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             return;
         }
 
-        var expandedFolders = _stateStore.Load().Layout.ExpandedFolders;
+        var expandedFolders = _stateService.Load().Layout.ExpandedFolders;
         var normalizedSavePath = NormalizePath(savePath);
 
         var rootFolder = await _navigationService.BuildTreeAsync(savePath, expandedFolders);
@@ -602,15 +606,15 @@ public partial class EditorViewModel : ObservableObject, IDisposable
 
         if (rootFolder.IsExpanded && expandedFolders.Count == 0)
         {
-            var stateToUpdate = _stateStore.Load();
+            var stateToUpdate = _stateService.Load();
             if (!stateToUpdate.Layout.ExpandedFolders.Contains(normalizedSavePath))
             {
                 stateToUpdate.Layout.ExpandedFolders.Add(normalizedSavePath);
-                _stateStore.Save(stateToUpdate);
+                _stateService.Save(stateToUpdate);
             }
         }
 
-        var selectedPath = (SelectedNode as FileItem)?.FullPath ?? _currentImagePath ?? _stateStore.Load().Session.LastSelectedFile;
+        var selectedPath = (SelectedNode as FileItem)?.FullPath ?? _currentImagePath ?? _stateService.Load().Session.LastSelectedFile;
         if (!string.IsNullOrEmpty(selectedPath))
         {
             var nodeToSelect = _navigationService.FindNodeByPath(SidebarFolders, selectedPath);
@@ -637,7 +641,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     {
         if (e.PropertyName == nameof(NavigationItem.IsExpanded) && sender is FolderItem folder)
         {
-            var state = _stateStore.Load();
+            var state = _stateService.Load();
             var normalizedPath = NormalizePath(folder.FullPath);
             var exists = state.Layout.ExpandedFolders.Any(p => string.Equals(p, normalizedPath, StringComparison.OrdinalIgnoreCase));
 
@@ -646,7 +650,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
                 if (!exists)
                 {
                     state.Layout.ExpandedFolders.Add(normalizedPath);
-                    _stateStore.Save(state);
+                    _stateService.Save(state);
                 }
             }
             else
@@ -654,7 +658,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
                 if (exists)
                 {
                     state.Layout.ExpandedFolders.RemoveAll(p => string.Equals(p, normalizedPath, StringComparison.OrdinalIgnoreCase));
-                    _stateStore.Save(state);
+                    _stateService.Save(state);
                 }
             }
         }

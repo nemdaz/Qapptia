@@ -169,11 +169,11 @@ public partial class MainWindow : Window
             var canvas = this.FindControl<Qapptia.App.Editor.Controls.EditorCanvas>("MainCanvas");
             if (canvas != null && vm.ImageWidth > 0 && vm.ImageHeight > 0)
             {
-                vm.Store.SetBurningMode(true);
+                vm.CanvasState.SetBurningMode(true);
                 canvas.InvalidateVisual();
                 var rtb = new Avalonia.Media.Imaging.RenderTargetBitmap(new PixelSize((int)vm.ImageWidth, (int)vm.ImageHeight));
                 rtb.Render(canvas);
-                vm.Store.SetBurningMode(false);
+                vm.CanvasState.SetBurningMode(false);
                 canvas.InvalidateVisual();
                 
                 using var ms = new System.IO.MemoryStream();
@@ -198,9 +198,9 @@ public partial class MainWindow : Window
 
     private void Vm_RotateRequested(object? sender, EventArgs e)
     {
-        if (DataContext is EditorViewModel vm && vm.Store.BackgroundImage != null)
+        if (DataContext is EditorViewModel vm && vm.CanvasState.BackgroundImage != null)
         {
-            var oldBmp = vm.Store.BackgroundImage;
+            var oldBmp = vm.CanvasState.BackgroundImage;
             int w = oldBmp.PixelSize.Width;
             int h = oldBmp.PixelSize.Height;
             
@@ -216,11 +216,11 @@ public partial class MainWindow : Window
                 }
             }
             
-            vm.Store.SetBackground(rtb);
+            vm.CanvasState.SetBackground(rtb);
             vm.ImageWidth = h;
             vm.ImageHeight = w;
             
-            foreach (var shape in vm.Store.Shapes)
+            foreach (var shape in vm.CanvasState.Shapes)
             {
                 var start = shape.Start;
                 var end = shape.End;
@@ -249,7 +249,7 @@ public partial class MainWindow : Window
             var canvas = this.FindControl<Qapptia.App.Editor.Controls.EditorCanvas>("MainCanvas");
             if (canvas == null) return;
 
-            vm.Store.SetBurningMode(true);
+            vm.CanvasState.SetBurningMode(true);
             canvas.InvalidateVisual();
 
             try
@@ -282,7 +282,7 @@ public partial class MainWindow : Window
             catch (Exception ex)
             {
                 vm.ShowToast($"Error al guardar la imagen: {ex.Message}", Qapptia.Editor.Models.NotificationType.Error);
-                vm.Store.SetBurningMode(false);
+                vm.CanvasState.SetBurningMode(false);
                 canvas.InvalidateVisual();
             }
         }

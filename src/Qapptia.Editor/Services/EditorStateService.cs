@@ -7,7 +7,10 @@ using Qapptia.Editor.Models;
 
 namespace Qapptia.Editor.Services;
 
-public sealed class EditorStateStore
+/// <summary>
+/// Servicio de persistencia y serialización del estado de sesión y preferencias del editor en formato JSON.
+/// </summary>
+public sealed class EditorStateService : IEditorStateService
 {
     private static readonly JsonSerializerOptions s_jsonOptions = new()
     {
@@ -22,7 +25,7 @@ public sealed class EditorStateStore
     private readonly ILogger? _logger;
     private readonly object _gate = new();
 
-    public EditorStateStore(string basePath, string stateFileName, ILogger? logger = null)
+    public EditorStateService(string basePath, string stateFileName, ILogger? logger = null)
     {
         _basePath = basePath;
         _stateFileName = stateFileName;
@@ -56,7 +59,7 @@ public sealed class EditorStateStore
             }
             catch (Exception ex)
             {
-                _logger?.Warning(ex, "Error reading {Path}. Returning default state.", path);
+                _logger?.Warning(ex, "Error al leer {Path}. Devolviendo estado por defecto.", path);
                 return new EditorState();
             }
         }
@@ -75,7 +78,7 @@ public sealed class EditorStateStore
             }
             catch (Exception ex)
             {
-                _logger?.Error(ex, "Error saving to {Path}.", path);
+                _logger?.Error(ex, "Error al guardar en {Path}.", path);
             }
         }
     }
