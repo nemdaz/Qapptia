@@ -1,7 +1,6 @@
 using System;
 using Avalonia;
 using Avalonia.Input;
-using Avalonia.Media;
 using Qapptia.Editor.Models;
 
 namespace Qapptia.Editor.Tools;
@@ -9,22 +8,12 @@ namespace Qapptia.Editor.Tools;
 /// <summary>
 /// Herramienta vectorial para trazar rectángulos y cuadrados (con tecla Shift).
 /// </summary>
-public sealed class RectangleTool : VectorTool
+public sealed class RectangleTool : VectorTool<RectangleShape>
 {
     public override string Id => "Rectangle";
     public override string DisplayName => "Rectángulo";
     public override string IconData => IconCatalog.Rectangle;
     public override string? Shortcut => "R";
-
-    public override VectorShape CreateShape(Point startPoint, Color color)
-    {
-        return new RectangleShape
-        {
-            Start = startPoint,
-            End = startPoint,
-            Color = color
-        };
-    }
 
     public override void UpdateDrawing(VectorShape shape, Point currentPoint, KeyModifiers modifiers)
     {

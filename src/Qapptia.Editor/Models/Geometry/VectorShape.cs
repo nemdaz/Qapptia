@@ -141,6 +141,8 @@ public abstract class VectorShape
         };
     }
 
+    public virtual Rect BoundingBox => GetBoundingBox();
+
     protected virtual Rect GetBoundingBox()
     {
         double left = Math.Min(Start.X, End.X);

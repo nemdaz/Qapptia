@@ -1,64 +1,34 @@
-using System;
-using System.Collections.ObjectModel;
-using System.Linq;
-using Avalonia.Media.Imaging;
+using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace Qapptia.Editor.Models;
 
 /// <summary>
-/// Modelo de estado en memoria del lienzo de edición (imagen de fondo, figuras y selección).
+/// Modelo de estado persistible del lienzo (recorte, rotación y anotaciones vectoriales por imagen).
 /// </summary>
-public class CanvasState : IDisposable
+public sealed class CanvasState
 {
-    public ObservableCollection<VectorShape> Shapes { get; } = new();
-    
-    public Bitmap? BackgroundImage { get; private set; }
+    /// <summary>
+    /// Coordenadas del recorte acumulado [x, y, width, height] o null si no se ha recortado.
+    /// </summary>
+    [JsonPropertyName("crop")]
+    public List<double>? Crop { get; set; }
 
-    public void SetBackground(Bitmap? bitmap)
-    {
-        BackgroundImage?.Dispose();
-        BackgroundImage = bitmap;
-    }
+    /// <summary>
+    /// Ángulo acumulado de rotación en grados (0, 90, 180, 270).
+    /// </summary>
+    [JsonPropertyName("rotation")]
+    public int Rotation { get; set; } = 0;
 
-    public void AddShape(VectorShape shape)
-    {
-        Shapes.Add(shape);
-    }
+    /// <summary>
+    /// Lista de figuras vectoriales dibujadas sobre el lienzo.
+    /// </summary>
+    [JsonPropertyName("shapes")]
+    public List<VectorShapeDto> Shapes { get; set; } = new();
 
-    public void RemoveShape(VectorShape shape)
-    {
-        Shapes.Remove(shape);
-    }
-
-    public void RemoveSelected()
-    {
-        var selected = Shapes.Where(s => s.IsSelected).ToList();
-        foreach (var shape in selected)
-        {
-            Shapes.Remove(shape);
-        }
-    }
-    
-    public void ClearSelection()
-    {
-        foreach (var shape in Shapes)
-        {
-            shape.IsSelected = false;
-        }
-    }
-
-    public void SetBurningMode(bool isBurning)
-    {
-        foreach (var shape in Shapes)
-        {
-            shape.IsBurning = isBurning;
-        }
-    }
-
-    public void Dispose()
-    {
-        BackgroundImage?.Dispose();
-        BackgroundImage = null;
-        GC.SuppressFinalize(this);
-    }
+    /// <summary>
+    /// Determina si el lienzo tiene alguna modificación sobre la imagen base (para decidir si guardar o limpiar el archivo de persistencia).
+    /// </summary>
+    [JsonIgnore]
+    public bool HasModifications => (Crop != null && Crop.Count >= 4) || (Rotation % 360 != 0) || (Shapes.Count > 0);
 }

@@ -17,6 +17,7 @@ public static class ShapeFactory
     public static readonly EllipseTool Ellipse = new();
     public static readonly HighlighterTool Highlighter = new();
     public static readonly TextWidgetTool Text = new();
+    public static readonly CropTool Crop = new();
 
     public static VectorShape? Create(Tool tool, Point startPoint, Color color, float textSize = 24f, SkiaSharp.SKTypeface? typeface = null)
     {

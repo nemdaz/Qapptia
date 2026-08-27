@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using Avalonia;
 using Avalonia.Media;
 using FluentAssertions;
 using Qapptia.Editor.Models;
 using Qapptia.Editor.Services;
+using Qapptia.Editor.Tools;
 using Xunit;
 
 namespace Qapptia.Editor.Tests;
@@ -52,32 +54,121 @@ public sealed class StateServicesTests : IDisposable
     }
 
     [Fact]
-    public void CanvasStateServiceSavesAndLoadsAnnotationsCorrectly()
+    public void CanvasStateServiceSavesAndLoadsFullCanvasState()
     {
-        var imagePath = Path.Combine(_testDir, "test_capture.png");
+        var imagePath = Path.Combine(_testDir, "test_full_canvas.png");
         File.WriteAllBytes(imagePath, new byte[] { 1, 2, 3 });
 
-        var canvasState = new CanvasState();
-        var rect = new RectangleShape
+        var canvasState = new CanvasState
         {
-            Start = new Point(10, 10),
-            End = new Point(100, 100),
-            Color = Colors.Red
+            Crop = new List<double> { 10, 20, 800, 600 },
+            Rotation = 90,
+            Shapes = new List<VectorShapeDto>
+            {
+                new VectorShapeDto
+                {
+                    Type = "arrow",
+                    Id = Guid.NewGuid().ToString(),
+                    Coords = new List<double> { 15, 15, 150, 150 },
+                    Color = "Blue"
+                }
+            }
         };
-        canvasState.AddShape(rect);
 
-        _canvasStateService.SaveAnnotations(canvasState, imagePath);
+        _canvasStateService.Save(canvasState, imagePath);
 
         var jsonPath = _canvasStateService.GetJsonPath(imagePath);
         jsonPath.Should().NotBeNull();
         File.Exists(jsonPath).Should().BeTrue();
 
-        var loadedCanvasState = new CanvasState();
-        _canvasStateService.LoadAnnotations(loadedCanvasState, imagePath);
+        var loadedState = _canvasStateService.Load(imagePath);
 
-        loadedCanvasState.Shapes.Should().HaveCount(1);
-        var loadedShape = loadedCanvasState.Shapes[0].Should().BeOfType<RectangleShape>().Subject;
-        loadedShape.Start.Should().Be(new Point(10, 10));
-        loadedShape.End.Should().Be(new Point(100, 100));
+        loadedState.Crop.Should().Equal(10, 20, 800, 600);
+        loadedState.Rotation.Should().Be(90);
+        loadedState.Shapes.Should().HaveCount(1);
+        loadedState.Shapes[0].Type.Should().Be("arrow");
+    }
+
+    [Fact]
+    public void CanvasStateServiceConvertsShapesBidirectionally()
+    {
+        var shapes = new List<VectorShape>
+        {
+            new RectangleShape { Start = new Point(10, 10), End = new Point(50, 50), Color = Colors.Red },
+            new LineShape { Start = new Point(0, 0), End = new Point(100, 100), Color = Colors.Green },
+            new TextShape { Start = new Point(20, 20), End = new Point(200, 50), Text = "Hola", TextSize = 20 }
+        };
+
+        var dtos = _canvasStateService.CreateDtos(shapes);
+        dtos.Should().HaveCount(3);
+        dtos[0].Type.Should().Be("rect");
+        dtos[1].Type.Should().Be("line");
+        dtos[2].Type.Should().Be("text");
+
+        var reconstructed = _canvasStateService.CreateShapes(dtos);
+        reconstructed.Should().HaveCount(3);
+        reconstructed[0].Should().BeOfType<RectangleShape>();
+        reconstructed[1].Should().BeOfType<LineShape>();
+        var textRecon = reconstructed[2].Should().BeOfType<TextShape>().Subject;
+        textRecon.Text.Should().Be("Hola");
+        textRecon.TextSize.Should().Be(20);
+    }
+
+    [Fact]
+    public void CanvasStateServiceSupportsLegacyArrayJson()
+    {
+        var imagePath = Path.Combine(_testDir, "test_legacy.png");
+        File.WriteAllBytes(imagePath, new byte[] { 1, 2, 3 });
+
+        var jsonPath = _canvasStateService.GetJsonPath(imagePath)!;
+        Directory.CreateDirectory(Path.GetDirectoryName(jsonPath)!);
+
+        string legacyJson = @"[
+            { ""type"": ""line"", ""coords"": [10.0, 10.0, 100.0, 100.0], ""color"": ""Red"" }
+        ]";
+        File.WriteAllText(jsonPath, legacyJson);
+
+        var loaded = _canvasStateService.Load(imagePath);
+        loaded.Rotation.Should().Be(0);
+        loaded.Crop.Should().BeNull();
+        loaded.Shapes.Should().HaveCount(1);
+        loaded.Shapes[0].Type.Should().Be("line");
+    }
+
+    [Fact]
+    public void CanvasStateServiceDeletesJsonWhenClean()
+    {
+        var imagePath = Path.Combine(_testDir, "test_clean.png");
+        File.WriteAllBytes(imagePath, new byte[] { 1, 2, 3 });
+
+        var state = new CanvasState
+        {
+            Shapes = new List<VectorShapeDto>
+            {
+                new VectorShapeDto { Type = "line", Coords = new List<double> { 0, 0, 10, 10 } }
+            }
+        };
+        _canvasStateService.Save(state, imagePath);
+
+        var jsonPath = _canvasStateService.GetJsonPath(imagePath)!;
+        File.Exists(jsonPath).Should().BeTrue();
+
+        // Guardamos estado vacío
+        _canvasStateService.Save(new CanvasState(), imagePath);
+        File.Exists(jsonPath).Should().BeFalse();
+    }
+
+    [Fact]
+    public void ToolsDeclareCorrectTargetShapeTypes()
+    {
+        ShapeFactory.Line.TargetShapeType.Should().Be<LineShape>();
+        ShapeFactory.Arrow.TargetShapeType.Should().Be<ArrowShape>();
+        ShapeFactory.Rectangle.TargetShapeType.Should().Be<RectangleShape>();
+        ShapeFactory.Ellipse.TargetShapeType.Should().Be<EllipseShape>();
+        ShapeFactory.Highlighter.TargetShapeType.Should().Be<HighlighterShape>();
+        ShapeFactory.Text.TargetShapeType.Should().Be<TextShape>();
+
+        ShapeFactory.Crop.TargetShapeType.Should().BeNull();
+        ShapeFactory.Crop.AltersCanvasGeometry.Should().BeTrue();
     }
 }

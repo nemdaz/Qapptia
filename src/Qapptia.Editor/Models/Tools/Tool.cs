@@ -1,3 +1,4 @@
+using System;
 using Avalonia.Input;
 using Qapptia.Editor.Models;
 
@@ -15,6 +16,16 @@ public abstract class Tool
     public abstract ToolType Type { get; }
 
     public virtual StandardCursorType DefaultCursor => StandardCursorType.Arrow;
+
+    /// <summary>
+    /// Tipo de figura vectorial que produce esta herramienta, o null si es una herramienta de transformación o comando.
+    /// </summary>
+    public virtual Type? TargetShapeType => null;
+
+    /// <summary>
+    /// Indica si la herramienta produce cambios visuales o de geometría persistibles sobre el lienzo.
+    /// </summary>
+    public virtual bool AltersCanvasGeometry => Type == ToolType.Vector || Type == ToolType.Interactive || Type == ToolType.Widget;
 
     public string ToolTipText => string.IsNullOrEmpty(Shortcut)
         ? DisplayName

@@ -5,6 +5,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -35,7 +36,8 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         ShapeFactory.Ellipse,
         ShapeFactory.Rectangle,
         ShapeFactory.Highlighter,
-        ShapeFactory.Text
+        ShapeFactory.Text,
+        ShapeFactory.Crop
     };
 
     public EditorViewModel(
@@ -107,6 +109,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     public bool IsRectangleToolActive => ActiveTool is RectangleTool;
     public bool IsHighlighterToolActive => ActiveTool is HighlighterTool;
     public bool IsTextToolActive => ActiveTool is TextWidgetTool;
+    public bool IsCropToolActive => ActiveTool is CropTool;
 
     partial void OnActiveToolChanged(Tool value)
     {
@@ -118,6 +121,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(IsRectangleToolActive));
         OnPropertyChanged(nameof(IsHighlighterToolActive));
         OnPropertyChanged(nameof(IsTextToolActive));
+        OnPropertyChanged(nameof(IsCropToolActive));
 
         // Persistir herramienta activa y restaurar su color favorito
         var state = _stateService.Load();
@@ -230,7 +234,10 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         }
     }
 
-    public CanvasState CanvasState { get; } = new();
+    [ObservableProperty]
+    private Avalonia.Media.Imaging.Bitmap? _backgroundImage;
+
+    public ObservableCollection<VectorShape> Shapes { get; } = new();
 
     public ObservableCollection<FolderItem> SidebarFolders { get; } = new();
 
@@ -253,6 +260,8 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     public event EventHandler? RequestRedraw;
 
     private string? _currentImagePath;
+    private List<double>? _currentCrop;
+    private int _currentRotation;
 
     public string? CurrentImagePath => (SelectedNode as FileItem)?.FullPath ?? _currentImagePath;
 
@@ -262,7 +271,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     {
         if (!string.IsNullOrEmpty(_currentImagePath))
         {
-            _canvasStateService.SaveAnnotations(CanvasState, _currentImagePath);
+            SaveCurrentAnnotations();
             _currentImagePath = null;
         }
 
@@ -272,10 +281,39 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             {
                 byte[] fileBytes = System.IO.File.ReadAllBytes(file.FullPath);
                 var ms = new System.IO.MemoryStream(fileBytes);
-                var bitmap = new Avalonia.Media.Imaging.Bitmap(ms);
-                CanvasState.SetBackground(bitmap);
+                var baseBitmap = new Avalonia.Media.Imaging.Bitmap(ms);
 
-                _canvasStateService.LoadAnnotations(CanvasState, file.FullPath);
+                var canvasState = _canvasStateService.Load(file.FullPath);
+                _currentRotation = canvasState.Rotation;
+                _currentCrop = canvasState.Crop;
+
+                Avalonia.Media.Imaging.Bitmap processedBitmap = baseBitmap;
+
+                // 1. Restaurar rotación persistida si existe
+                if (_currentRotation % 360 != 0)
+                {
+                    processedBitmap = RotateBitmap(baseBitmap, _currentRotation);
+                    baseBitmap.Dispose();
+                }
+
+                // 2. Restaurar recorte persistido si existe
+                if (_currentCrop != null && _currentCrop.Count >= 4)
+                {
+                    var prev = processedBitmap;
+                    processedBitmap = CropBitmap(prev, new Rect(_currentCrop[0], _currentCrop[1], _currentCrop[2], _currentCrop[3]));
+                    prev.Dispose();
+                }
+
+                BackgroundImage?.Dispose();
+                BackgroundImage = processedBitmap;
+
+                Shapes.Clear();
+                var loadedShapes = _canvasStateService.CreateShapes(canvasState.Shapes);
+                foreach (var shape in loadedShapes)
+                {
+                    Shapes.Add(shape);
+                }
+
                 _currentImagePath = file.FullPath;
 
                 System.Threading.Tasks.Task.Run(async () =>
@@ -283,8 +321,8 @@ public partial class EditorViewModel : ObservableObject, IDisposable
                     CurrentImageId = await Qapptia.Core.Services.ImageMetadataService.EnsureImageIdAsync(file.FullPath);
                 });
 
-                ImageWidth = bitmap.Size.Width;
-                ImageHeight = bitmap.Size.Height;
+                ImageWidth = processedBitmap.Size.Width;
+                ImageHeight = processedBitmap.Size.Height;
                 HasImage = true;
 
                 var state = _stateService.Load();
@@ -295,23 +333,161 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             }
             catch
             {
-                CanvasState.Shapes.Clear();
+                Shapes.Clear();
+                _currentCrop = null;
+                _currentRotation = 0;
             }
         }
         else
         {
-            CanvasState.Shapes.Clear();
-            CanvasState.SetBackground(null!);
+            Shapes.Clear();
+            _currentCrop = null;
+            _currentRotation = 0;
+            BackgroundImage?.Dispose();
+            BackgroundImage = null;
             HasImage = false;
         }
     }
 
     public void SaveCurrentAnnotations()
     {
-        if (!string.IsNullOrEmpty(_currentImagePath))
+        if (string.IsNullOrEmpty(_currentImagePath)) return;
+
+        var state = new CanvasState
         {
-            _canvasStateService.SaveAnnotations(CanvasState, _currentImagePath);
+            Crop = _currentCrop,
+            Rotation = _currentRotation,
+            Shapes = _canvasStateService.CreateDtos(Shapes)
+        };
+
+        _canvasStateService.Save(state, _currentImagePath);
+    }
+
+    public void ApplyCrop(Rect cropRect)
+    {
+        if (cropRect.Width < 5 || cropRect.Height < 5) return;
+
+        int cropW = (int)Math.Round(cropRect.Width);
+        int cropH = (int)Math.Round(cropRect.Height);
+
+        if (BackgroundImage != null && cropW > 0 && cropH > 0)
+        {
+            var rtb = new Avalonia.Media.Imaging.RenderTargetBitmap(new PixelSize(cropW, cropH), new Vector(96, 96));
+            using (var ctx = rtb.CreateDrawingContext())
+            {
+                var sourceRect = new Rect(cropRect.X, cropRect.Y, cropW, cropH);
+                var destRect = new Rect(0, 0, cropW, cropH);
+                ctx.DrawImage(BackgroundImage, sourceRect, destRect);
+            }
+            BackgroundImage?.Dispose();
+            BackgroundImage = rtb;
+            ImageWidth = cropW;
+            ImageHeight = cropH;
         }
+
+        // Acumular el área de corte relativo
+        if (_currentCrop == null || _currentCrop.Count < 4)
+        {
+            _currentCrop = new List<double> { cropRect.X, cropRect.Y, cropW, cropH };
+        }
+        else
+        {
+            _currentCrop = new List<double> { _currentCrop[0] + cropRect.X, _currentCrop[1] + cropRect.Y, cropW, cropH };
+        }
+
+        // Desplazar figuras vectoriales existentes para preservar su posición visual relativa sobre la imagen
+        double deltaX = -cropRect.X;
+        double deltaY = -cropRect.Y;
+        var newBounds = new Rect(0, 0, cropW, cropH);
+
+        for (int i = Shapes.Count - 1; i >= 0; i--)
+        {
+            var shape = Shapes[i];
+            shape.Move(deltaX, deltaY);
+
+            if (!shape.BoundingBox.Intersects(newBounds))
+            {
+                Shapes.RemoveAt(i);
+            }
+        }
+
+        SaveCurrentAnnotations();
+        TriggerRedraw();
+    }
+
+    public void RotateImage()
+    {
+        if (BackgroundImage == null) return;
+
+        var oldBmp = BackgroundImage;
+        int w = oldBmp.PixelSize.Width;
+        int h = oldBmp.PixelSize.Height;
+
+        var rtb = new Avalonia.Media.Imaging.RenderTargetBitmap(new PixelSize(h, w), new Vector(96, 96));
+        using (var ctx = rtb.CreateDrawingContext())
+        {
+            var transform = Matrix.CreateTranslation(0, 0) * Matrix.CreateRotation(Math.PI / 2) * Matrix.CreateTranslation(h, 0);
+            using (ctx.PushTransform(transform))
+            {
+                ctx.DrawImage(oldBmp, new Rect(0, 0, w, h));
+            }
+        }
+
+        BackgroundImage?.Dispose();
+        BackgroundImage = rtb;
+        ImageWidth = h;
+        ImageHeight = w;
+
+        _currentRotation = (_currentRotation + 90) % 360;
+
+        foreach (var shape in Shapes)
+        {
+            var start = shape.Start;
+            var end = shape.End;
+            shape.Start = new Point(h - start.Y, start.X);
+            shape.End = new Point(h - end.Y, end.X);
+        }
+
+        SaveCurrentAnnotations();
+        ShowToast("Imagen rotada 90°", NotificationType.Info);
+        TriggerRedraw();
+    }
+
+    private static Avalonia.Media.Imaging.Bitmap RotateBitmap(Avalonia.Media.Imaging.Bitmap src, int degrees)
+    {
+        int times = (degrees % 360) / 90;
+        var current = src;
+        for (int i = 0; i < times; i++)
+        {
+            int w = current.PixelSize.Width;
+            int h = current.PixelSize.Height;
+            var rtb = new Avalonia.Media.Imaging.RenderTargetBitmap(new PixelSize(h, w), new Vector(96, 96));
+            using (var ctx = rtb.CreateDrawingContext())
+            {
+                var transform = Matrix.CreateTranslation(0, 0) * Matrix.CreateRotation(Math.PI / 2) * Matrix.CreateTranslation(h, 0);
+                using (ctx.PushTransform(transform))
+                {
+                    ctx.DrawImage(current, new Rect(0, 0, w, h));
+                }
+            }
+            if (current != src) current.Dispose();
+            current = rtb;
+        }
+        return current;
+    }
+
+    private static Avalonia.Media.Imaging.Bitmap CropBitmap(Avalonia.Media.Imaging.Bitmap src, Rect cropRect)
+    {
+        int cropW = Math.Max(1, (int)Math.Round(cropRect.Width));
+        int cropH = Math.Max(1, (int)Math.Round(cropRect.Height));
+        var rtb = new Avalonia.Media.Imaging.RenderTargetBitmap(new PixelSize(cropW, cropH), new Vector(96, 96));
+        using (var ctx = rtb.CreateDrawingContext())
+        {
+            var sourceRect = new Rect(cropRect.X, cropRect.Y, cropW, cropH);
+            var destRect = new Rect(0, 0, cropW, cropH);
+            ctx.DrawImage(src, sourceRect, destRect);
+        }
+        return rtb;
     }
 
     public void TriggerRedraw()
@@ -348,7 +524,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
 
             if (ActiveTextInputShape.IsEmpty && ActiveTextInputShape is VectorShape vectorShape)
             {
-                CanvasState.RemoveShape(vectorShape);
+                Shapes.Remove(vectorShape);
             }
 
             IsEditingText = false;
@@ -362,14 +538,30 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             }
 
             ActiveTextInputShape = null;
-            CanvasState.ClearSelection();
+            ClearSelection();
             SaveCurrentAnnotations();
             RequestRedraw?.Invoke(this, EventArgs.Empty);
         }
         else
         {
-            CanvasState.ClearSelection();
+            ClearSelection();
             RequestRedraw?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    public void ClearSelection()
+    {
+        foreach (var shape in Shapes)
+        {
+            shape.IsSelected = false;
+        }
+    }
+
+    public void SetBurningMode(bool isBurning)
+    {
+        foreach (var shape in Shapes)
+        {
+            shape.IsBurning = isBurning;
         }
     }
 
@@ -407,7 +599,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         _stateService.Save(state);
 
         bool needsRedraw = false;
-        foreach (var shape in CanvasState.Shapes)
+        foreach (var shape in Shapes)
         {
             if (shape.IsSelected)
             {
@@ -506,9 +698,11 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     {
         if (string.IsNullOrEmpty(_currentImagePath)) return;
 
-        // Limpiamos los vectores actuales (ya que se quemaron en la imagen original)
-        CanvasState.Shapes.Clear();
-        _canvasStateService.SaveAnnotations(CanvasState, _currentImagePath);
+        // Limpiamos los vectores actuales y reseteamos el estado acumulado
+        Shapes.Clear();
+        _currentCrop = null;
+        _currentRotation = 0;
+        _canvasStateService.Save(new CanvasState(), _currentImagePath);
 
         // Forzamos la recarga de la imagen para que Avalonia la lea de nuevo
         string path = _currentImagePath;
@@ -526,9 +720,13 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     {
         if (IsEditingText) return;
 
-        if (CanvasState.Shapes.Any(s => s.IsSelected))
+        var selected = Shapes.Where(s => s.IsSelected).ToList();
+        if (selected.Count > 0)
         {
-            CanvasState.RemoveSelected();
+            foreach (var shape in selected)
+            {
+                Shapes.Remove(shape);
+            }
             SaveCurrentAnnotations();
             RequestRedraw?.Invoke(this, EventArgs.Empty);
         }
@@ -666,6 +864,8 @@ public partial class EditorViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
+        _backgroundImage?.Dispose();
+        _backgroundImage = null;
         _navigationService.Dispose();
         _toastCts?.Dispose();
         _toastCts = null;

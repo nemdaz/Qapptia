@@ -1,7 +1,6 @@
 using System;
 using Avalonia;
 using Avalonia.Input;
-using Avalonia.Media;
 using Qapptia.Editor.Models;
 
 namespace Qapptia.Editor.Tools;
@@ -9,22 +8,12 @@ namespace Qapptia.Editor.Tools;
 /// <summary>
 /// Herramienta vectorial para trazar elipses y círculos perfectos (con tecla Shift).
 /// </summary>
-public sealed class EllipseTool : VectorTool
+public sealed class EllipseTool : VectorTool<EllipseShape>
 {
     public override string Id => "Ellipse";
     public override string DisplayName => "Elipse";
     public override string IconData => IconCatalog.Ellipse;
     public override string? Shortcut => "E";
-
-    public override VectorShape CreateShape(Point startPoint, Color color)
-    {
-        return new EllipseShape
-        {
-            Start = startPoint,
-            End = startPoint,
-            Color = color
-        };
-    }
 
     public override void UpdateDrawing(VectorShape shape, Point currentPoint, KeyModifiers modifiers)
     {

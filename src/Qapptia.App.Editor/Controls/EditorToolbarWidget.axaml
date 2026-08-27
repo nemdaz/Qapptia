@@ -89,6 +89,10 @@
                     <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" IsChecked="{Binding IsTextToolActive, Mode=OneWay}" Command="{Binding SelectToolCommand}" CommandParameter="Text" GroupName="Tools" Background="Transparent" ToolTip.Tip="Texto" Padding="4">
                         <PathIcon Data="M5 4v3h5.5v12h3V7H19V4H5z" Width="16" Height="16"/>
                     </RadioButton>
+                    <!-- Recortar -->
+                    <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" IsChecked="{Binding IsCropToolActive, Mode=OneWay}" Command="{Binding SelectToolCommand}" CommandParameter="Crop" GroupName="Tools" Background="Transparent" ToolTip.Tip="Recortar" Padding="4">
+                        <PathIcon Data="M17 15h2V7c0-1.1-.9-2-2-2H9v2h8v8zM7 17V1H5v4H1v2h4v10c0 1.1.9 2 2 2h10v4h2v-4h4v-2H7z" Width="16" Height="16"/>
+                    </RadioButton>
                 </StackPanel>
             </Border>
             

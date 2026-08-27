@@ -81,6 +81,8 @@ public class EditorCanvas : Control
         {
             _isSelectingText = false;
         }
+        _cropPreviewRect = null;
+        _cropActiveHandle = HandleType.None;
         UpdateCursor(_lastMousePos);
         InvalidateVisual();
     }
@@ -99,22 +101,37 @@ public class EditorCanvas : Control
     private HandleType _activeHandle = HandleType.None;
     private VectorShape? _currentDrawingShape;
     private VectorShape? _selectedShape;
+    private Rect? _cropPreviewRect;
+    private HandleType _cropActiveHandle = HandleType.None;
+
+    private Rect GetCropRect() => _cropPreviewRect ?? new Rect(0, 0, ViewModel?.ImageWidth ?? 0, ViewModel?.ImageHeight ?? 0);
 
     public override void Render(DrawingContext context)
     {
         base.Render(context);
 
-        if (ViewModel?.CanvasState == null) return;
+        if (ViewModel == null) return;
 
         // Dibujar fondo si existe
-        if (ViewModel.CanvasState.BackgroundImage != null)
+        if (ViewModel.BackgroundImage != null)
         {
-            var rect = new Rect(0, 0, ViewModel.CanvasState.BackgroundImage.Size.Width, ViewModel.CanvasState.BackgroundImage.Size.Height);
-            context.DrawImage(ViewModel.CanvasState.BackgroundImage, rect);
+            var rect = new Rect(0, 0, ViewModel.BackgroundImage.Size.Width, ViewModel.BackgroundImage.Size.Height);
+            context.DrawImage(ViewModel.BackgroundImage, rect);
         }
 
-        // Delegar el dibujado de vectores a SkiaSharp (Monomotor puro)
-        context.Custom(new SkiaCanvasDrawOperation(new Rect(Bounds.Size), ViewModel.CanvasState.Shapes, _currentDrawingShape));
+        if (ViewModel.IsCropToolActive && (_cropPreviewRect == null || _cropPreviewRect.Value.Width <= 0))
+        {
+            _cropPreviewRect = new Rect(0, 0, ViewModel.ImageWidth, ViewModel.ImageHeight);
+        }
+
+        // Delegar el dibujado de vectores y overlay de recorte a SkiaSharp (Monomotor puro)
+        context.Custom(new SkiaCanvasDrawOperation(
+            new Rect(Bounds.Size), 
+            ViewModel.Shapes, 
+            _currentDrawingShape,
+            _cropPreviewRect,
+            ViewModel.IsCropToolActive,
+            new Rect(0, 0, ViewModel.ImageWidth, ViewModel.ImageHeight)));
     }
 
     private sealed class SkiaCanvasDrawOperation : Avalonia.Rendering.SceneGraph.ICustomDrawOperation
@@ -122,12 +139,24 @@ public class EditorCanvas : Control
         private readonly Rect _bounds;
         private readonly System.Collections.Generic.IEnumerable<VectorShape> _shapes;
         private readonly VectorShape? _currentShape;
+        private readonly Rect? _cropRect;
+        private readonly bool _isCropMode;
+        private readonly Rect _imageBounds;
 
-        public SkiaCanvasDrawOperation(Rect bounds, System.Collections.Generic.IEnumerable<VectorShape> shapes, VectorShape? currentShape)
+        public SkiaCanvasDrawOperation(
+            Rect bounds, 
+            System.Collections.Generic.IEnumerable<VectorShape> shapes, 
+            VectorShape? currentShape,
+            Rect? cropRect = null,
+            bool isCropMode = false,
+            Rect imageBounds = default)
         {
             _bounds = bounds;
             _shapes = shapes;
             _currentShape = currentShape;
+            _cropRect = cropRect;
+            _isCropMode = isCropMode;
+            _imageBounds = imageBounds;
         }
 
         public Rect Bounds => _bounds;
@@ -154,6 +183,12 @@ public class EditorCanvas : Control
 
             // Renderizar la figura que se está dibujando actualmente en vivo
             _currentShape?.RenderSkia(canvas);
+
+            // Renderizar overlay de recorte interactivo
+            if (_isCropMode && _cropRect != null && _imageBounds.Width > 0 && _imageBounds.Height > 0)
+            {
+                HitTestEngine.DrawCropOverlay(canvas, _cropRect.Value, _imageBounds);
+            }
         }
     }
 
@@ -169,6 +204,21 @@ public class EditorCanvas : Control
         _pointerPressedPoint = point;
         _hasDragged = false;
         Focus();
+
+        // 0. Modo Recorte Activo:
+        if (ViewModel.IsCropToolActive)
+        {
+            var cropRect = GetCropRect();
+            var handle = HitTestEngine.HitTestCrop(point, cropRect);
+            if (handle != HandleType.None)
+            {
+                _cropActiveHandle = handle;
+                _interaction = CanvasInteraction.ManipulatingShape;
+                InvalidateVisual();
+                e.Handled = true;
+                return;
+            }
+        }
 
         // 1. Si ya estamos en modo de ingreso de texto activo:
         if (ViewModel.IsEditingText && ViewModel.ActiveTextInputShape is VectorShape activeShape && activeShape is ITextInputShape activeInput)
@@ -228,9 +278,9 @@ public class EditorCanvas : Control
         HandleType hitHandle = HandleType.None;
         VectorShape? hitShape = null;
 
-        for (int i = ViewModel.CanvasState.Shapes.Count - 1; i >= 0; i--)
+        for (int i = ViewModel.Shapes.Count - 1; i >= 0; i--)
         {
-            var shape = ViewModel.CanvasState.Shapes[i];
+            var shape = ViewModel.Shapes[i];
             var handle = shape.HitTest(point);
             if (handle != HandleType.None)
             {
@@ -240,7 +290,7 @@ public class EditorCanvas : Control
             }
         }
 
-        ViewModel.CanvasState.ClearSelection();
+        ViewModel.ClearSelection();
         _selectedShape = hitShape;
         _activeHandle = hitHandle;
         
@@ -290,7 +340,7 @@ public class EditorCanvas : Control
                 if (newShape != null)
                 {
                     _interaction = CanvasInteraction.None;
-                    ViewModel.CanvasState.AddShape(newShape);
+                    ViewModel.Shapes.Add(newShape);
                     newShape.IsSelected = true;
                     _selectedShape = newShape;
                     ViewModel.StartTextInput(newShape);
@@ -333,6 +383,66 @@ public class EditorCanvas : Control
             }
         }
 
+        if (ViewModel.IsCropToolActive && _cropActiveHandle != HandleType.None && e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        {
+            double dx = point.X - _lastMousePos.X;
+            double dy = point.Y - _lastMousePos.Y;
+            var cur = GetCropRect();
+            double imgW = ViewModel.ImageWidth;
+            double imgH = ViewModel.ImageHeight;
+
+            switch (_cropActiveHandle)
+            {
+                case HandleType.LeftCenter:
+                    double newLeft = Math.Clamp(cur.Left + dx, 0, cur.Right - 10);
+                    _cropPreviewRect = new Rect(newLeft, cur.Top, cur.Right - newLeft, cur.Height);
+                    break;
+                case HandleType.RightCenter:
+                    double newRight = Math.Clamp(cur.Right + dx, cur.Left + 10, imgW);
+                    _cropPreviewRect = new Rect(cur.Left, cur.Top, newRight - cur.Left, cur.Height);
+                    break;
+                case HandleType.TopCenter:
+                    double newTop = Math.Clamp(cur.Top + dy, 0, cur.Bottom - 10);
+                    _cropPreviewRect = new Rect(cur.Left, newTop, cur.Width, cur.Bottom - newTop);
+                    break;
+                case HandleType.BottomCenter:
+                    double newBottom = Math.Clamp(cur.Bottom + dy, cur.Top + 10, imgH);
+                    _cropPreviewRect = new Rect(cur.Left, cur.Top, cur.Width, newBottom - cur.Top);
+                    break;
+                case HandleType.TopLeft:
+                    double tlLeft = Math.Clamp(cur.Left + dx, 0, cur.Right - 10);
+                    double tlTop = Math.Clamp(cur.Top + dy, 0, cur.Bottom - 10);
+                    _cropPreviewRect = new Rect(tlLeft, tlTop, cur.Right - tlLeft, cur.Bottom - tlTop);
+                    break;
+                case HandleType.TopRight:
+                    double trRight = Math.Clamp(cur.Right + dx, cur.Left + 10, imgW);
+                    double trTop = Math.Clamp(cur.Top + dy, 0, cur.Bottom - 10);
+                    _cropPreviewRect = new Rect(cur.Left, trTop, trRight - cur.Left, cur.Bottom - trTop);
+                    break;
+                case HandleType.BottomLeft:
+                    double blLeft = Math.Clamp(cur.Left + dx, 0, cur.Right - 10);
+                    double blBottom = Math.Clamp(cur.Bottom + dy, cur.Top + 10, imgH);
+                    _cropPreviewRect = new Rect(blLeft, cur.Top, cur.Right - blLeft, blBottom - cur.Top);
+                    break;
+                case HandleType.BottomRight:
+                    double brRight = Math.Clamp(cur.Right + dx, cur.Left + 10, imgW);
+                    double brBottom = Math.Clamp(cur.Bottom + dy, cur.Top + 10, imgH);
+                    _cropPreviewRect = new Rect(cur.Left, cur.Top, brRight - cur.Left, brBottom - cur.Top);
+                    break;
+                case HandleType.Body:
+                    double newX = Math.Clamp(cur.X + dx, 0, imgW - cur.Width);
+                    double newY = Math.Clamp(cur.Y + dy, 0, imgH - cur.Height);
+                    _cropPreviewRect = new Rect(newX, newY, cur.Width, cur.Height);
+                    break;
+            }
+
+            _lastMousePos = point;
+            _hasDragged = true;
+            InvalidateVisual();
+            e.Handled = true;
+            return;
+        }
+
         if (_interaction == CanvasInteraction.DrawingShape && _currentDrawingShape != null)
         {
             if (ViewModel.ActiveTool is VectorTool vectorTool)
@@ -371,6 +481,27 @@ public class EditorCanvas : Control
         base.OnPointerReleased(e);
         bool shouldSave = false;
 
+        if (ViewModel != null && ViewModel.IsCropToolActive)
+        {
+            if (_cropActiveHandle != HandleType.None && _hasDragged && _cropPreviewRect != null)
+            {
+                var finalCrop = _cropPreviewRect.Value;
+                if (finalCrop.Width >= 10 && finalCrop.Height >= 10 && 
+                    (finalCrop.Width < ViewModel.ImageWidth || finalCrop.Height < ViewModel.ImageHeight || finalCrop.X > 0 || finalCrop.Y > 0))
+                {
+                    ViewModel.ApplyCrop(finalCrop);
+                    _cropPreviewRect = new Rect(0, 0, ViewModel.ImageWidth, ViewModel.ImageHeight);
+                }
+            }
+
+            _cropActiveHandle = HandleType.None;
+            _interaction = CanvasInteraction.None;
+            _hasDragged = false;
+            InvalidateVisual();
+            e.Handled = true;
+            return;
+        }
+
         switch (_interaction)
         {
             case CanvasInteraction.DrawingShape:
@@ -382,10 +513,10 @@ public class EditorCanvas : Control
 
                     if (shouldCommit)
                     {
-                        ViewModel?.CanvasState.AddShape(_currentDrawingShape);
+                        ViewModel?.Shapes.Add(_currentDrawingShape);
                         
                         // Seleccionamos la figura automáticamente para que pueda cambiar de color/editarse de inmediato
-                        ViewModel?.CanvasState.ClearSelection();
+                        ViewModel?.ClearSelection();
                         _currentDrawingShape.IsSelected = true;
                         _selectedShape = _currentDrawingShape;
                         
@@ -508,7 +639,7 @@ public class EditorCanvas : Control
         }
         else if (e.Key == Key.Escape && ViewModel != null)
         {
-            ViewModel.CanvasState.ClearSelection();
+            ViewModel.ClearSelection();
             _selectedShape = null;
             InvalidateVisual();
             e.Handled = true;
@@ -524,7 +655,16 @@ public class EditorCanvas : Control
 
     private void UpdateCursor(Point point)
     {
-        if (ViewModel?.CanvasState == null) return;
+        if (ViewModel == null) return;
+
+        // 0. Modo Recorte
+        if (ViewModel.IsCropToolActive)
+        {
+            var cropRect = GetCropRect();
+            var handle = HitTestEngine.HitTestCrop(point, cropRect);
+            Cursor = new Cursor(HitTestEngine.GetCursorForCropHandle(handle));
+            return;
+        }
 
         // 1. Si hay una figura seleccionada (o en edición), delegar en su propio método polimórfico
         if (_selectedShape != null)
@@ -538,9 +678,9 @@ public class EditorCanvas : Control
         }
 
         // 2. Hover sobre las demás figuras del lienzo
-        for (int i = ViewModel.CanvasState.Shapes.Count - 1; i >= 0; i--)
+        for (int i = ViewModel.Shapes.Count - 1; i >= 0; i--)
         {
-            var shape = ViewModel.CanvasState.Shapes[i];
+            var shape = ViewModel.Shapes[i];
             var cursorType = shape.GetCursorType(point);
             if (cursorType != null)
             {

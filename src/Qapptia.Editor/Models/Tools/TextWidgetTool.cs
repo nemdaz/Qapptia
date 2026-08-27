@@ -19,6 +19,7 @@ public class TextWidgetTool : Tool
     public override string? Shortcut => "T";
     public override ToolType Type => ToolType.Widget;
     public override StandardCursorType DefaultCursor => StandardCursorType.Ibeam;
+    public override Type TargetShapeType => typeof(TextShape);
 
     /// <summary>
     /// Crea y alinea una nueva figura de texto según las coordenadas de clic y métricas de fuente.

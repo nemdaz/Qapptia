@@ -1,3 +1,4 @@
+using System;
 using Avalonia;
 using Avalonia.Input;
 using Avalonia.Media;
@@ -34,5 +35,24 @@ public abstract class VectorTool : Tool
         double dx = shape.End.X - shape.Start.X;
         double dy = shape.End.Y - shape.Start.Y;
         return (dx * dx + dy * dy) > 9; // Umbral mínimo de 3 píxeles
+    }
+}
+
+/// <summary>
+/// Clase base genérica y fuertemente tipada que asocia directamente la herramienta con su figura vectorial correspondiente.
+/// </summary>
+/// <typeparam name="TShape">Tipo concreto de figura derivado de VectorShape con constructor público sin parámetros.</typeparam>
+public abstract class VectorTool<TShape> : VectorTool where TShape : VectorShape, new()
+{
+    public override Type TargetShapeType => typeof(TShape);
+
+    public override VectorShape CreateShape(Point startPoint, Color color)
+    {
+        return new TShape
+        {
+            Start = startPoint,
+            End = startPoint,
+            Color = color
+        };
     }
 }

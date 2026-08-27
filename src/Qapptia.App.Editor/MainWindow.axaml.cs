@@ -169,11 +169,11 @@ public partial class MainWindow : Window
             var canvas = this.FindControl<Qapptia.App.Editor.Controls.EditorCanvas>("MainCanvas");
             if (canvas != null && vm.ImageWidth > 0 && vm.ImageHeight > 0)
             {
-                vm.CanvasState.SetBurningMode(true);
+                vm.SetBurningMode(true);
                 canvas.InvalidateVisual();
                 var rtb = new Avalonia.Media.Imaging.RenderTargetBitmap(new PixelSize((int)vm.ImageWidth, (int)vm.ImageHeight));
                 rtb.Render(canvas);
-                vm.CanvasState.SetBurningMode(false);
+                vm.SetBurningMode(false);
                 canvas.InvalidateVisual();
                 
                 using var ms = new System.IO.MemoryStream();
@@ -198,37 +198,9 @@ public partial class MainWindow : Window
 
     private void Vm_RotateRequested(object? sender, EventArgs e)
     {
-        if (DataContext is EditorViewModel vm && vm.CanvasState.BackgroundImage != null)
+        if (DataContext is EditorViewModel vm)
         {
-            var oldBmp = vm.CanvasState.BackgroundImage;
-            int w = oldBmp.PixelSize.Width;
-            int h = oldBmp.PixelSize.Height;
-            
-            var rtb = new Avalonia.Media.Imaging.RenderTargetBitmap(new PixelSize(h, w), new Vector(96, 96));
-            
-            using (var ctx = rtb.CreateDrawingContext())
-            {
-                var transform = Matrix.CreateTranslation(0, 0) * Matrix.CreateRotation(Math.PI / 2) * Matrix.CreateTranslation(h, 0);
-                
-                using (ctx.PushTransform(transform))
-                {
-                    ctx.DrawImage(oldBmp, new Rect(0, 0, w, h));
-                }
-            }
-            
-            vm.CanvasState.SetBackground(rtb);
-            vm.ImageWidth = h;
-            vm.ImageHeight = w;
-            
-            foreach (var shape in vm.CanvasState.Shapes)
-            {
-                var start = shape.Start;
-                var end = shape.End;
-                shape.Start = new Point(h - start.Y, start.X);
-                shape.End = new Point(h - end.Y, end.X);
-            }
-            
-            vm.ShowToast("Imagen rotada 90°", Qapptia.Editor.Models.NotificationType.Info);
+            vm.RotateImage();
         }
     }
 
@@ -249,7 +221,7 @@ public partial class MainWindow : Window
             var canvas = this.FindControl<Qapptia.App.Editor.Controls.EditorCanvas>("MainCanvas");
             if (canvas == null) return;
 
-            vm.CanvasState.SetBurningMode(true);
+            vm.SetBurningMode(true);
             canvas.InvalidateVisual();
 
             try
@@ -282,7 +254,7 @@ public partial class MainWindow : Window
             catch (Exception ex)
             {
                 vm.ShowToast($"Error al guardar la imagen: {ex.Message}", Qapptia.Editor.Models.NotificationType.Error);
-                vm.CanvasState.SetBurningMode(false);
+                vm.SetBurningMode(false);
                 canvas.InvalidateVisual();
             }
         }
