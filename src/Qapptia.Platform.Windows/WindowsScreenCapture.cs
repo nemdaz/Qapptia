@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
-using Serilog;
 using Qapptia.Core.Abstractions;
+using Serilog;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.Graphics.Gdi;
@@ -57,8 +57,7 @@ public sealed class WindowsScreenCapture : IScreenCapture
                 }
             }
 
-            if (width <= 0 || height <= 0)
-                throw new InvalidOperationException("Virtual screen con dims inválidas");
+            if (width <= 0 || height <= 0) throw new InvalidOperationException("Virtual screen con dims inválidas");
 
             var hdcScreen = PInvoke.GetDC(HWND.Null);
             try

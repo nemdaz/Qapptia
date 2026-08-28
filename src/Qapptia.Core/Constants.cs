@@ -32,7 +32,7 @@ public static class Constants
 
 #if DEBUG
     public static string DefaultConfigPath => Path.Combine(AppContext.BaseDirectory, ConfigFileName);
-    
+
     public static string DefaultLogDirectory => AppContext.BaseDirectory;
 #else
     public static string DefaultConfigPath => Path.Combine(

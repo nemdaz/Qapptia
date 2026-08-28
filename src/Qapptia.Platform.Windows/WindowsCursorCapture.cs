@@ -1,7 +1,7 @@
-using Qapptia.Core.Capture;
 using System.Runtime.InteropServices;
-using Serilog;
 using Qapptia.Core.Abstractions;
+using Qapptia.Core.Capture;
+using Serilog;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.Graphics.Gdi;
@@ -29,16 +29,13 @@ public sealed class WindowsCursorCapture : ICursorCapture
         return Task.Run<CursorImage?>(() =>
         {
             var ci = new CURSORINFO { cbSize = (uint)Marshal.SizeOf<CURSORINFO>() };
-            if (!PInvoke.GetCursorInfo(ref ci))
-                return null;
+            if (!PInvoke.GetCursorInfo(ref ci)) return null;
 
-            if ((ci.flags & CURSORINFO_FLAGS.CURSOR_SHOWING) == 0)
-                return null;
+            if ((ci.flags & CURSORINFO_FLAGS.CURSOR_SHOWING) == 0) return null;
 
             var ii = new ICONINFO();
             using var iconHandle = new DestroyIconSafeHandle(ci.hCursor.Value, ownsHandle: false);
-            if (!PInvoke.GetIconInfo(iconHandle, out ii))
-                return null;
+            if (!PInvoke.GetIconInfo(iconHandle, out ii)) return null;
 
             try
             {
@@ -126,7 +123,8 @@ public sealed class WindowsCursorCapture : ICursorCapture
             var r = bgra[i + 2];
             var a = bgra[i + 3];
 
-            if (a == 0) { bgra[i] = 0; bgra[i + 1] = 0; bgra[i + 2] = 0; continue; }
+            if (a == 0)
+            { bgra[i] = 0; bgra[i + 1] = 0; bgra[i + 2] = 0; continue; }
             if (a < 255)
             {
                 bgra[i] = (byte)Math.Min(255, b * 255 / a);

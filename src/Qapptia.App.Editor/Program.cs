@@ -1,8 +1,8 @@
+using System;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
-using System;
-using System.Threading.Tasks;
 using Qapptia.Core.Configuration;
 using Qapptia.Core.Ipc;
 using Qapptia.Core.Platform;

@@ -70,8 +70,7 @@ public static class IpcWire
         {
             var read = await stream.ReadAsync(
                 buffer.AsMemory(totalRead, count - totalRead), ct).ConfigureAwait(false);
-            if (read == 0)
-                throw new EndOfStreamException("El stream IPC se cerró antes de leer el frame completo");
+            if (read == 0) throw new EndOfStreamException("El stream IPC se cerró antes de leer el frame completo");
             totalRead += read;
         }
     }

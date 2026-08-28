@@ -1,7 +1,7 @@
-using Avalonia.Controls;
-using Avalonia.Input;
 using System.Collections.Generic;
 using System.Linq;
+using Avalonia.Controls;
+using Avalonia.Input;
 
 namespace Qapptia.App.Config.Controls;
 
@@ -21,7 +21,7 @@ public class ShortcutTextBox : TextBox
             _recordedKeys.Clear();
             Text = string.Empty;
         };
-        
+
         LostFocus += (s, e) =>
         {
             if (string.IsNullOrWhiteSpace(Text))
@@ -49,12 +49,12 @@ public class ShortcutTextBox : TextBox
         }
 
         var keyName = NormalizeKey(e.KeyModifiers, e.Key);
-        
+
         if (!string.IsNullOrEmpty(keyName) && !_recordedKeys.Contains(keyName))
         {
             if (_recordedKeys.Count >= 3) // Max 3 keys
                 return;
-                
+
             _recordedKeys.Add(keyName);
             Text = string.Join("+", _recordedKeys);
         }
@@ -67,12 +67,14 @@ public class ShortcutTextBox : TextBox
         if (key == Key.LeftShift || key == Key.RightShift) return "shift";
         if (key == Key.LeftAlt || key == Key.RightAlt) return "alt";
         if (key == Key.LWin || key == Key.RWin) return "win";
-        
+
         // Letras y números
         if (key >= Key.A && key <= Key.Z) return key.ToString().ToLowerInvariant();
-        if (key >= Key.D0 && key <= Key.D9) return (key - Key.D0).ToString(System.Globalization.CultureInfo.InvariantCulture);
-        if (key >= Key.NumPad0 && key <= Key.NumPad9) return (key - Key.NumPad0).ToString(System.Globalization.CultureInfo.InvariantCulture);
-        
+        if (key >= Key.D0 && key <= Key.D9)
+            return (key - Key.D0).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        if (key >= Key.NumPad0 && key <= Key.NumPad9)
+            return (key - Key.NumPad0).ToString(System.Globalization.CultureInfo.InvariantCulture);
+
         return string.Empty;
     }
 }

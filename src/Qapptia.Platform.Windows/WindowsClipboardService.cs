@@ -1,11 +1,11 @@
-using SkiaSharp;
 using System;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Text;
-using Serilog;
 using Qapptia.Core.Abstractions;
+using Serilog;
+using SkiaSharp;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.System.Memory;
@@ -33,7 +33,7 @@ public sealed class WindowsClipboardService : IClipboardService
         try
         {
             using var bitmap = SKBitmap.Decode(pngBytes) ?? throw new InvalidOperationException("SKBitmap.Decode failed to decode the PNG bytes.");
-            
+
             // Renderizar a BGRA8888 porque CF_DIB espera orden de píxeles BGRA
             var info = new SKImageInfo(bitmap.Width, bitmap.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
             using var bgraBitmap = new SKBitmap(info);
@@ -43,12 +43,13 @@ public sealed class WindowsClipboardService : IClipboardService
                 canvas.Clear(SKColors.White);
                 canvas.DrawBitmap(bitmap, 0, 0);
             }
-            
+
             byte[] pixelBytes = bgraBitmap.Bytes;
             int dibSize = 40 + pixelBytes.Length; // 40 bytes para BITMAPINFOHEADER
 
             nint hGlobalDib = PInvoke.GlobalAlloc(GLOBAL_ALLOC_FLAGS.GMEM_MOVEABLE | GLOBAL_ALLOC_FLAGS.GMEM_ZEROINIT, (nuint)dibSize);
-            if (hGlobalDib == 0) throw new System.ComponentModel.Win32Exception(Marshal.GetLastPInvokeError(), "GlobalAlloc failed to allocate memory for clipboard DIB.");
+            if (hGlobalDib == 0)
+                throw new System.ComponentModel.Win32Exception(Marshal.GetLastPInvokeError(), "GlobalAlloc failed to allocate memory for clipboard DIB.");
 
             nint destDib = (nint)PInvoke.GlobalLock(new global::Windows.Win32.Foundation.HGLOBAL((void*)hGlobalDib));
             if (destDib != 0)
@@ -65,10 +66,10 @@ public sealed class WindowsClipboardService : IClipboardService
                 Marshal.WriteInt32(destDib, 28, 2835); // biYPelsPerMeter
                 Marshal.WriteInt32(destDib, 32, 0); // biClrUsed
                 Marshal.WriteInt32(destDib, 36, 0); // biClrImportant
-                
+
                 // Copiar los píxeles crudos BGRA
                 Marshal.Copy(pixelBytes, 0, destDib + 40, pixelBytes.Length);
-                
+
                 PInvoke.GlobalUnlock(new global::Windows.Win32.Foundation.HGLOBAL((void*)hGlobalDib));
             }
             else
@@ -93,22 +94,23 @@ public sealed class WindowsClipboardService : IClipboardService
             if (PInvoke.OpenClipboard(default))
             {
                 PInvoke.EmptyClipboard();
-                
+
                 // Set CF_DIB (8)
                 PInvoke.SetClipboardData(8, new global::Windows.Win32.Foundation.HANDLE(hGlobalDib));
-                
+
                 // Set PNG
                 if (hGlobalPng != 0 && pngFormatId != 0)
                 {
                     PInvoke.SetClipboardData(pngFormatId, new global::Windows.Win32.Foundation.HANDLE(hGlobalPng));
                 }
-                
+
                 PInvoke.CloseClipboard();
             }
             else
             {
                 PInvoke.GlobalFree(new global::Windows.Win32.Foundation.HGLOBAL((void*)hGlobalDib));
-                if (hGlobalPng != 0) PInvoke.GlobalFree(new global::Windows.Win32.Foundation.HGLOBAL((void*)hGlobalPng));
+                if (hGlobalPng != 0)
+                    PInvoke.GlobalFree(new global::Windows.Win32.Foundation.HGLOBAL((void*)hGlobalPng));
                 throw new System.ComponentModel.Win32Exception(Marshal.GetLastPInvokeError(), "OpenClipboard failed.");
             }
         }
@@ -138,7 +140,8 @@ public sealed class WindowsClipboardService : IClipboardService
 
             int totalDropSize = dropFilesSize + stringsByteCount;
             nint hDrop = PInvoke.GlobalAlloc(GLOBAL_ALLOC_FLAGS.GMEM_MOVEABLE | GLOBAL_ALLOC_FLAGS.GMEM_ZEROINIT, (nuint)totalDropSize);
-            if (hDrop == 0) throw new System.ComponentModel.Win32Exception(Marshal.GetLastPInvokeError(), "GlobalAlloc failed for CF_HDROP.");
+            if (hDrop == 0)
+                throw new System.ComponentModel.Win32Exception(Marshal.GetLastPInvokeError(), "GlobalAlloc failed for CF_HDROP.");
 
             nint dropDest = (nint)PInvoke.GlobalLock(new global::Windows.Win32.Foundation.HGLOBAL((void*)hDrop));
             if (dropDest != 0)
@@ -167,7 +170,8 @@ public sealed class WindowsClipboardService : IClipboardService
             string combinedPaths = string.Join(Environment.NewLine, filePaths);
             var textBytes = Encoding.Unicode.GetBytes(combinedPaths + '\0');
             nint hText = PInvoke.GlobalAlloc(GLOBAL_ALLOC_FLAGS.GMEM_MOVEABLE | GLOBAL_ALLOC_FLAGS.GMEM_ZEROINIT, (nuint)textBytes.Length);
-            if (hText == 0) throw new System.ComponentModel.Win32Exception(Marshal.GetLastPInvokeError(), "GlobalAlloc failed for CF_UNICODETEXT.");
+            if (hText == 0)
+                throw new System.ComponentModel.Win32Exception(Marshal.GetLastPInvokeError(), "GlobalAlloc failed for CF_UNICODETEXT.");
 
             nint textDest = (nint)PInvoke.GlobalLock(new global::Windows.Win32.Foundation.HGLOBAL((void*)hText));
             if (textDest != 0)

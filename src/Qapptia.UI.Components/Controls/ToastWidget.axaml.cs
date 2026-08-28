@@ -83,7 +83,7 @@ public partial class ToastWidget : UserControl
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        
+
         if (change.Property == TypeProperty)
         {
             UpdateColors();

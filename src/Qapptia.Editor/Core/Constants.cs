@@ -1,6 +1,6 @@
+using System.Collections.Generic;
 using Avalonia;
 using Avalonia.Media;
-using System.Collections.Generic;
 
 namespace Qapptia.Editor.Core;
 
@@ -12,7 +12,10 @@ public static class Constants
     public const double GripSize = 6.0;
     public const double DrawMinDistance = 8.0;
     public const byte HighlighterAlpha = 102; // 40% opacity
-    
+
+    // Herramienta de recorte (Crop)
+    public const double CropMinSize = 10.0; // Tamaño mínimo del rect de recorte (ancho/alto)
+
     // Herramienta de texto (Anotaciones - Monomotor Skia)
     public const string DefaultFontFileName = "Roboto-Regular.ttf";
     public const float TextToolMinFontSize = 8f; // Tamaño mínimo de fuente
@@ -32,10 +35,10 @@ public static class Constants
     public static readonly SkiaSharp.SKColor TextToolCaretWhite = new(255, 255, 255, 255);
 
     // Shadows
-    public static SkiaSharp.SKImageFilter CreateEditingShadow() => 
+    public static SkiaSharp.SKImageFilter CreateEditingShadow() =>
         SkiaSharp.SKImageFilter.CreateDropShadow(0, 1, 2, 2, SkiaSharp.SKColors.Black.WithAlpha(120));
 
-    public static SkiaSharp.SKImageFilter CreateBurnedShadow() => 
+    public static SkiaSharp.SKImageFilter CreateBurnedShadow() =>
         SkiaSharp.SKImageFilter.CreateDropShadow(0, 1, 2, 2, SkiaSharp.SKColors.Black.WithAlpha(40));
 
     // Palette Colors matches Legacy App
@@ -72,7 +75,7 @@ public static class Constants
         {
             return parsedHex;
         }
-        
+
         return FavoriteColors[1]; // Default fallback to Red
     }
 }

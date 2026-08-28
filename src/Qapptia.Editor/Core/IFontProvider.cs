@@ -9,7 +9,7 @@ public interface IFontProvider
     /// Obtiene una fuente gestionando su carga y caché.
     /// </summary>
     SKTypeface GetTypeface(string fontName, string fallbackFontFamily = "Segoe UI", bool forceReload = false);
-    
+
     /// <summary>
     /// Obtiene los nombres de las fuentes actualmente cacheadas.
     /// </summary>

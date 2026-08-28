@@ -26,10 +26,10 @@ public partial class App : Application
             var savePath = string.IsNullOrWhiteSpace(configService.Current.SavePath) ? Qapptia.Core.Constants.DefaultSavePath : configService.Current.SavePath;
             var stateServiceLogger = Serilog.Log.Logger.ForContext<Qapptia.Editor.Services.EditorStateService>();
             var stateService = new Qapptia.Editor.Services.EditorStateService(
-                savePath, 
+                savePath,
                 Qapptia.Core.Constants.EditorStateFileName,
                 stateServiceLogger);
-            
+
 #if WINDOWS
             var clipboardService = new Qapptia.Platform.Windows.WindowsClipboardService(Serilog.Log.Logger);
 #else

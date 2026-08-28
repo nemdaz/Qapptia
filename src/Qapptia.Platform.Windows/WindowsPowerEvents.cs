@@ -1,5 +1,5 @@
-using Serilog;
 using Qapptia.Core.Abstractions;
+using Serilog;
 
 namespace Qapptia.Platform.Windows;
 

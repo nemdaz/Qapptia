@@ -65,8 +65,7 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddLinuxPlatform(this IServiceCollection services)
     {
-        if (!OperatingSystem.IsLinux())
-            throw new PlatformNotSupportedException("AddLinuxPlatform requiere Linux.");
+        if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException("AddLinuxPlatform requiere Linux.");
         services.TryAddSingleton<IScreenCapture, LinuxScreenCapture>();
         services.TryAddSingleton<ICursorCapture, LinuxCursorCapture>();
         services.TryAddSingleton<IHotkeyRegistrar, LinuxHotkeyRegistrar>();

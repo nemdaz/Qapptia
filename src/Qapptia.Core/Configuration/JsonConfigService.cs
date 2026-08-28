@@ -41,8 +41,7 @@ public sealed class JsonConfigService : IConfigService
             try
             {
                 var dir = Path.GetDirectoryName(_path);
-                if (!string.IsNullOrEmpty(dir))
-                    Directory.CreateDirectory(dir);
+                if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
 
                 var json = JsonSerializer.Serialize(_current, s_jsonOptions);
                 File.WriteAllText(_path, json);

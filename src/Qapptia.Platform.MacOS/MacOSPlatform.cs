@@ -61,8 +61,7 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddMacOSPlatform(this IServiceCollection services)
     {
-        if (!OperatingSystem.IsMacOS())
-            throw new PlatformNotSupportedException("AddMacOSPlatform requiere macOS.");
+        if (!OperatingSystem.IsMacOS()) throw new PlatformNotSupportedException("AddMacOSPlatform requiere macOS.");
         services.TryAddSingleton<IScreenCapture, MacScreenCapture>();
         services.TryAddSingleton<ICursorCapture, MacCursorCapture>();
         services.TryAddSingleton<IHotkeyRegistrar, MacHotkeyRegistrar>();

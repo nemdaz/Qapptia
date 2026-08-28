@@ -69,8 +69,7 @@ public sealed class MutexSingleInstanceGuard : ISingleInstanceGuard
         if (_mutex == null) return;
         try
         {
-            if (_mutex.SafeWaitHandle.DangerousGetHandle() != IntPtr.Zero)
-                _mutex.ReleaseMutex();
+            if (_mutex.SafeWaitHandle.DangerousGetHandle() != IntPtr.Zero) _mutex.ReleaseMutex();
         }
         catch (ApplicationException)
         {

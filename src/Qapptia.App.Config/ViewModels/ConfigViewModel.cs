@@ -74,7 +74,7 @@ public sealed partial class ConfigViewModel : ObservableObject
         var configPath = Qapptia.Core.Constants.DefaultConfigPath;
         _configService = new JsonConfigService(configPath);
         _config = _configService.Current;
-        
+
         LoadFromConfig();
     }
 
@@ -136,12 +136,12 @@ public sealed partial class ConfigViewModel : ObservableObject
         try
         {
             _configService.Save();
-            
+
             // Aplicar el nuevo tema a la propia ventana de Configuración al guardar
             ThemeManager.ApplyTheme(_config.Theme);
-            
+
             ShowFooter("Configuración guardada exitosamente.", isError: false);
-            
+
             // Difundir notificación de tema y refresco a Capture y Editor en caliente
             NotifyProcesses(new ThemeChangedNotification { Theme = _config.Theme });
             NotifyProcesses(new RefreshTrayIconRequest());
@@ -159,11 +159,7 @@ public sealed partial class ConfigViewModel : ObservableObject
         {
             _ = Task.Run(async () =>
             {
-                try
-                {
-                    await QapptiaIpcClient.SendAsync(channel, message).ConfigureAwait(false);
-                }
-                catch { }
+                try { await QapptiaIpcClient.SendAsync(channel, message).ConfigureAwait(false); } catch { }
             });
         }
     }
@@ -178,13 +174,12 @@ public sealed partial class ConfigViewModel : ObservableObject
     {
         FooterMessage = message;
         IsFooterError = isError;
-        
+
         if (!isError)
         {
             Task.Delay(5000).ContinueWith(_ =>
             {
-                if (FooterMessage == message)
-                    FooterMessage = string.Empty;
+                if (FooterMessage == message) FooterMessage = string.Empty;
             });
         }
     }

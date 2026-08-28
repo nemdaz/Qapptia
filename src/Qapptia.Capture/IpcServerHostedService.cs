@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Hosting;
-using Serilog;
 using Qapptia.Core.Ipc;
+using Serilog;
 
 namespace Qapptia.Capture;
 

@@ -35,7 +35,7 @@ public class AssetFontProvider : IFontProvider
                 // Convertir a SKData asegura compatibilidad nativa con flujos no administrados.
                 using var skData = SKData.Create(stream);
                 var typeface = SKTypeface.FromData(skData);
-                
+
                 if (typeface != null)
                 {
                     _fontCache[fontName] = typeface;
@@ -50,7 +50,7 @@ public class AssetFontProvider : IFontProvider
         }
 
         _logger.Warning("No se pudo cargar la fuente embebida '{FontName}'. Usando fallback: '{FallbackFontFamily}'", fontName, fallbackFontFamily);
-        
+
         var fallbackTypeface = SKTypeface.FromFamilyName(fallbackFontFamily) ?? SKTypeface.Default;
         _fontCache[fontName] = fallbackTypeface;
         return fallbackTypeface;

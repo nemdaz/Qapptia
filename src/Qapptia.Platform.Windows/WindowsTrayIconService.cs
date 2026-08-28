@@ -3,10 +3,10 @@ using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
-using Serilog;
 using Qapptia.Core.Abstractions;
 using Qapptia.Core.Extensions;
 using Qapptia.Platform.Windows.UI;
+using Serilog;
 
 namespace Qapptia.Platform.Windows;
 
@@ -15,11 +15,11 @@ public sealed class WindowsTrayIconService : ITrayIconService
     private readonly ILogger _logger;
     private readonly Thread _staThread;
     private readonly ManualResetEventSlim _ready = new();
-    
+
     private NotifyIcon? _notifyIcon;
     private ContextMenuStrip? _contextMenu;
     private bool _disposed;
-    
+
     // Almacenamos la definición de inicio temporalmente hasta que arranque el hilo.
     private TrayMenuDefinition? _initialMenu;
     private string? _initialIconPath;
@@ -27,7 +27,7 @@ public sealed class WindowsTrayIconService : ITrayIconService
     public WindowsTrayIconService(ILogger logger)
     {
         _logger = logger;
-        
+
         _staThread = new Thread(RunMessageLoop)
         {
             IsBackground = true,
@@ -39,10 +39,10 @@ public sealed class WindowsTrayIconService : ITrayIconService
     public void Initialize(TrayMenuDefinition menu, string iconPath)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        
+
         _initialMenu = menu;
         _initialIconPath = iconPath;
-        
+
         _staThread.Start();
         _ready.Wait(); // Esperamos a que el icono esté creado
     }
@@ -53,7 +53,7 @@ public sealed class WindowsTrayIconService : ITrayIconService
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            
+
             _contextMenu = new ContextMenuStrip
             {
                 BackColor = Color.FromArgb(249, 249, 249),
@@ -81,7 +81,7 @@ public sealed class WindowsTrayIconService : ITrayIconService
                     }
                 }
             };
-            
+
             if (_initialMenu != null)
             {
                 foreach (var item in _initialMenu.Items)
@@ -97,7 +97,7 @@ public sealed class WindowsTrayIconService : ITrayIconService
                             Tag = actionItem,
                             Checked = actionItem.IsChecked
                         };
-                        menuItem.Click += (s, e) => 
+                        menuItem.Click += (s, e) =>
                         {
                             System.Threading.Tasks.Task.Run(() => actionItem.OnClick?.Invoke());
                         };
@@ -118,7 +118,7 @@ public sealed class WindowsTrayIconService : ITrayIconService
                 // Especificar SmallIconSize evita el escalado borroso nativo de Windows en la bandeja del sistema.
                 _notifyIcon.Icon = new Icon(_initialIconPath, SystemInformation.SmallIconSize);
             }
-            
+
             _logger.Information("WindowsTrayIconService inicializado (NotifyIcon nativo).");
         }
         catch (Exception ex)
@@ -132,7 +132,7 @@ public sealed class WindowsTrayIconService : ITrayIconService
 
         // Bombea los mensajes de Windows para el NotifyIcon
         Application.Run();
-        
+
         // Limpieza final cuando sale del loop
         _notifyIcon?.Dispose();
         _contextMenu?.Dispose();
@@ -154,7 +154,7 @@ public sealed class WindowsTrayIconService : ITrayIconService
         {
             Application.ExitThread();
         }
-        
+
         _staThread.Join(1000); // Esperar brevemente a que cierre el hilo
     }
 

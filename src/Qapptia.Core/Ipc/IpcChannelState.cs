@@ -40,8 +40,7 @@ public sealed class IpcChannelState
         var path = GetStateFilePath(channel);
         try
         {
-            if (!File.Exists(path))
-                return null;
+            if (!File.Exists(path)) return null;
 
             using var stream = File.OpenRead(path);
             return JsonSerializer.Deserialize<IpcChannelState>(stream, s_jsonOpts);
@@ -67,11 +66,11 @@ public sealed class IpcChannelState
         if (expectedToken is not null)
         {
             var state = Load(channel);
-            if (state is null || state.Token != expectedToken)
-                return;
+            if (state is null || state.Token != expectedToken) return;
         }
 
-        try { if (File.Exists(path)) File.Delete(path); }
+        try
+        { if (File.Exists(path)) File.Delete(path); }
         catch (IOException) { /* best effort */ }
     }
 }

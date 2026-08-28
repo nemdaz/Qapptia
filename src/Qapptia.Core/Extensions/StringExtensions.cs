@@ -10,9 +10,8 @@ public static class StringExtensions
     /// </summary>
     public static string ToShortcutTitleCase(this string shortcut)
     {
-        if (string.IsNullOrWhiteSpace(shortcut)) 
-            return string.Empty;
-        
+        if (string.IsNullOrWhiteSpace(shortcut)) return string.Empty;
+
         var parts = shortcut.Split('+');
         var textInfo = CultureInfo.InvariantCulture.TextInfo;
 

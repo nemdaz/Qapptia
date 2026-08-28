@@ -1,9 +1,9 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using Serilog;
 using Qapptia.Core.Abstractions;
 using Qapptia.Core.Capture;
 using Qapptia.Core.Configuration;
+using Serilog;
 using SkiaSharp;
 
 namespace Qapptia.Capture;
@@ -35,8 +35,7 @@ public sealed class FullscreenCaptureService : IFullscreenCaptureService
 
     public async Task<CaptureResult> CaptureAsync(CaptureJob job, CancellationToken ct = default)
     {
-        if (job.DelayMs > 0)
-            await Task.Delay(job.DelayMs, ct);
+        if (job.DelayMs > 0) await Task.Delay(job.DelayMs, ct);
 
         var screen = await _screenCapture.CaptureScreenAsync(_config.Current.CaptureAllScreens, ct);
 
@@ -77,11 +76,11 @@ public sealed class FullscreenCaptureService : IFullscreenCaptureService
             new SKImageInfo(frozenScreen.Width, frozenScreen.Height, SKColorType.Bgra8888, SKAlphaType.Unpremul),
             Marshal.UnsafeAddrOfPinnedArrayElement(frozenScreen.BgraPixels, 0),
             frozenScreen.Width * 4);
-        
+
         using var cropped = new SKBitmap(area.Width, area.Height);
         var sourceRect = new SKRectI(area.X - frozenScreen.OriginX, area.Y - frozenScreen.OriginY, area.X - frozenScreen.OriginX + area.Width, area.Y - frozenScreen.OriginY + area.Height);
         fullBitmap.ExtractSubset(cropped, sourceRect);
-        
+
         using var pngData = cropped.Encode(SKEncodedImageFormat.Png, 100);
         return await FinalizeAsync(pngData.ToArray(), cropped.Width, cropped.Height, job, ct);
     }
@@ -136,7 +135,8 @@ public sealed class FullscreenCaptureService : IFullscreenCaptureService
         if (job.Mode == CaptureMode.Fullscreen && _config.Current.CopyToClipboardScreen ||
             job.Mode == CaptureMode.Area && _config.Current.CopyToClipboardArea)
         {
-            try { await _clipboard.SetImageAsync(pngBytes, ct); }
+            try
+            { await _clipboard.SetImageAsync(pngBytes, ct); }
             catch (Exception ex) { _logger.Warning(ex, "Fallo clipboard"); }
         }
 
@@ -153,12 +153,9 @@ public sealed class FullscreenCaptureService : IFullscreenCaptureService
         var now = DateTime.Now;
         var parts = new List<string> { baseDir };
 
-        if (cfg.SubfolderMonth)
-            parts.Add(now.ToString("yyyy-MM", System.Globalization.CultureInfo.InvariantCulture));
-        if (cfg.SubfolderDay)
-            parts.Add(now.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture));
-        if (cfg.SubfolderHour)
-            parts.Add(now.ToString("HH", System.Globalization.CultureInfo.InvariantCulture));
+        if (cfg.SubfolderMonth) parts.Add(now.ToString("yyyy-MM", System.Globalization.CultureInfo.InvariantCulture));
+        if (cfg.SubfolderDay) parts.Add(now.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture));
+        if (cfg.SubfolderHour) parts.Add(now.ToString("HH", System.Globalization.CultureInfo.InvariantCulture));
 
         var dir = Path.Combine(parts.ToArray());
         Directory.CreateDirectory(dir);

@@ -1,8 +1,8 @@
 using System;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.VisualTree;
-using System.Linq;
 using Qapptia.App.Editor.ViewModels;
 using Qapptia.Editor.Models.Navigation;
 using Qapptia.Editor.Services;
@@ -26,12 +26,12 @@ public partial class MainWindow : Window
         {
             var grid = this.FindControl<Grid>("MainGrid");
             if (grid == null || grid.ColumnDefinitions.Count < 3) return;
-            
+
             var sidebarCol = grid.ColumnDefinitions[2];
             var width = e.NewSize.Width;
             sidebarCol.MinWidth = width * 0.10; // Mínimo 10%
             sidebarCol.MaxWidth = width * 0.50; // Máximo 50%
-            
+
             if (!isInitialSizeSet && width > 0)
             {
                 sidebarCol.Width = new GridLength(width * 0.30);
@@ -75,7 +75,7 @@ public partial class MainWindow : Window
     public void InitializeWithViewModel(EditorViewModel vm)
     {
         DataContext = vm;
-        
+
         SubscribeToViewModelEvents(vm);
         InitializeKeyBindings(vm);
 
@@ -131,7 +131,7 @@ public partial class MainWindow : Window
                 float fitZoom = (float)Math.Min(scaleX, scaleY);
                 if (fitZoom <= 0) fitZoom = 0.1f;
                 if (fitZoom > 99.99f) fitZoom = 99.99f; // Max 9999%
-                
+
                 vm.ZoomLevel = fitZoom;
             }
         }
@@ -146,7 +146,7 @@ public partial class MainWindow : Window
             int direction = e.Delta.Y > 0 ? 1 : -1;
 
             float newZoom = currentZoom + (step * direction);
-            
+
             // Clamp between min and max (0.1 to 99.99)
             newZoom = Math.Max(0.1f, Math.Min(newZoom, 99.99f));
 
@@ -175,15 +175,15 @@ public partial class MainWindow : Window
                 rtb.Render(canvas);
                 vm.SetBurningMode(false);
                 canvas.InvalidateVisual();
-                
+
                 using var ms = new System.IO.MemoryStream();
                 rtb.Save(ms, new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
-                
+
 #if WINDOWS
                 try
                 {
                     var clipboardService = new Qapptia.Platform.Windows.WindowsClipboardService(Serilog.Log.Logger);
-                    
+
                     await clipboardService.SetImageAsync(ms.ToArray());
                     vm.ShowToast("Imagen copiada al portapapeles", Qapptia.Editor.Models.NotificationType.Success);
                 }
@@ -210,14 +210,14 @@ public partial class MainWindow : Window
         {
             string filePath = fileNode.FullPath;
             string? guid = vm.CurrentImageId;
-            
+
             if (string.IsNullOrEmpty(guid))
             {
                 guid = await Qapptia.Core.Services.ImageMetadataService.EnsureImageIdAsync(filePath);
             }
 
             vm.CommitCurrentState();
-            
+
             var canvas = this.FindControl<Qapptia.App.Editor.Controls.EditorCanvas>("MainCanvas");
             if (canvas == null) return;
 

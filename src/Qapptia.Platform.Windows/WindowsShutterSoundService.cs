@@ -1,9 +1,9 @@
 using System.IO;
 using System.Reflection;
-using Serilog;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
 using Qapptia.Core.Abstractions;
+using Serilog;
 
 namespace Qapptia.Platform.Windows;
 
@@ -11,7 +11,7 @@ public sealed class WindowsShutterSoundService : IShutterSoundService, IDisposab
 {
     private const string ResourceName = "Qapptia.Core.Assets.Sounds.shutter_a.wav";
     private readonly ILogger _logger;
-    
+
     private readonly WasapiOut? _waveOut;
     private readonly MixingSampleProvider? _mixer;
     private readonly float[]? _cachedAudioSamples;
@@ -21,23 +21,23 @@ public sealed class WindowsShutterSoundService : IShutterSoundService, IDisposab
     {
         if (!OperatingSystem.IsWindows())
             throw new PlatformNotSupportedException("WindowsShutterSoundService requiere Windows.");
-        
+
         _logger = logger;
 
         try
         {
             var coreAsm = Assembly.GetAssembly(typeof(IShutterSoundService))
                 ?? throw new InvalidOperationException("No se encontró el ensamblado Qapptia.Core");
-                
+
             var stream = coreAsm.GetManifestResourceStream(ResourceName);
             if (stream is not null)
             {
                 using var reader = new WaveFileReader(stream);
-                
+
                 // Convertimos a ISampleProvider (IEEE Float 32-bit) que es el estándar del Mixer
                 ISampleProvider sampleProvider = reader.ToSampleProvider();
                 _waveFormat = sampleProvider.WaveFormat;
-                
+
                 // Leemos absolutamente todos los samples a un array flotante
                 var wholeFile = new List<float>((int)(reader.Length / 4));
                 var readBuffer = new float[reader.WaveFormat.SampleRate * reader.WaveFormat.Channels];
@@ -53,13 +53,13 @@ public sealed class WindowsShutterSoundService : IShutterSoundService, IDisposab
                 {
                     ReadFully = true // ¡CRÍTICO! Mantiene el stream vivo enviando silencio cuando no hay sonidos
                 };
-                
+
                 // Inicializamos WasapiOut (driver moderno, usa MTA threads inmunes a asfixia del UI thread)
                 _waveOut = new WasapiOut(NAudio.CoreAudioApi.AudioClientShareMode.Shared, 200);
                 _waveOut.Init(_mixer);
                 _waveOut.Play(); // Comienza a reproducir silencio infinito en background
-                
-                _logger.Information("Hot Audio Engine inicializado con {Samples} samples a {Rate}Hz", 
+
+                _logger.Information("Hot Audio Engine inicializado con {Samples} samples a {Rate}Hz",
                     _cachedAudioSamples.Length, _waveFormat.SampleRate);
             }
             else
@@ -76,7 +76,7 @@ public sealed class WindowsShutterSoundService : IShutterSoundService, IDisposab
     public Task PlayAsync(CancellationToken ct = default)
     {
         _logger.Debug("WindowsShutterSoundService.PlayAsync() invocado");
-        
+
         if (_mixer is null || _cachedAudioSamples is null || _waveFormat is null)
         {
             _logger.Debug("PlayAsync abortado: mixer o samples nulos");
@@ -94,7 +94,7 @@ public sealed class WindowsShutterSoundService : IShutterSoundService, IDisposab
         {
             _logger.Error(ex, "No se pudo inyectar shutter sound en el mixer");
         }
-        
+
         return Task.CompletedTask;
     }
 
@@ -103,7 +103,7 @@ public sealed class WindowsShutterSoundService : IShutterSoundService, IDisposab
         _waveOut?.Stop();
         _waveOut?.Dispose();
     }
-    
+
     // Proveedor que sirve el array de flotantes desde memoria (Thread-safe para el mixer)
     private sealed class CachedSoundSampleProvider : ISampleProvider
     {
@@ -123,7 +123,7 @@ public sealed class WindowsShutterSoundService : IShutterSoundService, IDisposab
             var availableSamples = _audioData.Length - _position;
             var samplesToCopy = Math.Min(availableSamples, count);
             if (samplesToCopy == 0) return 0;
-            
+
             Array.Copy(_audioData, _position, buffer, offset, samplesToCopy);
             _position += samplesToCopy;
             return samplesToCopy;

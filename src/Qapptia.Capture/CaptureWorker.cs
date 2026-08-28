@@ -1,10 +1,10 @@
 using System.Threading.Channels;
 using Microsoft.Extensions.Hosting;
-using Serilog;
 using Qapptia.Core.Abstractions;
 using Qapptia.Core.Capture;
 using Qapptia.Core.Configuration;
 using Qapptia.Core.Ipc;
+using Serilog;
 
 namespace Qapptia.Capture;
 
@@ -104,12 +104,11 @@ public sealed class CaptureWorker : BackgroundService, ICaptureActionHandler
                 if (job.Mode == CaptureMode.Area)
                 {
                     // Si hay delay, esperamos antes de congelar la pantalla
-                    if (job.DelayMs > 0)
-                        await Task.Delay(job.DelayMs, ct);
+                    if (job.DelayMs > 0) await Task.Delay(job.DelayMs, ct);
 
                     // 1. Tomar la foto de toda la pantalla y congelarla en memoria
                     var frozenScreen = await _fullscreenCapture.CaptureFrozenScreenAsync(job.IncludeCursor, ct);
-                    
+
                     // 2. Pasar la foto congelada al selector de área para que la dibuje de fondo
                     var area = await _areaCapture.SelectAreaAsync(frozenScreen, ct);
                     if (area is null)
@@ -117,7 +116,7 @@ public sealed class CaptureWorker : BackgroundService, ICaptureActionHandler
                         _logger.Information("Selección de área cancelada");
                         continue;
                     }
-                    
+
                     // 3. Finalizar la captura procesando el recorte en base a la foto original congelada
                     result = await _fullscreenCapture.FinalizeFrozenAreaCaptureAsync(frozenScreen, area, job, ct);
                 }
@@ -238,25 +237,45 @@ public sealed class CaptureWorker : BackgroundService, ICaptureActionHandler
         var keyName = parts[^1].ToLowerInvariant();
         uint vk = keyName switch
         {
-            "q" => 0x51, "a" => 0x41, "f" => 0x46,
-            "s" => 0x53, "d" => 0x44, "c" => 0x43,
-            "v" => 0x56, "x" => 0x58, "z" => 0x5A,
-            "1" => 0x31, "2" => 0x32, "3" => 0x33,
-            "4" => 0x34, "5" => 0x35, "6" => 0x36,
-            "7" => 0x37, "8" => 0x38, "9" => 0x39,
+            "q" => 0x51,
+            "a" => 0x41,
+            "f" => 0x46,
+            "s" => 0x53,
+            "d" => 0x44,
+            "c" => 0x43,
+            "v" => 0x56,
+            "x" => 0x58,
+            "z" => 0x5A,
+            "1" => 0x31,
+            "2" => 0x32,
+            "3" => 0x33,
+            "4" => 0x34,
+            "5" => 0x35,
+            "6" => 0x36,
+            "7" => 0x37,
+            "8" => 0x38,
+            "9" => 0x39,
             "0" => 0x30,
-            "printscreen" => 0x2C, "prtsc" => 0x2C,
-            "escape" => 0x1B, "esc" => 0x1B,
+            "printscreen" => 0x2C,
+            "prtsc" => 0x2C,
+            "escape" => 0x1B,
+            "esc" => 0x1B,
             "space" => 0x20,
             "enter" => 0x0D,
             "tab" => 0x09,
             "backspace" => 0x08,
-            "delete" => 0x2E, "del" => 0x2E,
-            "insert" => 0x2D, "ins" => 0x2D,
-            "home" => 0x24, "end" => 0x23,
-            "pageup" => 0x21, "pagedown" => 0x22,
-            "up" => 0x26, "down" => 0x28,
-            "left" => 0x25, "right" => 0x27,
+            "delete" => 0x2E,
+            "del" => 0x2E,
+            "insert" => 0x2D,
+            "ins" => 0x2D,
+            "home" => 0x24,
+            "end" => 0x23,
+            "pageup" => 0x21,
+            "pagedown" => 0x22,
+            "up" => 0x26,
+            "down" => 0x28,
+            "left" => 0x25,
+            "right" => 0x27,
             _ when keyName.Length == 1 && char.IsAsciiLetterUpper(keyName[0]) => (uint)(keyName[0]),
             _ when keyName.Length == 1 && char.IsAsciiLetterLower(keyName[0]) => (uint)char.ToUpperInvariant(keyName[0]),
             _ when keyName.Length == 1 && char.IsDigit(keyName[0]) => (uint)(0x30 + (keyName[0] - '0')),

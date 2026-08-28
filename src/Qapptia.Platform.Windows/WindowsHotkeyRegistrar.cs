@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
-using Serilog;
 using Qapptia.Core.Abstractions;
+using Serilog;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.UI.Input.KeyboardAndMouse;
@@ -55,7 +55,8 @@ public sealed class WindowsHotkeyRegistrar : IHotkeyRegistrar, IDisposable
         var req = new RegisterRequest(id, modifiers, virtualKey, callback, this);
 
         _pending.Add(req);
-        try { PInvoke.PostMessage(_hwnd, WM_REGISTER, 0, 0); }
+        try
+        { PInvoke.PostMessage(_hwnd, WM_REGISTER, 0, 0); }
         catch { _pending.TryTake(out _); throw; }
 
         // Bloquea hasta que el message thread procese.
@@ -76,11 +77,13 @@ public sealed class WindowsHotkeyRegistrar : IHotkeyRegistrar, IDisposable
             try
             {
                 var win32Modifiers = MapModifiers(req.Modifiers);
-                lock (_registrations) { _registrations[req.Id] = req.Registration; }
+                lock (_registrations)
+                { _registrations[req.Id] = req.Registration; }
 
                 if (!PInvoke.RegisterHotKey(_hwnd, req.Id, win32Modifiers, req.VirtualKey))
                 {
-                    lock (_registrations) { _registrations.Remove(req.Id); }
+                    lock (_registrations)
+                    { _registrations.Remove(req.Id); }
                     var err = Marshal.GetLastWin32Error();
                     req.Task.SetException(new InvalidOperationException(
                         $"RegisterHotKey falló (err={err}) para mod={req.Modifiers} vk=0x{req.VirtualKey:X}"));
@@ -103,7 +106,8 @@ public sealed class WindowsHotkeyRegistrar : IHotkeyRegistrar, IDisposable
         while (_unregisterQueue.TryDequeue(out var id))
         {
             try { PInvoke.UnregisterHotKey(_hwnd, id); } catch { }
-            lock (_registrations) { _registrations.Remove(id); }
+            lock (_registrations)
+            { _registrations.Remove(id); }
             _logger.Debug("Hotkey desregistrado id={Id}", id);
         }
     }
@@ -165,11 +169,12 @@ public sealed class WindowsHotkeyRegistrar : IHotkeyRegistrar, IDisposable
 
             switch (msg.message)
             {
-                    case WM_HOTKEY:
+                case WM_HOTKEY:
                     {
                         var id = (int)msg.wParam.Value;
                         Registration? reg;
-                        lock (_registrations) { _registrations.TryGetValue(id, out reg); }
+                        lock (_registrations)
+                        { _registrations.TryGetValue(id, out reg); }
                         if (reg is not null)
                         {
                             var now = DateTime.UtcNow;
@@ -177,7 +182,8 @@ public sealed class WindowsHotkeyRegistrar : IHotkeyRegistrar, IDisposable
                             if ((now - reg.LastFired).TotalMilliseconds > 400)
                             {
                                 reg.LastFired = now;
-                                try { reg.OnClickInternal(); }
+                                try
+                                { reg.OnClickInternal(); }
                                 catch (Exception ex) { _logger.Error(ex, "Hotkey callback id={Id}", id); }
                             }
                         }

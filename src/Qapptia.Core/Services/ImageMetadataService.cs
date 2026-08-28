@@ -15,8 +15,7 @@ public static class ImageMetadataService
     public static async Task<string> EnsureImageIdAsync(string filePath)
     {
         var id = await GetImageIdAsync(filePath);
-        if (!string.IsNullOrEmpty(id))
-            return id;
+        if (!string.IsNullOrEmpty(id)) return id;
 
         // Si no hay ID, genera uno y lo anexa
         id = Guid.NewGuid().ToString();

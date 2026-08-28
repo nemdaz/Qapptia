@@ -38,7 +38,7 @@ public sealed class ModernTrayMenuRenderer : ToolStripProfessionalRenderer
     protected override void OnRenderItemText(ToolStripItemTextRenderEventArgs e)
     {
         e.TextColor = TextColor;
-        
+
         // Custom text rendering to support IsDefault (bold)
         var font = e.Item.Font;
         if (e.Item.Tag is Qapptia.Core.Abstractions.TrayMenuActionItem actionItem && actionItem.IsDefault)
@@ -47,10 +47,10 @@ public sealed class ModernTrayMenuRenderer : ToolStripProfessionalRenderer
         }
 
         e.TextFont = font;
-        
+
         // Increase text margin to give a modern Windows 11 feel
         var textRect = e.TextRectangle;
-        textRect.X += 12; 
+        textRect.X += 12;
         e.TextRectangle = textRect;
 
         e.Graphics.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
@@ -70,7 +70,7 @@ public sealed class ModernTrayMenuRenderer : ToolStripProfessionalRenderer
         // Custom checkmark rendering (fluent style)
         var rect = e.ImageRectangle;
         using var brush = new SolidBrush(TextColor);
-        
+
         // Segoe Fluent Icons CheckMark
         using var font = new Font("Segoe Fluent Icons", 10, FontStyle.Regular);
         using var stringFormat = new StringFormat
@@ -78,10 +78,10 @@ public sealed class ModernTrayMenuRenderer : ToolStripProfessionalRenderer
             Alignment = StringAlignment.Center,
             LineAlignment = StringAlignment.Center
         };
-        
+
         // uE10B is the checkmark in Segoe Fluent Icons, fallback to standard checkmark
-        string checkChar = "\uE10B"; 
-        
+        string checkChar = "\uE10B";
+
         e.Graphics.TextRenderingHint = TextRenderingHint.AntiAlias;
         e.Graphics.DrawString(checkChar, font, brush, rect, stringFormat);
     }

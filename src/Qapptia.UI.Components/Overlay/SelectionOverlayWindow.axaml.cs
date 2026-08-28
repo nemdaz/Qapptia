@@ -43,7 +43,7 @@ public partial class SelectionOverlayWindow : Window, IDisposable
         PointerMoved += OnPointerMoved;
         PointerReleased += OnPointerReleased;
         KeyDown += OnKeyDown;
-        Closed += (_, _) => 
+        Closed += (_, _) =>
         {
             Dispose();
             _tcs.TrySetResult(null);
@@ -174,11 +174,9 @@ public partial class SelectionOverlayWindow : Window, IDisposable
 
         if (_isDragging)
         {
-            if (_currentPos.X < _dragStart.X)
-                offsetX = -formattedText.Width - 15;
-                
-            if (_currentPos.Y < _dragStart.Y)
-                offsetY = -formattedText.Height - 15;
+            if (_currentPos.X < _dragStart.X) offsetX = -formattedText.Width - 15;
+
+            if (_currentPos.Y < _dragStart.Y) offsetY = -formattedText.Height - 15;
         }
 
         context.DrawText(formattedText, new Point(_currentPos.X + offsetX, _currentPos.Y + offsetY));

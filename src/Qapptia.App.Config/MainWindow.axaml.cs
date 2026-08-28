@@ -1,6 +1,6 @@
+using System.Threading.Tasks;
 using Avalonia.Controls;
 using Qapptia.App.Config.ViewModels;
-using System.Threading.Tasks;
 
 namespace Qapptia.App.Config;
 
@@ -9,11 +9,11 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        
+
         var vm = new ConfigViewModel();
         vm.RequestClose = Close;
         vm.RequestBrowsePath = ShowFolderDialogAsync;
-        
+
         DataContext = vm;
     }
 
@@ -27,7 +27,7 @@ public partial class MainWindow : Window
             Title = "Selecciona carpeta de guardado",
             AllowMultiple = false
         });
-        
+
         return result?.Count > 0 ? result[0].Path.LocalPath : null;
     }
 }

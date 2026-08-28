@@ -39,7 +39,7 @@ internal static class Program
 
         // Redirige logs a LocalAppData para evitar errores de permisos.
         var logDir = Qapptia.Core.Constants.DefaultLogDirectory;
-        
+
 #if DEBUG
         var logLevel = LogEventLevel.Debug;
 #else
@@ -57,7 +57,7 @@ internal static class Program
         };
         AppBuilder.Configure<HeadlessCaptureApp>()
             .UsePlatformDetect()
-            .AfterSetup(b => 
+            .AfterSetup(b =>
             {
                 if (b.Instance is HeadlessCaptureApp app)
                 {
@@ -67,14 +67,19 @@ internal static class Program
             .SetupWithLifetime(lifetime);
 
         var hostTask = Task.Run(() => host.StartAsync());
-        if (hostTask.IsFaulted)
-            hostTask.GetAwaiter().GetResult();
+        if (hostTask.IsFaulted) hostTask.GetAwaiter().GetResult();
 
         try
         {
             lifetime.Start(Array.Empty<string>());
-            try { host.StopAsync().GetAwaiter().GetResult(); }
-            catch (Exception ex) { appLogger.Error(ex, "Error deteniendo host"); }
+            try
+            {
+                host.StopAsync().GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                appLogger.Error(ex, "Error deteniendo host");
+            }
         }
         catch (Exception ex)
         {
@@ -95,11 +100,9 @@ internal static class Program
         builder.Services.AddSingleton<IConfigService>(_ => new JsonConfigService(configPath));
 
 #if WINDOWS
-        if (OperatingSystem.IsWindows())
-            builder.Services.AddWindowsPlatform();
+        if (OperatingSystem.IsWindows()) builder.Services.AddWindowsPlatform();
 #elif LINUX
-        if (OperatingSystem.IsLinux())
-            builder.Services.AddLinuxPlatform();
+        if (OperatingSystem.IsLinux()) builder.Services.AddLinuxPlatform();
         else if (OperatingSystem.IsMacOS())
             builder.Services.AddMacOSPlatform();
 #endif
@@ -130,24 +133,24 @@ internal sealed class HeadlessCaptureApp : Application
     public override void OnFrameworkInitializationCompleted()
     {
         base.OnFrameworkInitializationCompleted();
-        
+
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var logger = AppHost?.Services.GetService<Serilog.ILogger>();
             var captureHandler = AppHost?.Services.GetService<ICaptureActionHandler>();
             var trayService = AppHost?.Services.GetService<ITrayIconService>();
-            
+
             var menuDef = new TrayMenuDefinition();
-            
+
             var config = AppHost?.Services.GetService<IConfigService>();
-            
+
             menuDef.Items.Add(new TrayMenuActionItem("Capturar pantalla", () => captureHandler?.HandleFullscreenCaptureAsync(CancellationToken.None), shortcutTextProvider: () => config?.Current.ShortcutScreen));
             menuDef.Items.Add(new TrayMenuActionItem("Capturar área", () => captureHandler?.HandleAreaCaptureAsync(CancellationToken.None), shortcutTextProvider: () => config?.Current.ShortcutArea));
             menuDef.Items.Add(new TrayMenuSeparatorItem());
             menuDef.Items.Add(new TrayMenuActionItem("Editor", () => LaunchApp(Qapptia.Core.Constants.EditorExecutableName, Qapptia.Core.Constants.ArgEditor)));
             menuDef.Items.Add(new TrayMenuActionItem("Configuración", () => LaunchApp(Qapptia.Core.Constants.ConfigExecutableName, Qapptia.Core.Constants.ArgConfig)));
             menuDef.Items.Add(new TrayMenuSeparatorItem());
-            menuDef.Items.Add(new TrayMenuActionItem("Reiniciar", () => 
+            menuDef.Items.Add(new TrayMenuActionItem("Reiniciar", () =>
             {
                 var exePath = Process.GetCurrentProcess().MainModule?.FileName;
                 if (!string.IsNullOrEmpty(exePath))
@@ -160,7 +163,7 @@ internal sealed class HeadlessCaptureApp : Application
 
             var iconPath = Path.Combine(AppContext.BaseDirectory, Qapptia.Core.Constants.AssetsDirectoryName, Qapptia.Core.Constants.TrayIconFileName);
             trayService?.Initialize(menuDef, iconPath);
-            
+
             logger?.Information("TrayIcon asignado a la aplicación de forma limpia.");
         }
     }

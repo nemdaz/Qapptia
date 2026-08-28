@@ -103,7 +103,8 @@ public sealed class QapptiaIpcServer : IDisposable
         for (var i = 0; i < MaxConcurrentInstances; i++)
         {
             var server = CreateServer();
-            lock (_sync) { _pendingServers.Add(server); }
+            lock (_sync)
+            { _pendingServers.Add(server); }
             _acceptTasks.Add(AcceptOneAsync(server));
         }
         return Task.CompletedTask;
@@ -169,7 +170,8 @@ public sealed class QapptiaIpcServer : IDisposable
     {
         _cts.Cancel();
         NamedPipeServerStream[] servers;
-        lock (_sync) { servers = _pendingServers.ToArray(); }
+        lock (_sync)
+        { servers = _pendingServers.ToArray(); }
         foreach (var s in servers)
         {
             try { s.Dispose(); } catch { }
@@ -188,7 +190,8 @@ public sealed class QapptiaIpcServer : IDisposable
     {
         try { _cts.Cancel(); } catch { }
         NamedPipeServerStream[] servers;
-        lock (_sync) { servers = _pendingServers.ToArray(); }
+        lock (_sync)
+        { servers = _pendingServers.ToArray(); }
         foreach (var s in servers)
         {
             try { s.Dispose(); } catch { }
