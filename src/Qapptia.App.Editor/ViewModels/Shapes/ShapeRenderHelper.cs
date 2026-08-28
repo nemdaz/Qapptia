@@ -103,7 +103,7 @@ public static class ShapeRenderHelper
 
     private static readonly float[] s_cropDashIntervals = { 6f, 4f };
 
-    public static void DrawCropOverlay(SKCanvas canvas, Rect cropRect, Rect imageBounds)
+    public static void DrawCropOverlay(SKCanvas canvas, Rect cropRect, Rect imageBounds, bool drawHandles)
     {
         // 1. Oscurecimiento exterior (Scrim)
         using var scrimPaint = new SKPaint
@@ -134,37 +134,40 @@ public static class ShapeRenderHelper
             canvas.DrawRect((float)cropRect.Right, (float)cropRect.Top, (float)(imageBounds.Width - cropRect.Right), (float)cropRect.Height, scrimPaint);
         }
 
-        // 2. Línea delimitadora interlineada (Dashed Line)
-        using var dashOutlinePaint = new SKPaint
+        if (drawHandles)
         {
-            Color = SKColors.Black.WithAlpha(180),
-            Style = SKPaintStyle.Stroke,
-            StrokeWidth = 2f,
-            IsAntialias = true
-        };
+            // 2. Línea delimitadora interlineada (Dashed Line)
+            using var dashOutlinePaint = new SKPaint
+            {
+                Color = SKColors.Black.WithAlpha(180),
+                Style = SKPaintStyle.Stroke,
+                StrokeWidth = 2f,
+                IsAntialias = true
+            };
 
-        using var dashPaint = new SKPaint
-        {
-            Color = SKColors.White,
-            Style = SKPaintStyle.Stroke,
-            StrokeWidth = 1.5f,
-            PathEffect = SKPathEffect.CreateDash(s_cropDashIntervals, 0),
-            IsAntialias = true
-        };
+            using var dashPaint = new SKPaint
+            {
+                Color = SKColors.White,
+                Style = SKPaintStyle.Stroke,
+                StrokeWidth = 1.5f,
+                PathEffect = SKPathEffect.CreateDash(s_cropDashIntervals, 0),
+                IsAntialias = true
+            };
 
-        var cropSkRect = new SKRect((float)cropRect.Left, (float)cropRect.Top, (float)cropRect.Right, (float)cropRect.Bottom);
-        canvas.DrawRect(cropSkRect, dashOutlinePaint);
-        canvas.DrawRect(cropSkRect, dashPaint);
+            var cropSkRect = new SKRect((float)cropRect.Left, (float)cropRect.Top, (float)cropRect.Right, (float)cropRect.Bottom);
+            canvas.DrawRect(cropSkRect, dashOutlinePaint);
+            canvas.DrawRect(cropSkRect, dashPaint);
 
-        // 3. Tiradores cuadrados (4 esquinas + 4 centros de arista)
-        DrawCropSquareHandle(canvas, cropRect.TopLeft);
-        DrawCropSquareHandle(canvas, cropRect.TopRight);
-        DrawCropSquareHandle(canvas, cropRect.BottomLeft);
-        DrawCropSquareHandle(canvas, cropRect.BottomRight);
+            // 3. Tiradores cuadrados (4 esquinas + 4 centros de arista)
+            DrawCropSquareHandle(canvas, cropRect.TopLeft);
+            DrawCropSquareHandle(canvas, cropRect.TopRight);
+            DrawCropSquareHandle(canvas, cropRect.BottomLeft);
+            DrawCropSquareHandle(canvas, cropRect.BottomRight);
 
-        DrawCropSquareHandle(canvas, new Point(cropRect.Center.X, cropRect.Top));
-        DrawCropSquareHandle(canvas, new Point(cropRect.Center.X, cropRect.Bottom));
-        DrawCropSquareHandle(canvas, new Point(cropRect.Left, cropRect.Center.Y));
-        DrawCropSquareHandle(canvas, new Point(cropRect.Right, cropRect.Center.Y));
+            DrawCropSquareHandle(canvas, new Point(cropRect.Center.X, cropRect.Top));
+            DrawCropSquareHandle(canvas, new Point(cropRect.Center.X, cropRect.Bottom));
+            DrawCropSquareHandle(canvas, new Point(cropRect.Left, cropRect.Center.Y));
+            DrawCropSquareHandle(canvas, new Point(cropRect.Right, cropRect.Center.Y));
+        }
     }
 }

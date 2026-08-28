@@ -59,6 +59,10 @@
                     <Button Command="{Binding RotateCommand}" ToolTip.Tip="Rotar" Background="Transparent" Padding="4">
                         <PathIcon Data="M2 13c0 4.97 4.03 9 9 9 1.76 0 3.4-.51 4.79-1.38l-1.46-1.46C13.34 19.69 12.2 20 11 20c-3.86 0-7-3.14-7-7s3.14-7 7-7h.17L9.59 7.59 11 9l4-4-4-4-1.42 1.41L11.17 4H11C6.03 4 2 8.03 2 13zm9 0 6 6 6-6-6-6-6 6zm6 3.17L13.83 13 17 9.83 20.17 13 17 16.17z" Width="16" Height="16"/>
                     </Button>
+                    <!-- Recortar -->
+                    <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" IsChecked="{Binding IsCropToolActive, Mode=OneWay}" Command="{Binding SelectToolCommand}" CommandParameter="Crop" GroupName="Tools" Background="Transparent" ToolTip.Tip="Recortar" Padding="4">
+                        <PathIcon Data="M17 15h2V7c0-1.1-.9-2-2-2H9v2h8v8zM7 17V1H5v4H1v2h4v10c0 1.1.9 2 2 2h10v4h2v-4h4v-2H7z" Width="16" Height="16"/>
+                    </RadioButton>
                 </StackPanel>
             </Border>
 
@@ -88,10 +92,6 @@
                     <!-- Texto -->
                     <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" IsChecked="{Binding IsTextToolActive, Mode=OneWay}" Command="{Binding SelectToolCommand}" CommandParameter="Text" GroupName="Tools" Background="Transparent" ToolTip.Tip="Texto" Padding="4">
                         <PathIcon Data="M5 4v3h5.5v12h3V7H19V4H5z" Width="16" Height="16"/>
-                    </RadioButton>
-                    <!-- Recortar -->
-                    <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" IsChecked="{Binding IsCropToolActive, Mode=OneWay}" Command="{Binding SelectToolCommand}" CommandParameter="Crop" GroupName="Tools" Background="Transparent" ToolTip.Tip="Recortar" Padding="4">
-                        <PathIcon Data="M17 15h2V7c0-1.1-.9-2-2-2H9v2h8v8zM7 17V1H5v4H1v2h4v10c0 1.1.9 2 2 2h10v4h2v-4h4v-2H7z" Width="16" Height="16"/>
                     </RadioButton>
                 </StackPanel>
             </Border>

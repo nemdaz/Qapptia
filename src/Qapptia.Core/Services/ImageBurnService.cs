@@ -56,4 +56,25 @@ public static class ImageBurnService
             await ImageMetadataService.AppendImageIdAsync(filePath, imageId);
         }
     }
+
+    /// <summary>
+    /// Recorta un arreglo de bytes de imagen (PNG) utilizando SkiaSharp.
+    /// Esto mueve la manipulación de memoria gráfica al backend/core.
+    /// </summary>
+    public static byte[] CropImageBytesIfNeeded(byte[] originalPng, int left, int top, int right, int bottom)
+    {
+        if (right <= left || bottom <= top)
+            return originalPng;
+
+        using var bitmap = SkiaSharp.SKBitmap.Decode(originalPng);
+        var skRect = new SkiaSharp.SKRectI(left, top, right, bottom);
+
+        using var cropped = new SkiaSharp.SKBitmap(skRect.Width, skRect.Height);
+        if (bitmap.ExtractSubset(cropped, skRect))
+        {
+            using var data = cropped.Encode(SkiaSharp.SKEncodedImageFormat.Png, 100);
+            return data.ToArray();
+        }
+        return originalPng;
+    }
 }

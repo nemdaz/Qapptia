@@ -36,8 +36,15 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         ShapeFactory.Rectangle,
         ShapeFactory.Highlighter,
         ShapeFactory.Text,
+        ShapeFactory.Rotate,
         ShapeFactory.Crop
     };
+
+    [ObservableProperty]
+    private Rect? _activeCropRect;
+
+    [ObservableProperty]
+    private bool _isExporting;
 
     public EditorViewModel(
         IEditorStateService stateService,
@@ -273,6 +280,8 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             SaveCurrentAnnotations();
             _currentImagePath = null;
         }
+
+        ActiveCropRect = null;
 
         if (value is FileItem file)
         {
@@ -697,8 +706,9 @@ public partial class EditorViewModel : ObservableObject, IDisposable
 
         // Limpiamos los vectores actuales y reseteamos el estado acumulado
         Shapes.Clear();
-        _currentCrop = null;
+        ActiveCropRect = null;
         _currentRotation = 0;
+        IsExporting = false;
         _canvasStateService.Save(new CanvasState(), _currentImagePath);
 
         // Forzamos la recarga de la imagen para que Avalonia la lea de nuevo

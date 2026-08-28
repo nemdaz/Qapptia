@@ -74,8 +74,7 @@ public sealed class CropTool : InteractiveTool
     public static bool ShouldApplyCrop(Rect cropRect, double imageWidth, double imageHeight)
     {
         double min = Constants.CropMinSize;
-        return cropRect.Width >= min && cropRect.Height >= min &&
-               (cropRect.Width < imageWidth || cropRect.Height < imageHeight || cropRect.X > 0 || cropRect.Y > 0);
+        return cropRect.Width >= min && cropRect.Height >= min;
     }
 
     /// <summary>

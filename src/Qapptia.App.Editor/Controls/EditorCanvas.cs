@@ -105,7 +105,7 @@ public class EditorCanvas : Control
     private Rect? _cropPreviewRect;
     private HandleType _cropActiveHandle = HandleType.None;
 
-    private Rect GetCropRect() => _cropPreviewRect ?? new Rect(0, 0, ViewModel?.ImageWidth ?? 0, ViewModel?.ImageHeight ?? 0);
+    private Rect GetCropRect() => _cropPreviewRect ?? ViewModel?.ActiveCropRect ?? new Rect(0, 0, ViewModel?.ImageWidth ?? 0, ViewModel?.ImageHeight ?? 0);
 
     public override void Render(DrawingContext context)
     {
@@ -113,24 +113,21 @@ public class EditorCanvas : Control
 
         if (ViewModel == null) return;
 
-        // Dibujar fondo si existe
         if (ViewModel.BackgroundImage != null)
         {
-            var rect = new Rect(0, 0, ViewModel.BackgroundImage.Size.Width, ViewModel.BackgroundImage.Size.Height);
+            var rect = new Rect(0, 0, ViewModel.ImageWidth, ViewModel.ImageHeight);
             context.DrawImage(ViewModel.BackgroundImage, rect);
         }
 
-        if (ViewModel.IsCropToolActive && (_cropPreviewRect == null || _cropPreviewRect.Value.Width <= 0))
-        {
-            _cropPreviewRect = new Rect(0, 0, ViewModel.ImageWidth, ViewModel.ImageHeight);
-        }
+        bool drawCropOverlay = !ViewModel.IsExporting && (ViewModel.IsCropToolActive || ViewModel.ActiveCropRect.HasValue);
+        var cropRectToDraw = drawCropOverlay ? (Rect?)GetCropRect() : null;
 
         // Delegar el dibujado de vectores y overlay de recorte a SkiaSharp (Monomotor puro)
         context.Custom(new SkiaCanvasDrawOperation(
             new Rect(Bounds.Size),
             ViewModel.Shapes,
             _currentDrawingShape,
-            _cropPreviewRect,
+            cropRectToDraw,
             ViewModel.IsCropToolActive,
             new Rect(0, 0, ViewModel.ImageWidth, ViewModel.ImageHeight)));
     }
@@ -186,9 +183,9 @@ public class EditorCanvas : Control
             _currentShape?.RenderSkia(canvas);
 
             // Renderizar overlay de recorte interactivo
-            if (_isCropMode && _cropRect != null && _imageBounds.Width > 0 && _imageBounds.Height > 0)
+            if (_cropRect != null && _imageBounds.Width > 0 && _imageBounds.Height > 0)
             {
-                ShapeRenderHelper.DrawCropOverlay(canvas, _cropRect.Value, _imageBounds);
+                ShapeRenderHelper.DrawCropOverlay(canvas, _cropRect.Value, _imageBounds, _isCropMode);
             }
         }
     }
@@ -451,8 +448,8 @@ public class EditorCanvas : Control
                 var finalCrop = _cropPreviewRect.Value;
                 if (CropTool.ShouldApplyCrop(finalCrop, ViewModel.ImageWidth, ViewModel.ImageHeight))
                 {
-                    ViewModel.ApplyCrop(finalCrop);
-                    _cropPreviewRect = new Rect(0, 0, ViewModel.ImageWidth, ViewModel.ImageHeight);
+                    bool isFullImage = (Math.Abs(finalCrop.Width - ViewModel.ImageWidth) < 1 && Math.Abs(finalCrop.Height - ViewModel.ImageHeight) < 1 && finalCrop.X < 1 && finalCrop.Y < 1);
+                    ViewModel.ActiveCropRect = isFullImage ? null : finalCrop;
                 }
             }
 

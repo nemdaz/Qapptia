@@ -169,22 +169,30 @@ public partial class MainWindow : Window
             var canvas = this.FindControl<Qapptia.App.Editor.Controls.EditorCanvas>("MainCanvas");
             if (canvas != null && vm.ImageWidth > 0 && vm.ImageHeight > 0)
             {
+                vm.IsExporting = true;
                 vm.SetBurningMode(true);
                 canvas.InvalidateVisual();
                 var rtb = new Avalonia.Media.Imaging.RenderTargetBitmap(new PixelSize((int)vm.ImageWidth, (int)vm.ImageHeight));
                 rtb.Render(canvas);
                 vm.SetBurningMode(false);
+                vm.IsExporting = false;
                 canvas.InvalidateVisual();
 
                 using var ms = new System.IO.MemoryStream();
                 rtb.Save(ms, new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
+                byte[] finalBytes = ms.ToArray();
+                if (vm.ActiveCropRect.HasValue)
+                {
+                    var r = vm.ActiveCropRect.Value;
+                    finalBytes = Qapptia.Core.Services.ImageBurnService.CropImageBytesIfNeeded(finalBytes, (int)r.X, (int)r.Y, (int)r.Right, (int)r.Bottom);
+                }
 
 #if WINDOWS
                 try
                 {
                     var clipboardService = new Qapptia.Platform.Windows.WindowsClipboardService(Serilog.Log.Logger);
 
-                    await clipboardService.SetImageAsync(ms.ToArray());
+                    await clipboardService.SetImageAsync(finalBytes);
                     vm.ShowToast("Imagen copiada al portapapeles", Qapptia.Editor.Models.NotificationType.Success);
                 }
                 catch (Exception)
@@ -221,6 +229,7 @@ public partial class MainWindow : Window
             var canvas = this.FindControl<Qapptia.App.Editor.Controls.EditorCanvas>("MainCanvas");
             if (canvas == null) return;
 
+            vm.IsExporting = true;
             vm.SetBurningMode(true);
             canvas.InvalidateVisual();
 
@@ -242,6 +251,11 @@ public partial class MainWindow : Window
                     var options = new Avalonia.Media.Imaging.PngBitmapEncoderOptions();
                     rtb.Save(ms, options);
                     pngBytes = ms.ToArray();
+                    if (vm.ActiveCropRect.HasValue)
+                    {
+                        var r = vm.ActiveCropRect.Value;
+                        pngBytes = Qapptia.Core.Services.ImageBurnService.CropImageBytesIfNeeded(pngBytes, (int)r.X, (int)r.Y, (int)r.Right, (int)r.Bottom);
+                    }
                 }
 
                 // 3. Persistir imagen quemada y preservar metadatos GUID
@@ -255,6 +269,7 @@ public partial class MainWindow : Window
             {
                 vm.ShowToast($"Error al guardar la imagen: {ex.Message}", Qapptia.Editor.Models.NotificationType.Error);
                 vm.SetBurningMode(false);
+                vm.IsExporting = false;
                 canvas.InvalidateVisual();
             }
         }
