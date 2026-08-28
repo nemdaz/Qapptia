@@ -229,10 +229,6 @@ public partial class MainWindow : Window
             var canvas = this.FindControl<Qapptia.App.Editor.Controls.EditorCanvas>("MainCanvas");
             if (canvas == null) return;
 
-            vm.IsExporting = true;
-            vm.SetBurningMode(true);
-            canvas.InvalidateVisual();
-
             try
             {
                 // 1. Crear backup comprimido seguro (.bak.gz)
@@ -243,7 +239,12 @@ public partial class MainWindow : Window
                 int width = Math.Max(1, (int)bounds.Width);
                 int height = Math.Max(1, (int)bounds.Height);
                 var rtb = new Avalonia.Media.Imaging.RenderTargetBitmap(new Avalonia.PixelSize(width, height), new Avalonia.Vector(96, 96));
+                
+                vm.IsExporting = true;
+                vm.SetBurningMode(true);
                 rtb.Render(canvas);
+                vm.SetBurningMode(false);
+                vm.IsExporting = false;
 
                 byte[] pngBytes;
                 using (var ms = new System.IO.MemoryStream())
@@ -268,9 +269,6 @@ public partial class MainWindow : Window
             catch (Exception ex)
             {
                 vm.ShowToast($"Error al guardar la imagen: {ex.Message}", Qapptia.Editor.Models.NotificationType.Error);
-                vm.SetBurningMode(false);
-                vm.IsExporting = false;
-                canvas.InvalidateVisual();
             }
         }
     }

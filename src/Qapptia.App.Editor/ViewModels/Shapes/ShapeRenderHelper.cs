@@ -101,7 +101,8 @@ public static class ShapeRenderHelper
         canvas.DrawRect(skRect, borderPaint);
     }
 
-    private static readonly float[] s_cropDashIntervals = { 6f, 4f };
+    private static readonly float[] s_cropActiveDashIntervals = { 6f, 4f };
+    private static readonly float[] s_cropInactiveDashIntervals = { 3f, 3f };
 
     public static void DrawCropOverlay(SKCanvas canvas, Rect cropRect, Rect imageBounds, bool drawHandles)
     {
@@ -134,9 +135,11 @@ public static class ShapeRenderHelper
             canvas.DrawRect((float)cropRect.Right, (float)cropRect.Top, (float)(imageBounds.Width - cropRect.Right), (float)cropRect.Height, scrimPaint);
         }
 
+        var cropSkRect = new SKRect((float)cropRect.Left, (float)cropRect.Top, (float)cropRect.Right, (float)cropRect.Bottom);
+
         if (drawHandles)
         {
-            // 2. Línea delimitadora interlineada (Dashed Line)
+            // 2. Línea delimitadora interlineada para modo Editable
             using var dashOutlinePaint = new SKPaint
             {
                 Color = SKColors.Black.WithAlpha(180),
@@ -150,11 +153,10 @@ public static class ShapeRenderHelper
                 Color = SKColors.White,
                 Style = SKPaintStyle.Stroke,
                 StrokeWidth = 1.5f,
-                PathEffect = SKPathEffect.CreateDash(s_cropDashIntervals, 0),
+                PathEffect = SKPathEffect.CreateDash(s_cropActiveDashIntervals, 0),
                 IsAntialias = true
             };
 
-            var cropSkRect = new SKRect((float)cropRect.Left, (float)cropRect.Top, (float)cropRect.Right, (float)cropRect.Bottom);
             canvas.DrawRect(cropSkRect, dashOutlinePaint);
             canvas.DrawRect(cropSkRect, dashPaint);
 
@@ -168,6 +170,56 @@ public static class ShapeRenderHelper
             DrawCropSquareHandle(canvas, new Point(cropRect.Center.X, cropRect.Bottom));
             DrawCropSquareHandle(canvas, new Point(cropRect.Left, cropRect.Center.Y));
             DrawCropSquareHandle(canvas, new Point(cropRect.Right, cropRect.Center.Y));
+        }
+        else
+        {
+            // 2. Línea delimitadora interlineada para modo No Editable (solo en aristas con recorte efectivo)
+            using var inactiveOutlinePaint = new SKPaint
+            {
+                Color = SKColors.Black.WithAlpha(140),
+                Style = SKPaintStyle.Stroke,
+                StrokeWidth = 1.5f,
+                IsAntialias = true
+            };
+
+            using var inactiveDashPaint = new SKPaint
+            {
+                Color = SKColors.White.WithAlpha(200),
+                Style = SKPaintStyle.Stroke,
+                StrokeWidth = 1f,
+                PathEffect = SKPathEffect.CreateDash(s_cropInactiveDashIntervals, 0),
+                IsAntialias = true
+            };
+
+            float left = (float)cropRect.Left;
+            float top = (float)cropRect.Top;
+            float right = (float)cropRect.Right;
+            float bottom = (float)cropRect.Bottom;
+
+            // Borde superior
+            if (cropRect.Top > 0)
+            {
+                canvas.DrawLine(left, top, right, top, inactiveOutlinePaint);
+                canvas.DrawLine(left, top, right, top, inactiveDashPaint);
+            }
+            // Borde inferior
+            if (cropRect.Bottom < imageBounds.Height)
+            {
+                canvas.DrawLine(left, bottom, right, bottom, inactiveOutlinePaint);
+                canvas.DrawLine(left, bottom, right, bottom, inactiveDashPaint);
+            }
+            // Borde izquierdo
+            if (cropRect.Left > 0)
+            {
+                canvas.DrawLine(left, top, left, bottom, inactiveOutlinePaint);
+                canvas.DrawLine(left, top, left, bottom, inactiveDashPaint);
+            }
+            // Borde derecho
+            if (cropRect.Right < imageBounds.Width)
+            {
+                canvas.DrawLine(right, top, right, bottom, inactiveOutlinePaint);
+                canvas.DrawLine(right, top, right, bottom, inactiveDashPaint);
+            }
         }
     }
 }

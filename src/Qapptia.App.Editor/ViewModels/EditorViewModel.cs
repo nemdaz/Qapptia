@@ -304,12 +304,14 @@ public partial class EditorViewModel : ObservableObject, IDisposable
                     baseBitmap.Dispose();
                 }
 
-                // 2. Restaurar recorte persistido si existe
+                // 2. Restaurar recorte persistido no destructivo si existe
                 if (_currentCrop != null && _currentCrop.Count >= 4)
                 {
-                    var prev = processedBitmap;
-                    processedBitmap = CropBitmap(prev, new Rect(_currentCrop[0], _currentCrop[1], _currentCrop[2], _currentCrop[3]));
-                    prev.Dispose();
+                    ActiveCropRect = new Rect(_currentCrop[0], _currentCrop[1], _currentCrop[2], _currentCrop[3]);
+                }
+                else
+                {
+                    ActiveCropRect = null;
                 }
 
                 BackgroundImage?.Dispose();
@@ -371,58 +373,21 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         _canvasStateService.Save(state, _currentImagePath);
     }
 
-    public void ApplyCrop(Rect cropRect)
+    partial void OnActiveCropRectChanged(Rect? value)
     {
-        if (cropRect.Width < Qapptia.Editor.Core.Constants.CropMinSize || cropRect.Height < Qapptia.Editor.Core.Constants.CropMinSize)
-            return;
-
-        int cropW = (int)Math.Round(cropRect.Width);
-        int cropH = (int)Math.Round(cropRect.Height);
-
-        if (BackgroundImage != null && cropW > 0 && cropH > 0)
+        if (value.HasValue)
         {
-            var rtb = new Avalonia.Media.Imaging.RenderTargetBitmap(new PixelSize(cropW, cropH), new Vector(96, 96));
-            using (var ctx = rtb.CreateDrawingContext())
-            {
-                var sourceRect = new Rect(cropRect.X, cropRect.Y, cropW, cropH);
-                var destRect = new Rect(0, 0, cropW, cropH);
-                ctx.DrawImage(BackgroundImage, sourceRect, destRect);
-            }
-            BackgroundImage?.Dispose();
-            BackgroundImage = rtb;
-            ImageWidth = cropW;
-            ImageHeight = cropH;
-        }
-
-        // Acumular el área de corte relativo
-        if (_currentCrop == null || _currentCrop.Count < 4)
-        {
-            _currentCrop = new List<double> { cropRect.X, cropRect.Y, cropW, cropH };
+            var r = value.Value;
+            _currentCrop = new List<double> { r.X, r.Y, r.Width, r.Height };
         }
         else
         {
-            _currentCrop = new List<double> { _currentCrop[0] + cropRect.X, _currentCrop[1] + cropRect.Y, cropW, cropH };
+            _currentCrop = null;
         }
-
-        // Desplazar figuras vectoriales existentes para preservar su posición visual relativa sobre la imagen
-        double deltaX = -cropRect.X;
-        double deltaY = -cropRect.Y;
-        var newBounds = new Rect(0, 0, cropW, cropH);
-
-        for (int i = Shapes.Count - 1; i >= 0; i--)
-        {
-            var shape = Shapes[i];
-            shape.Move(deltaX, deltaY);
-
-            if (!shape.BoundingBox.Intersects(newBounds))
-            {
-                Shapes.RemoveAt(i);
-            }
-        }
-
         SaveCurrentAnnotations();
-        TriggerRedraw();
     }
+
+
 
     public void RotateImage()
     {
@@ -482,19 +447,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         return current;
     }
 
-    private static Avalonia.Media.Imaging.RenderTargetBitmap CropBitmap(Avalonia.Media.Imaging.Bitmap src, Rect cropRect)
-    {
-        int cropW = Math.Max(1, (int)Math.Round(cropRect.Width));
-        int cropH = Math.Max(1, (int)Math.Round(cropRect.Height));
-        var rtb = new Avalonia.Media.Imaging.RenderTargetBitmap(new PixelSize(cropW, cropH), new Vector(96, 96));
-        using (var ctx = rtb.CreateDrawingContext())
-        {
-            var sourceRect = new Rect(cropRect.X, cropRect.Y, cropW, cropH);
-            var destRect = new Rect(0, 0, cropW, cropH);
-            ctx.DrawImage(src, sourceRect, destRect);
-        }
-        return rtb;
-    }
+
 
     public void TriggerRedraw()
     {
