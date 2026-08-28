@@ -2,6 +2,7 @@ using System;
 using Avalonia;
 using Avalonia.Media;
 using Qapptia.Editor.Models;
+using Qapptia.Editor.Models.Geometry;
 using Qapptia.Editor.Tools;
 
 namespace Qapptia.Editor.Services;
@@ -18,8 +19,9 @@ public static class ShapeFactory
     public static readonly HighlighterTool Highlighter = new();
     public static readonly TextWidgetTool Text = new();
     public static readonly CropTool Crop = new();
+    public static readonly RotateTool Rotate = new(() => { });
 
-    public static VectorShape? Create(Tool tool, Point startPoint, Color color, float textSize = 24f, SkiaSharp.SKTypeface? typeface = null)
+    public static VectorGeometry? Create(Tool tool, Point startPoint, Color color, float textSize = 24f, SkiaSharp.SKTypeface? typeface = null)
     {
         ArgumentNullException.ThrowIfNull(tool);
 
@@ -36,7 +38,7 @@ public static class ShapeFactory
         return null;
     }
 
-    public static VectorShape? Create(string toolId, Point startPoint, Color color, float textSize = 24f, SkiaSharp.SKTypeface? typeface = null)
+    public static VectorGeometry? Create(string toolId, Point startPoint, Color color, float textSize = 24f, SkiaSharp.SKTypeface? typeface = null)
     {
         return toolId?.ToLowerInvariant() switch
         {

@@ -15,7 +15,7 @@ public interface ITextInputShape
     int CaretIndex { get; set; }
     Rect TextBounds { get; }
     bool IsEmpty { get; }
-    
+
     event System.EventHandler? FocusRequested;
     void RequestFocus();
 

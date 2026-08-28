@@ -30,8 +30,7 @@ public sealed class NavigationService : INavigationService
 
     public async Task<FolderItem?> BuildTreeAsync(string rootPath, IReadOnlyList<string> expandedFolders, CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(rootPath) || !Directory.Exists(rootPath))
-            return null;
+        if (string.IsNullOrWhiteSpace(rootPath) || !Directory.Exists(rootPath)) return null;
 
         return await Task.Run(() =>
         {
@@ -45,8 +44,7 @@ public sealed class NavigationService : INavigationService
                 IsExpanded = expandedFolders.Any(p => string.Equals(p, normalizedRoot, StringComparison.OrdinalIgnoreCase)) || expandedFolders.Count == 0
             };
 
-            if (string.IsNullOrEmpty(root.Name))
-                root.Name = normalizedRoot;
+            if (string.IsNullOrEmpty(root.Name)) root.Name = normalizedRoot;
 
             PopulateFolder(root, dirInfo, expandedFolders);
             return root;
@@ -64,8 +62,7 @@ public sealed class NavigationService : INavigationService
             if (node is FolderItem folder)
             {
                 var found = FindNodeByPath(folder.Items, normalizedTarget);
-                if (found != null)
-                    return found;
+                if (found != null) return found;
             }
         }
         return null;
@@ -75,8 +72,7 @@ public sealed class NavigationService : INavigationService
     {
         StopWatching();
 
-        if (string.IsNullOrWhiteSpace(rootPath) || !Directory.Exists(rootPath))
-            return;
+        if (string.IsNullOrWhiteSpace(rootPath) || !Directory.Exists(rootPath)) return;
 
         _onFileSystemChanged = onFileSystemChanged;
 
@@ -158,8 +154,7 @@ public sealed class NavigationService : INavigationService
         {
             foreach (var file in dirInfo.EnumerateFiles())
             {
-                if (!s_allowedExtensions.Contains(file.Extension))
-                    continue;
+                if (!s_allowedExtensions.Contains(file.Extension)) continue;
 
                 DateTime effectiveDate = GetEffectiveDate(file);
                 files.Add(new FileItem

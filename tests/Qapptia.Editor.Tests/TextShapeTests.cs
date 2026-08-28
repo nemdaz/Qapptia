@@ -1,6 +1,7 @@
 using Avalonia.Input;
 using Qapptia.Editor.Core;
 using Qapptia.Editor.Models;
+using Qapptia.Editor.Models.Geometry;
 using Xunit;
 
 namespace Qapptia.Editor.Tests;
@@ -10,7 +11,7 @@ public class TextShapeTests
     [Fact]
     public void InsertTextWithoutSelectionInsertsAtCaret()
     {
-        var shape = new TextShape { Text = "Hola", CaretIndex = 4, IsEditing = true };
+        var shape = new TextGeometry { Text = "Hola", CaretIndex = 4, IsEditing = true };
         shape.InsertText(" Mundo");
 
         Assert.Equal("Hola Mundo", shape.Text);
@@ -21,7 +22,7 @@ public class TextShapeTests
     [Fact]
     public void InsertTextWithSelectionReplacesSelectedRange()
     {
-        var shape = new TextShape { Text = "Hola Mundo", SelectionStart = 5, SelectionEnd = 10, CaretIndex = 10, IsEditing = true };
+        var shape = new TextGeometry { Text = "Hola Mundo", SelectionStart = 5, SelectionEnd = 10, CaretIndex = 10, IsEditing = true };
         Assert.True(shape.HasSelection);
         Assert.Equal("Mundo", shape.SelectedText);
 
@@ -35,7 +36,7 @@ public class TextShapeTests
     [Fact]
     public void DeleteBackwardWithSelectionDeletesEntireSelection()
     {
-        var shape = new TextShape { Text = "Texto a borrar", SelectionStart = 6, SelectionEnd = 14, CaretIndex = 14, IsEditing = true };
+        var shape = new TextGeometry { Text = "Texto a borrar", SelectionStart = 6, SelectionEnd = 14, CaretIndex = 14, IsEditing = true };
         shape.DeleteBackward();
 
         Assert.Equal("Texto ", shape.Text);
@@ -46,7 +47,7 @@ public class TextShapeTests
     [Fact]
     public void DeleteForwardWithSelectionDeletesEntireSelection()
     {
-        var shape = new TextShape { Text = "Texto a borrar", SelectionStart = 6, SelectionEnd = 14, CaretIndex = 6, IsEditing = true };
+        var shape = new TextGeometry { Text = "Texto a borrar", SelectionStart = 6, SelectionEnd = 14, CaretIndex = 6, IsEditing = true };
         shape.DeleteForward();
 
         Assert.Equal("Texto ", shape.Text);
@@ -57,7 +58,7 @@ public class TextShapeTests
     [Fact]
     public void MoveCaretWithShiftExpandsSelection()
     {
-        var shape = new TextShape { Text = "ABCDE", CaretIndex = 2, IsEditing = true };
+        var shape = new TextGeometry { Text = "ABCDE", CaretIndex = 2, IsEditing = true };
         shape.ClearSelection();
 
         shape.MoveCaretRight(select: true);
@@ -75,7 +76,7 @@ public class TextShapeTests
     [Fact]
     public void SelectAllSelectsCompleteString()
     {
-        var shape = new TextShape { Text = "Qapptia Editor", CaretIndex = 0, IsEditing = true };
+        var shape = new TextGeometry { Text = "Qapptia Editor", CaretIndex = 0, IsEditing = true };
         shape.SelectAll();
 
         Assert.True(shape.HasSelection);
@@ -85,7 +86,7 @@ public class TextShapeTests
     [Fact]
     public void GetCursorTypeReturnsIbeamInsideAndSizeAllOnBorder()
     {
-        var shape = new TextShape
+        var shape = new TextGeometry
         {
             Start = new Avalonia.Point(50, 50),
             End = new Avalonia.Point(350, 80),
@@ -110,10 +111,10 @@ public class TextShapeTests
     [Fact]
     public void SupportsTextInputAndAutoStartsTextInputOnCreationAreTrueOnlyForTextShape()
     {
-        var textShape = new TextShape();
-        var rectShape = new RectangleShape();
-        var lineShape = new LineShape();
-        var arrowShape = new ArrowShape();
+        var textShape = new TextGeometry();
+        var rectShape = new RectangleGeometry();
+        var lineShape = new LineGeometry();
+        var arrowShape = new ArrowGeometry();
 
         Assert.True(textShape.SupportsTextInput);
         Assert.True(textShape.AutoStartsTextInputOnCreation);
@@ -131,7 +132,7 @@ public class TextShapeTests
     [Fact]
     public void OnPointerPressedInTextInputHandlesClickPositionAndSelection()
     {
-        var shape = new TextShape
+        var shape = new TextGeometry
         {
             Start = new Avalonia.Point(50, 50),
             End = new Avalonia.Point(50, 50),
@@ -158,11 +159,11 @@ public class TextShapeTests
         var rect = Qapptia.Editor.Services.ShapeFactory.Create(Qapptia.Editor.Services.ShapeFactory.Rectangle, new Avalonia.Point(10, 10), Avalonia.Media.Colors.Red);
         var arrow = Qapptia.Editor.Services.ShapeFactory.Create(Qapptia.Editor.Services.ShapeFactory.Arrow, new Avalonia.Point(10, 10), Avalonia.Media.Colors.Red);
 
-        Assert.IsType<TextShape>(text);
-        Assert.IsType<RectangleShape>(rect);
-        Assert.IsType<ArrowShape>(arrow);
+        Assert.IsType<TextGeometry>(text);
+        Assert.IsType<RectangleGeometry>(rect);
+        Assert.IsType<ArrowGeometry>(arrow);
 
-        var textShape = (TextShape)text!;
+        var textShape = (TextGeometry)text!;
         // El punto de inicio del texto debe estar desplazado para alinear el cursor/texto con (100, 200)
         using var font = textShape.CreateSKFont();
         textShape.GetCaretPosition(font, out float caretX, out float caretY, out float caretHeight);
@@ -176,7 +177,7 @@ public class TextShapeTests
     [Fact]
     public void BoxWidthAndUsableWidthRespectDynamicDimensionsAndMinimum()
     {
-        var shape = new TextShape
+        var shape = new TextGeometry
         {
             Start = new Avalonia.Point(50, 50),
             End = new Avalonia.Point(450, 100),
@@ -196,7 +197,7 @@ public class TextShapeTests
     [Fact]
     public void HitTestReturnsGripHandlesWhenSelectedAndNotEditing()
     {
-        var shape = new TextShape
+        var shape = new TextGeometry
         {
             Start = new Avalonia.Point(100, 100),
             End = new Avalonia.Point(400, 130),
@@ -226,7 +227,7 @@ public class TextShapeTests
     [Fact]
     public void HitTestAndCursorReturnHandlesDuringTextEditing()
     {
-        var shape = new TextShape
+        var shape = new TextGeometry
         {
             Start = new Avalonia.Point(100, 100),
             End = new Avalonia.Point(400, 130),
@@ -252,7 +253,7 @@ public class TextShapeTests
     [Fact]
     public void DragHandleResizesTextShapeWidthAndMovesBody()
     {
-        var shape = new TextShape
+        var shape = new TextGeometry
         {
             Start = new Avalonia.Point(100, 100),
             End = new Avalonia.Point(400, 130),
@@ -274,7 +275,7 @@ public class TextShapeTests
     [Fact]
     public void IsOnBorderDetectsPerimeterAndReturnsSizeAllCursor()
     {
-        var shape = new TextShape
+        var shape = new TextGeometry
         {
             Start = new Avalonia.Point(100, 100),
             End = new Avalonia.Point(400, 130),
@@ -299,7 +300,7 @@ public class TextShapeTests
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1859:Use concrete types when possible for improved performance", Justification = "Se verifica explícitamente el contrato ITextInputShape.")]
     public void TextShapeImplementsITextInputShapeContract()
     {
-        var shape = new TextShape
+        var shape = new TextGeometry
         {
             Start = new Avalonia.Point(100, 100),
             End = new Avalonia.Point(400, 130),
@@ -321,7 +322,7 @@ public class TextShapeTests
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1859:Use concrete types when possible for improved performance", Justification = "Se verifica explícitamente el contrato ITextInputShape.")]
     public void TextShapeFontSizePropertyClampsCorrectly()
     {
-        var shape = new TextShape();
+        var shape = new TextGeometry();
         ITextInputShape inputShape = shape;
 
         // Valor por defecto

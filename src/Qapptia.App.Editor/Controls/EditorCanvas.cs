@@ -1,16 +1,17 @@
 using System;
-using System.Linq;
+
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Qapptia.App.Editor.ViewModels;
+using Qapptia.App.Editor.ViewModels.Shapes;
 using Qapptia.Editor.Core;
 using Qapptia.Editor.Models;
 using Qapptia.Editor.Services;
 using Qapptia.Editor.Tools;
-using Qapptia.App.Editor.ViewModels;
 
 namespace Qapptia.App.Editor.Controls;
 
@@ -51,7 +52,7 @@ public class EditorCanvas : Control
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        
+
         if (change.Property == ViewModelProperty)
         {
             if (change.OldValue is EditorViewModel oldVm)
@@ -60,7 +61,7 @@ public class EditorCanvas : Control
                 oldVm.RequestRedraw -= OnViewModelImageLoaded;
                 oldVm.TextInputFocusRequested -= OnTextInputFocusRequested;
             }
-            
+
             if (change.NewValue is EditorViewModel newVm)
             {
                 newVm.ImageLoaded += OnViewModelImageLoaded;
@@ -126,8 +127,8 @@ public class EditorCanvas : Control
 
         // Delegar el dibujado de vectores y overlay de recorte a SkiaSharp (Monomotor puro)
         context.Custom(new SkiaCanvasDrawOperation(
-            new Rect(Bounds.Size), 
-            ViewModel.Shapes, 
+            new Rect(Bounds.Size),
+            ViewModel.Shapes,
             _currentDrawingShape,
             _cropPreviewRect,
             ViewModel.IsCropToolActive,
@@ -144,8 +145,8 @@ public class EditorCanvas : Control
         private readonly Rect _imageBounds;
 
         public SkiaCanvasDrawOperation(
-            Rect bounds, 
-            System.Collections.Generic.IEnumerable<VectorShape> shapes, 
+            Rect bounds,
+            System.Collections.Generic.IEnumerable<VectorShape> shapes,
             VectorShape? currentShape,
             Rect? cropRect = null,
             bool isCropMode = false,
@@ -187,7 +188,7 @@ public class EditorCanvas : Control
             // Renderizar overlay de recorte interactivo
             if (_isCropMode && _cropRect != null && _imageBounds.Width > 0 && _imageBounds.Height > 0)
             {
-                HitTestEngine.DrawCropOverlay(canvas, _cropRect.Value, _imageBounds);
+                ShapeRenderHelper.DrawCropOverlay(canvas, _cropRect.Value, _imageBounds);
             }
         }
     }
@@ -293,7 +294,7 @@ public class EditorCanvas : Control
         ViewModel.ClearSelection();
         _selectedShape = hitShape;
         _activeHandle = hitHandle;
-        
+
         if (_selectedShape != null)
         {
             _selectedShape.IsSelected = true;
@@ -320,25 +321,30 @@ public class EditorCanvas : Control
                 e.Handled = true;
                 return;
             }
-            
+
             _interaction = CanvasInteraction.ManipulatingShape;
         }
         else
         {
             if (ViewModel.ActiveTool is VectorTool vectorTool)
             {
-                var newShape = vectorTool.CreateShape(point, ViewModel.ActiveColor);
-                if (newShape != null)
+                var geometry = vectorTool.CreateShape(point, ViewModel.ActiveColor);
+                if (geometry != null)
                 {
                     _interaction = CanvasInteraction.DrawingShape;
-                    _currentDrawingShape = newShape;
+                    _currentDrawingShape = ShapeViewFactory.Wrap(geometry);
                 }
             }
             else if (ViewModel.ActiveTool is TextWidgetTool textTool)
             {
-                var newShape = textTool.CreateTextShape(point, ViewModel.ActiveColor, ViewModel.ActiveTextSize, ViewModel.ActiveTypeface);
-                if (newShape != null)
+                var geometry = textTool.CreateTextShape(point, ViewModel.ActiveColor, ViewModel.ActiveTextSize, ViewModel.ActiveTypeface);
+                if (geometry != null)
                 {
+                    var newShape = ShapeViewFactory.Wrap(geometry) as TextShape;
+                    if (newShape == null)
+                    {
+                        return;
+                    }
                     _interaction = CanvasInteraction.None;
                     ViewModel.Shapes.Add(newShape);
                     newShape.IsSelected = true;
@@ -391,50 +397,7 @@ public class EditorCanvas : Control
             double imgW = ViewModel.ImageWidth;
             double imgH = ViewModel.ImageHeight;
 
-            switch (_cropActiveHandle)
-            {
-                case HandleType.LeftCenter:
-                    double newLeft = Math.Clamp(cur.Left + dx, 0, cur.Right - 10);
-                    _cropPreviewRect = new Rect(newLeft, cur.Top, cur.Right - newLeft, cur.Height);
-                    break;
-                case HandleType.RightCenter:
-                    double newRight = Math.Clamp(cur.Right + dx, cur.Left + 10, imgW);
-                    _cropPreviewRect = new Rect(cur.Left, cur.Top, newRight - cur.Left, cur.Height);
-                    break;
-                case HandleType.TopCenter:
-                    double newTop = Math.Clamp(cur.Top + dy, 0, cur.Bottom - 10);
-                    _cropPreviewRect = new Rect(cur.Left, newTop, cur.Width, cur.Bottom - newTop);
-                    break;
-                case HandleType.BottomCenter:
-                    double newBottom = Math.Clamp(cur.Bottom + dy, cur.Top + 10, imgH);
-                    _cropPreviewRect = new Rect(cur.Left, cur.Top, cur.Width, newBottom - cur.Top);
-                    break;
-                case HandleType.TopLeft:
-                    double tlLeft = Math.Clamp(cur.Left + dx, 0, cur.Right - 10);
-                    double tlTop = Math.Clamp(cur.Top + dy, 0, cur.Bottom - 10);
-                    _cropPreviewRect = new Rect(tlLeft, tlTop, cur.Right - tlLeft, cur.Bottom - tlTop);
-                    break;
-                case HandleType.TopRight:
-                    double trRight = Math.Clamp(cur.Right + dx, cur.Left + 10, imgW);
-                    double trTop = Math.Clamp(cur.Top + dy, 0, cur.Bottom - 10);
-                    _cropPreviewRect = new Rect(cur.Left, trTop, trRight - cur.Left, cur.Bottom - trTop);
-                    break;
-                case HandleType.BottomLeft:
-                    double blLeft = Math.Clamp(cur.Left + dx, 0, cur.Right - 10);
-                    double blBottom = Math.Clamp(cur.Bottom + dy, cur.Top + 10, imgH);
-                    _cropPreviewRect = new Rect(blLeft, cur.Top, cur.Right - blLeft, blBottom - cur.Top);
-                    break;
-                case HandleType.BottomRight:
-                    double brRight = Math.Clamp(cur.Right + dx, cur.Left + 10, imgW);
-                    double brBottom = Math.Clamp(cur.Bottom + dy, cur.Top + 10, imgH);
-                    _cropPreviewRect = new Rect(cur.Left, cur.Top, brRight - cur.Left, brBottom - cur.Top);
-                    break;
-                case HandleType.Body:
-                    double newX = Math.Clamp(cur.X + dx, 0, imgW - cur.Width);
-                    double newY = Math.Clamp(cur.Y + dy, 0, imgH - cur.Height);
-                    _cropPreviewRect = new Rect(newX, newY, cur.Width, cur.Height);
-                    break;
-            }
+            _cropPreviewRect = CropTool.ResizeRect(_cropActiveHandle, cur, dx, dy, imgW, imgH);
 
             _lastMousePos = point;
             _hasDragged = true;
@@ -447,7 +410,7 @@ public class EditorCanvas : Control
         {
             if (ViewModel.ActiveTool is VectorTool vectorTool)
             {
-                vectorTool.UpdateDrawing(_currentDrawingShape, point, e.KeyModifiers);
+                vectorTool.UpdateDrawing(_currentDrawingShape.Geometry, point, e.KeyModifiers);
             }
             else
             {
@@ -459,14 +422,14 @@ public class EditorCanvas : Control
         {
             double dx = point.X - _lastMousePos.X;
             double dy = point.Y - _lastMousePos.Y;
-            
+
             _selectedShape.DragHandle(_activeHandle, dx, dy, ref _activeHandle);
 
             if (_selectedShape is ITextInputShape inputShape && ViewModel != null && ViewModel.IsEditingText)
             {
                 ViewModel.CurrentTextBounds = inputShape.TextBounds;
             }
-            
+
             _lastMousePos = point;
             InvalidateVisual();
         }
@@ -486,8 +449,7 @@ public class EditorCanvas : Control
             if (_cropActiveHandle != HandleType.None && _hasDragged && _cropPreviewRect != null)
             {
                 var finalCrop = _cropPreviewRect.Value;
-                if (finalCrop.Width >= 10 && finalCrop.Height >= 10 && 
-                    (finalCrop.Width < ViewModel.ImageWidth || finalCrop.Height < ViewModel.ImageHeight || finalCrop.X > 0 || finalCrop.Y > 0))
+                if (CropTool.ShouldApplyCrop(finalCrop, ViewModel.ImageWidth, ViewModel.ImageHeight))
                 {
                     ViewModel.ApplyCrop(finalCrop);
                     _cropPreviewRect = new Rect(0, 0, ViewModel.ImageWidth, ViewModel.ImageHeight);
@@ -508,18 +470,18 @@ public class EditorCanvas : Control
                 if (_currentDrawingShape != null)
                 {
                     bool shouldCommit = (ViewModel?.ActiveTool is VectorTool vectorTool)
-                        ? vectorTool.ShouldCommitOnRelease(_currentDrawingShape)
+                        ? vectorTool.ShouldCommitOnRelease(_currentDrawingShape.Geometry)
                         : true;
 
                     if (shouldCommit)
                     {
                         ViewModel?.Shapes.Add(_currentDrawingShape);
-                        
+
                         // Seleccionamos la figura automáticamente para que pueda cambiar de color/editarse de inmediato
                         ViewModel?.ClearSelection();
                         _currentDrawingShape.IsSelected = true;
                         _selectedShape = _currentDrawingShape;
-                        
+
                         shouldSave = true;
                     }
                     _currentDrawingShape = null;

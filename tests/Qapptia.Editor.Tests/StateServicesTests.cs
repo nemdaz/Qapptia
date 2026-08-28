@@ -8,6 +8,7 @@ using Qapptia.Editor.Models;
 using Qapptia.Editor.Services;
 using Qapptia.Editor.Tools;
 using Xunit;
+using EditorGeometry = Qapptia.Editor.Models.Geometry;
 
 namespace Qapptia.Editor.Tests;
 
@@ -92,11 +93,11 @@ public sealed class StateServicesTests : IDisposable
     [Fact]
     public void CanvasStateServiceConvertsShapesBidirectionally()
     {
-        var shapes = new List<VectorShape>
+        var shapes = new List<EditorGeometry.VectorGeometry>
         {
-            new RectangleShape { Start = new Point(10, 10), End = new Point(50, 50), Color = Colors.Red },
-            new LineShape { Start = new Point(0, 0), End = new Point(100, 100), Color = Colors.Green },
-            new TextShape { Start = new Point(20, 20), End = new Point(200, 50), Text = "Hola", TextSize = 20 }
+            new EditorGeometry.RectangleGeometry { Start = new Point(10, 10), End = new Point(50, 50), Color = Colors.Red },
+            new EditorGeometry.LineGeometry { Start = new Point(0, 0), End = new Point(100, 100), Color = Colors.Green },
+            new EditorGeometry.TextGeometry { Start = new Point(20, 20), End = new Point(200, 50), Text = "Hola", TextSize = 20 }
         };
 
         var dtos = _canvasStateService.CreateDtos(shapes);
@@ -107,9 +108,9 @@ public sealed class StateServicesTests : IDisposable
 
         var reconstructed = _canvasStateService.CreateShapes(dtos);
         reconstructed.Should().HaveCount(3);
-        reconstructed[0].Should().BeOfType<RectangleShape>();
-        reconstructed[1].Should().BeOfType<LineShape>();
-        var textRecon = reconstructed[2].Should().BeOfType<TextShape>().Subject;
+        reconstructed[0].Should().BeOfType<EditorGeometry.RectangleGeometry>();
+        reconstructed[1].Should().BeOfType<EditorGeometry.LineGeometry>();
+        var textRecon = reconstructed[2].Should().BeOfType<EditorGeometry.TextGeometry>().Subject;
         textRecon.Text.Should().Be("Hola");
         textRecon.TextSize.Should().Be(20);
     }
@@ -161,12 +162,12 @@ public sealed class StateServicesTests : IDisposable
     [Fact]
     public void ToolsDeclareCorrectTargetShapeTypes()
     {
-        ShapeFactory.Line.TargetShapeType.Should().Be<LineShape>();
-        ShapeFactory.Arrow.TargetShapeType.Should().Be<ArrowShape>();
-        ShapeFactory.Rectangle.TargetShapeType.Should().Be<RectangleShape>();
-        ShapeFactory.Ellipse.TargetShapeType.Should().Be<EllipseShape>();
-        ShapeFactory.Highlighter.TargetShapeType.Should().Be<HighlighterShape>();
-        ShapeFactory.Text.TargetShapeType.Should().Be<TextShape>();
+        ShapeFactory.Line.TargetShapeType.Should().Be<EditorGeometry.LineGeometry>();
+        ShapeFactory.Arrow.TargetShapeType.Should().Be<EditorGeometry.ArrowGeometry>();
+        ShapeFactory.Rectangle.TargetShapeType.Should().Be<EditorGeometry.RectangleGeometry>();
+        ShapeFactory.Ellipse.TargetShapeType.Should().Be<EditorGeometry.EllipseGeometry>();
+        ShapeFactory.Highlighter.TargetShapeType.Should().Be<EditorGeometry.HighlighterGeometry>();
+        ShapeFactory.Text.TargetShapeType.Should().Be<EditorGeometry.TextGeometry>();
 
         ShapeFactory.Crop.TargetShapeType.Should().BeNull();
         ShapeFactory.Crop.AltersCanvasGeometry.Should().BeTrue();

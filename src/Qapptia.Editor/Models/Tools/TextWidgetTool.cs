@@ -3,7 +3,7 @@ using Avalonia;
 using Avalonia.Input;
 using Avalonia.Media;
 using Qapptia.Editor.Core;
-using Qapptia.Editor.Models;
+using Qapptia.Editor.Models.Geometry;
 using SkiaSharp;
 
 namespace Qapptia.Editor.Tools;
@@ -19,14 +19,14 @@ public class TextWidgetTool : Tool
     public override string? Shortcut => "T";
     public override ToolType Type => ToolType.Widget;
     public override StandardCursorType DefaultCursor => StandardCursorType.Ibeam;
-    public override Type TargetShapeType => typeof(TextShape);
+    public override Type TargetShapeType => typeof(TextGeometry);
 
     /// <summary>
-    /// Crea y alinea una nueva figura de texto según las coordenadas de clic y métricas de fuente.
+    /// Crea y alinea una nueva geometría de texto según las coordenadas de clic y métricas de fuente.
     /// </summary>
-    public virtual TextShape CreateTextShape(Point clickPoint, Color color, float textSize, SKTypeface? typeface)
+    public virtual TextGeometry CreateTextShape(Point clickPoint, Color color, float textSize, SKTypeface? typeface)
     {
-        var textShape = new TextShape
+        var textShape = new TextGeometry
         {
             Color = color,
             TextSize = textSize,

@@ -1,21 +1,21 @@
 using System;
 using Avalonia;
 using Avalonia.Input;
-using Qapptia.Editor.Models;
+using Qapptia.Editor.Models.Geometry;
 
 namespace Qapptia.Editor.Tools;
 
 /// <summary>
 /// Herramienta vectorial para trazar elipses y círculos perfectos (con tecla Shift).
 /// </summary>
-public sealed class EllipseTool : VectorTool<EllipseShape>
+public sealed class EllipseTool : VectorTool<EllipseGeometry>
 {
     public override string Id => "Ellipse";
     public override string DisplayName => "Elipse";
     public override string IconData => IconCatalog.Ellipse;
     public override string? Shortcut => "E";
 
-    public override void UpdateDrawing(VectorShape shape, Point currentPoint, KeyModifiers modifiers)
+    public override void UpdateDrawing(VectorGeometry shape, Point currentPoint, KeyModifiers modifiers)
     {
         if (modifiers.HasFlag(KeyModifiers.Shift))
         {

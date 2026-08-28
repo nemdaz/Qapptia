@@ -1,21 +1,21 @@
 using System;
 using Avalonia;
 using Avalonia.Input;
-using Qapptia.Editor.Models;
+using Qapptia.Editor.Models.Geometry;
 
 namespace Qapptia.Editor.Tools;
 
 /// <summary>
 /// Herramienta vectorial para trazar rectángulos y cuadrados (con tecla Shift).
 /// </summary>
-public sealed class RectangleTool : VectorTool<RectangleShape>
+public sealed class RectangleTool : VectorTool<RectangleGeometry>
 {
     public override string Id => "Rectangle";
     public override string DisplayName => "Rectángulo";
     public override string IconData => IconCatalog.Rectangle;
     public override string? Shortcut => "R";
 
-    public override void UpdateDrawing(VectorShape shape, Point currentPoint, KeyModifiers modifiers)
+    public override void UpdateDrawing(VectorGeometry shape, Point currentPoint, KeyModifiers modifiers)
     {
         if (modifiers.HasFlag(KeyModifiers.Shift))
         {

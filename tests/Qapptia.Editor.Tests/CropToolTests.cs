@@ -8,6 +8,7 @@ using Qapptia.Editor.Models;
 using Qapptia.Editor.Services;
 using Qapptia.Editor.Tools;
 using Xunit;
+using EditorGeometry = Qapptia.Editor.Models.Geometry;
 
 namespace Qapptia.Editor.Tests;
 
@@ -63,7 +64,7 @@ public sealed class CropToolTests : IDisposable
     [Fact]
     public void VectorShapeMovePreservesRelativeOffset()
     {
-        var rect = new RectangleShape
+        var rect = new EditorGeometry.RectangleGeometry
         {
             Start = new Point(100, 100),
             End = new Point(200, 200),
@@ -76,5 +77,39 @@ public sealed class CropToolTests : IDisposable
         rect.Start.Should().Be(new Point(50, 50));
         rect.End.Should().Be(new Point(150, 150));
         rect.BoundingBox.Should().Be(new Rect(50, 50, 100, 100));
+    }
+
+    [Fact]
+    public void CropResizeRectClampsToImageBounds()
+    {
+        var tool = ShapeFactory.Crop;
+        var rect = new Rect(100, 100, 200, 200);
+
+        // Arrastrar la maneta derecha más allá del límite de la imagen (ancho 250).
+        var resized = CropTool.ResizeRect(HandleType.RightCenter, rect, dx: 500, dy: 0, imageWidth: 250, imageHeight: 300);
+
+        resized.Right.Should().Be(250);
+    }
+
+    [Fact]
+    public void CropResizeRectRespectsMinimumSize()
+    {
+        var tool = ShapeFactory.Crop;
+        var rect = new Rect(100, 100, 200, 200);
+
+        // Colapsar por la izquierda; el ancho no debe caer por debajo del mínimo (10).
+        var resized = CropTool.ResizeRect(HandleType.LeftCenter, rect, dx: 1000, dy: 0, imageWidth: 500, imageHeight: 500);
+
+        resized.Width.Should().BeGreaterOrEqualTo(Qapptia.Editor.Core.Constants.CropMinSize);
+    }
+
+    [Fact]
+    public void CropShouldApplyRejectsTooSmallOrIdentityRect()
+    {
+        var tool = ShapeFactory.Crop;
+
+        CropTool.ShouldApplyCrop(new Rect(0, 0, 5, 5), imageWidth: 1000, imageHeight: 800).Should().BeFalse();
+        CropTool.ShouldApplyCrop(new Rect(0, 0, 1000, 800), imageWidth: 1000, imageHeight: 800).Should().BeFalse();
+        CropTool.ShouldApplyCrop(new Rect(0, 0, 500, 400), imageWidth: 1000, imageHeight: 800).Should().BeTrue();
     }
 }

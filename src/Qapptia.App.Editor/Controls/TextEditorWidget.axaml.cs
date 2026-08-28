@@ -1,10 +1,10 @@
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Qapptia.App.Editor.ViewModels;
-using System.Linq;
 
 namespace Qapptia.App.Editor.Controls;
 
@@ -66,7 +66,7 @@ public partial class TextEditorWidget : UserControl
             {
                 int min = (int)Qapptia.Editor.Core.Constants.TextToolMinFontSize;
                 if (size < min) size = min;
-                ExecuteOnActiveShape(shape => 
+                ExecuteOnActiveShape(shape =>
                 {
                     shape.TextSize = size;
                     shape.RequestFocus();
@@ -128,7 +128,7 @@ public partial class TextEditorWidget : UserControl
 
     private void IncreaseSize_Click(object? sender, RoutedEventArgs e)
     {
-        ExecuteOnActiveShape(shape => 
+        ExecuteOnActiveShape(shape =>
         {
             shape.TextSize += 2;
             shape.RequestFocus();
@@ -137,7 +137,7 @@ public partial class TextEditorWidget : UserControl
 
     private void DecreaseSize_Click(object? sender, RoutedEventArgs e)
     {
-        ExecuteOnActiveShape(shape => 
+        ExecuteOnActiveShape(shape =>
         {
             shape.TextSize -= 2;
             shape.RequestFocus();
@@ -175,7 +175,7 @@ public partial class TextEditorWidget : UserControl
             double dy = currentPoint.Y - _dragStartPoint.Y;
 
             // Sincronizar posición del vector y overlay flotante preservando el ancho
-            if (vm.ActiveTextInputShape is Qapptia.Editor.Models.VectorShape vectorShape)
+            if (vm.ActiveTextInputShape is Qapptia.App.Editor.ViewModels.Shapes.VectorShape vectorShape)
             {
                 vectorShape.Move(dx, dy);
                 vm.CurrentTextBounds = vm.ActiveTextInputShape.TextBounds;

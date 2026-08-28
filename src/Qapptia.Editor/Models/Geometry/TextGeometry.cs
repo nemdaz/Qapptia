@@ -3,30 +3,20 @@ using System.Collections.Generic;
 using System.Text;
 using Avalonia;
 using Avalonia.Input;
-using SkiaSharp;
 using Qapptia.Editor.Core;
 using Qapptia.Editor.Services;
+using SkiaSharp;
 
-namespace Qapptia.Editor.Models;
+namespace Qapptia.Editor.Models.Geometry;
 
 public record struct TextLayoutLine(string Text, int StartIndex, int Length, float Width, float YOffset);
 
-public class TextShape : VectorShape, ITextInputShape
+/// <summary>
+/// Geometría de texto (back): cálculo de posición, métricas, edición y selección.
+/// No realiza renderizado; el dibujado vive en la capa de presentación.
+/// </summary>
+public class TextGeometry : VectorGeometry, ITextInputShape
 {
-    private static readonly (float dx, float dy)[] s_contourOffsets =
-    [
-        (-1.0f,  0.0f),
-        ( 1.0f,  0.0f),
-        ( 0.0f, -1.0f),
-        ( 0.0f,  1.0f),
-        (-0.707f, -0.707f),
-        ( 0.707f, -0.707f),
-        (-0.707f,  0.707f),
-        ( 0.707f,  0.707f)
-    ];
-
-    private static readonly string[] s_lineSeparators = ["\r\n", "\r", "\n"];
-
     private float _textSize = Constants.TextToolDefaultFontSize;
 
     public string Text { get; set; } = string.Empty;
@@ -35,7 +25,7 @@ public class TextShape : VectorShape, ITextInputShape
         get => _textSize;
         set => _textSize = Math.Clamp(value, Constants.TextToolMinFontSize, Constants.TextToolMaxFontSize);
     }
-    
+
     public SKTypeface Typeface { get; set; } = SKTypeface.Default;
 
     public int CaretIndex { get; set; }
@@ -97,8 +87,6 @@ public class TextShape : VectorShape, ITextInputShape
         CaretIndex = Text.Length;
         IsCaretVisible = true;
     }
-
-    #region Text Editing Operations (Monomotor)
 
     public void InsertText(string text)
     {
@@ -304,8 +292,6 @@ public class TextShape : VectorShape, ITextInputShape
         }
     }
 
-    #endregion
-
     public SKFont CreateSKFont()
     {
         return new SKFont(Typeface ?? SKTypeface.Default, TextSize)
@@ -329,7 +315,7 @@ public class TextShape : VectorShape, ITextInputShape
 
         int currentIndex = 0;
         float currentY = 0;
-        var rawLines = text.Split(s_lineSeparators, StringSplitOptions.None);
+        var rawLines = text.Split(["\r\n", "\r", "\n"], StringSplitOptions.None);
 
         for (int r = 0; r < rawLines.Length; r++)
         {
@@ -342,8 +328,7 @@ public class TextShape : VectorShape, ITextInputShape
                 {
                     if (currentIndex + 1 < text.Length && text[currentIndex] == '\r' && text[currentIndex + 1] == '\n')
                         currentIndex += 2;
-                    else
-                        currentIndex += 1;
+                    else currentIndex += 1;
                 }
                 continue;
             }
@@ -370,7 +355,7 @@ public class TextShape : VectorShape, ITextInputShape
                         string lineText = currentLineStr.ToString();
                         result.Add(new TextLayoutLine(lineText, lineStartIdx, lineText.Length, font.MeasureText(lineText), currentY));
                         currentY += font.Spacing;
-                        lineStartIdx += lineText.Length + 1; // +1 por el espacio divisor
+                        lineStartIdx += lineText.Length + 1;
                         currentLineStr.Clear();
                     }
 
@@ -381,7 +366,6 @@ public class TextShape : VectorShape, ITextInputShape
                     }
                     else
                     {
-                        // Dividir carácter a carácter si la palabra excede el ancho útil
                         for (int c = 0; c < word.Length; c++)
                         {
                             char ch = word[c];
@@ -416,8 +400,7 @@ public class TextShape : VectorShape, ITextInputShape
             {
                 if (currentIndex + 1 < text.Length && text[currentIndex] == '\r' && text[currentIndex + 1] == '\n')
                     currentIndex += 2;
-                else
-                    currentIndex += 1;
+                else currentIndex += 1;
             }
         }
 
@@ -510,152 +493,6 @@ public class TextShape : VectorShape, ITextInputShape
         return line.StartIndex + bestChar;
     }
 
-    public override void RenderSkia(SKCanvas canvas)
-    {
-        using var font = CreateSKFont();
-        font.GetFontMetrics(out var metrics);
-        float usableWidth = (float)UsableWidth;
-        var lines = GetLayoutLines(Text, font, usableWidth);
-
-        float totalHeight = Math.Max(lines.Count * font.Spacing, 30f) + (float)Constants.TextToolOffset * 2;
-        double left = Math.Min(Start.X, End.X);
-        double top = Math.Min(Start.Y, End.Y);
-        float baseOffsetX = (float)(left + Constants.TextToolOffset);
-        float baseOffsetY = (float)(top + Constants.TextToolOffset);
-        float startY = (float)(top + Constants.TextToolOffset - metrics.Ascent);
-        var boxRect = new Rect(left, top, BoxWidth, totalHeight);
-
-        // 1. Marco delimitador y manetas laterales (activos simultáneamente en selección y edición)
-        if (IsSelected || IsEditing)
-        {
-            using var borderPaint = new SKPaint
-            {
-                Color = IsEditing ? Constants.TextToolBorderSKColor : new SKColor(0, 120, 215, 140),
-                Style = SKPaintStyle.Stroke,
-                StrokeWidth = 1.0f,
-                PathEffect = IsEditing ? null : SKPathEffect.CreateDash([4f, 4f], 0),
-                IsAntialias = true
-            };
-            var skBoxRect = new SKRect((float)left, (float)top, (float)(left + BoxWidth), (float)(top + totalHeight));
-            canvas.DrawRoundRect(skBoxRect, 2f, 2f, borderPaint);
-
-            // Manetas laterales de control activas siempre durante la edición
-            HitTestEngine.DrawHandlesSkiaSides(canvas, boxRect);
-        }
-
-        // 2. Fondo de selección de texto (si hay selección activa)
-        if (IsEditing && HasSelection)
-        {
-            int selMin = SelectionMin;
-            int selMax = SelectionMax;
-
-            using var selPaint = new SKPaint
-            {
-                Color = Constants.TextToolSelectionSKColor,
-                Style = SKPaintStyle.Fill,
-                IsAntialias = false
-            };
-
-            foreach (var line in lines)
-            {
-                int lineStart = line.StartIndex;
-                int lineEnd = line.StartIndex + line.Length;
-
-                int overlapStart = Math.Max(lineStart, selMin);
-                int overlapEnd = Math.Min(lineEnd, selMax);
-
-                if (overlapStart < overlapEnd)
-                {
-                    int offsetInLine = overlapStart - lineStart;
-                    int lengthInLine = overlapEnd - overlapStart;
-
-                    string beforeOverlap = offsetInLine > 0 ? line.Text.Substring(0, offsetInLine) : string.Empty;
-                    string overlapText = line.Text.Substring(offsetInLine, lengthInLine);
-
-                    float x1 = baseOffsetX + (string.IsNullOrEmpty(beforeOverlap) ? 0f : font.MeasureText(beforeOverlap));
-                    float x2 = x1 + font.MeasureText(overlapText);
-                    float y1 = baseOffsetY + line.YOffset;
-                    float y2 = y1 + font.Spacing;
-
-                    canvas.DrawRect(new SKRect(x1, y1, x2, y2), selPaint);
-                }
-            }
-        }
-
-        if (!string.IsNullOrWhiteSpace(Text))
-        {
-            // 3. Contorno claro (8 direcciones para halo suave 360° en fondos oscuros)
-            using var paintLight = new SKPaint
-            {
-                Color = Constants.TextToolLightContourSKColor,
-                IsAntialias = true
-            };
-            foreach (var (dx, dy) in s_contourOffsets)
-            {
-                foreach (var line in lines)
-                {
-                    if (!string.IsNullOrEmpty(line.Text))
-                    {
-                        canvas.DrawText(line.Text, baseOffsetX + dx, startY + line.YOffset + dy, SKTextAlign.Left, font, paintLight);
-                    }
-                }
-            }
-
-            // 4. Contorno oscuro (8 direcciones para nitidez suave 360° en fondos claros)
-            using var paintDark = new SKPaint
-            {
-                Color = Constants.TextToolDarkContourSKColor,
-                IsAntialias = true
-            };
-            foreach (var (dx, dy) in s_contourOffsets)
-            {
-                foreach (var line in lines)
-                {
-                    if (!string.IsNullOrEmpty(line.Text))
-                    {
-                        canvas.DrawText(line.Text, baseOffsetX + dx, startY + line.YOffset + dy, SKTextAlign.Left, font, paintDark);
-                    }
-                }
-            }
-
-            // 5. Capa principal de texto
-            using var paintMain = new SKPaint
-            {
-                Color = new SKColor(Color.R, Color.G, Color.B, Color.A),
-                IsAntialias = true
-            };
-            foreach (var line in lines)
-            {
-                if (!string.IsNullOrEmpty(line.Text))
-                {
-                    canvas.DrawText(line.Text, baseOffsetX, startY + line.YOffset, SKTextAlign.Left, font, paintMain);
-                }
-            }
-        }
-
-        // 6. Cursor parpadeante de alto contraste (100% Monomotor)
-        if (IsEditing && IsCaretVisible)
-        {
-            GetCaretPosition(font, out float caretX, out float caretY, out float caretHeight);
-
-            using var caretPaintBlack = new SKPaint { Color = Constants.TextToolCaretBlack, IsAntialias = false };
-            using var caretPaintWhite = new SKPaint { Color = Constants.TextToolCaretWhite, IsAntialias = false };
-
-            // 2px de ancho vertical: 1px negro (izq) y 1px blanco (der) para visibilidad perfecta en cualquier fondo
-            canvas.DrawRect(caretX, caretY, 1.0f, caretHeight, caretPaintBlack);
-            canvas.DrawRect(caretX + 1.0f, caretY, 1.0f, caretHeight, caretPaintWhite);
-        }
-    }
-
-    protected override Rect GetBoundingBox()
-    {
-        using var font = CreateSKFont();
-        float totalHeight = CalculateHeight(font);
-        double left = Math.Min(Start.X, End.X);
-        double top = Math.Min(Start.Y, End.Y);
-        return new Rect(left, top, BoxWidth, totalHeight);
-    }
-
     public override HandleType HitTest(Point point)
     {
         var boxRect = GetBoundingBox();
@@ -723,5 +560,64 @@ public class TextShape : VectorShape, ITextInputShape
         }
 
         return null;
+    }
+
+    protected override Rect GetBoundingBox()
+    {
+        using var font = CreateSKFont();
+        float totalHeight = CalculateHeight(font);
+        double left = Math.Min(Start.X, End.X);
+        double top = Math.Min(Start.Y, End.Y);
+        return new Rect(left, top, BoxWidth, totalHeight);
+    }
+
+    public IReadOnlyList<Rect> GetSelectionRects(SKFont font)
+    {
+        var rects = new List<Rect>();
+        if (!IsEditing || !HasSelection) return rects;
+
+        int selMin = SelectionMin;
+        int selMax = SelectionMax;
+
+        var box = GetBoundingBox();
+        float baseOffsetX = (float)(box.X + Constants.TextToolOffset);
+        float baseOffsetY = (float)(box.Y + Constants.TextToolOffset);
+        var lines = GetLayoutLines(Text, font, (float)UsableWidth);
+
+        foreach (var line in lines)
+        {
+            int lineStart = line.StartIndex;
+            int lineEnd = line.StartIndex + line.Length;
+
+            int overlapStart = Math.Max(lineStart, selMin);
+            int overlapEnd = Math.Min(lineEnd, selMax);
+
+            if (overlapStart < overlapEnd)
+            {
+                int offsetInLine = overlapStart - lineStart;
+                int lengthInLine = overlapEnd - overlapStart;
+
+                string beforeOverlap = offsetInLine > 0 ? line.Text.Substring(0, offsetInLine) : string.Empty;
+                string overlapText = line.Text.Substring(offsetInLine, lengthInLine);
+
+                float x1 = baseOffsetX + (string.IsNullOrEmpty(beforeOverlap) ? 0f : font.MeasureText(beforeOverlap));
+                float x2 = x1 + font.MeasureText(overlapText);
+                float y1 = baseOffsetY + line.YOffset;
+                float y2 = y1 + font.Spacing;
+
+                rects.Add(new Rect(x1, y1, x2 - x1, y2 - y1));
+            }
+        }
+        return rects;
+    }
+
+    public (float baseOffsetX, float baseOffsetY, float startY) GetRenderOffsets(SKFont font)
+    {
+        var box = GetBoundingBox();
+        float baseOffsetX = (float)(box.X + Constants.TextToolOffset);
+        float baseOffsetY = (float)(box.Y + Constants.TextToolOffset);
+        font.GetFontMetrics(out var metrics);
+        float startY = baseOffsetY - metrics.Ascent;
+        return (baseOffsetX, baseOffsetY, startY);
     }
 }

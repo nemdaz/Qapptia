@@ -7,6 +7,7 @@ using Qapptia.Editor.Models;
 using Qapptia.Editor.Services;
 using Qapptia.Editor.Tools;
 using Xunit;
+using EditorGeometry = Qapptia.Editor.Models.Geometry;
 
 namespace Qapptia.Editor.Tests;
 
@@ -22,7 +23,7 @@ public class ToolHierarchyTests
 
         var shape = tool.CreateShape(new Point(10, 20), Colors.Red);
         Assert.NotNull(shape);
-        var line = Assert.IsType<LineShape>(shape);
+        var line = Assert.IsType<EditorGeometry.LineGeometry>(shape);
         Assert.Equal(new Point(10, 20), line.Start);
         Assert.Equal(new Point(10, 20), line.End);
     }
@@ -95,6 +96,6 @@ public class ToolHierarchyTests
     {
         var shape = ShapeFactory.Create("arrow", new Point(5, 5), Colors.Magenta);
         Assert.NotNull(shape);
-        Assert.IsType<ArrowShape>(shape);
+        Assert.IsType<EditorGeometry.ArrowGeometry>(shape);
     }
 }

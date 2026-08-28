@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Qapptia.Editor.Models;
+using Qapptia.Editor.Models.Geometry;
 
 namespace Qapptia.Editor.Services;
 
@@ -12,6 +13,6 @@ public interface ICanvasStateService
     CanvasState Load(string imagePath);
     void Save(CanvasState state, string imagePath);
 
-    List<VectorShape> CreateShapes(IEnumerable<VectorShapeDto> dtos);
-    List<VectorShapeDto> CreateDtos(IEnumerable<VectorShape> shapes);
+    List<VectorGeometry> CreateShapes(IEnumerable<VectorShapeDto> dtos);
+    List<VectorShapeDto> CreateDtos(IEnumerable<VectorGeometry> shapes);
 }

@@ -1,14 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Globalization;
-using System.IO;
-using System.Linq;
+
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Qapptia.App.Editor.ViewModels.Shapes;
 using Qapptia.Core.Configuration;
 using Qapptia.Editor.Core;
 using Qapptia.Editor.Models;
@@ -309,9 +308,9 @@ public partial class EditorViewModel : ObservableObject, IDisposable
 
                 Shapes.Clear();
                 var loadedShapes = _canvasStateService.CreateShapes(canvasState.Shapes);
-                foreach (var shape in loadedShapes)
+                foreach (var geometry in loadedShapes)
                 {
-                    Shapes.Add(shape);
+                    Shapes.Add(ShapeViewFactory.Wrap(geometry));
                 }
 
                 _currentImagePath = file.FullPath;
@@ -357,7 +356,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         {
             Crop = _currentCrop,
             Rotation = _currentRotation,
-            Shapes = _canvasStateService.CreateDtos(Shapes)
+            Shapes = _canvasStateService.CreateDtos(Shapes.Select(s => s.Geometry))
         };
 
         _canvasStateService.Save(state, _currentImagePath);
@@ -365,7 +364,8 @@ public partial class EditorViewModel : ObservableObject, IDisposable
 
     public void ApplyCrop(Rect cropRect)
     {
-        if (cropRect.Width < 5 || cropRect.Height < 5) return;
+        if (cropRect.Width < Qapptia.Editor.Core.Constants.CropMinSize || cropRect.Height < Qapptia.Editor.Core.Constants.CropMinSize)
+            return;
 
         int cropW = (int)Math.Round(cropRect.Width);
         int cropH = (int)Math.Round(cropRect.Height);
@@ -419,6 +419,9 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     {
         if (BackgroundImage == null) return;
 
+        // Confirma edición de texto antes de rotar para preservar estado del caret y selección.
+        CommitCurrentState();
+
         var oldBmp = BackgroundImage;
         int w = oldBmp.PixelSize.Width;
         int h = oldBmp.PixelSize.Height;
@@ -440,13 +443,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
 
         _currentRotation = (_currentRotation + 90) % 360;
 
-        foreach (var shape in Shapes)
-        {
-            var start = shape.Start;
-            var end = shape.End;
-            shape.Start = new Point(h - start.Y, start.X);
-            shape.End = new Point(h - end.Y, end.X);
-        }
+        RotateTool.RotateScene90Clockwise(Shapes.Select(s => s.Geometry), h);
 
         SaveCurrentAnnotations();
         ShowToast("Imagen rotada 90°", NotificationType.Info);
@@ -476,7 +473,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         return current;
     }
 
-    private static Avalonia.Media.Imaging.Bitmap CropBitmap(Avalonia.Media.Imaging.Bitmap src, Rect cropRect)
+    private static Avalonia.Media.Imaging.RenderTargetBitmap CropBitmap(Avalonia.Media.Imaging.Bitmap src, Rect cropRect)
     {
         int cropW = Math.Max(1, (int)Math.Round(cropRect.Width));
         int cropH = Math.Max(1, (int)Math.Round(cropRect.Height));
@@ -684,7 +681,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         }, token);
     }
 
-    #pragma warning disable CA1822
+#pragma warning disable CA1822
     [RelayCommand]
     public void Save()
     {
@@ -769,7 +766,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     {
         FitImageRequested?.Invoke(this, EventArgs.Empty);
     }
-    #pragma warning restore CA1822
+#pragma warning restore CA1822
 
     [RelayCommand]
     public void RealSize()
@@ -864,8 +861,8 @@ public partial class EditorViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
-        _backgroundImage?.Dispose();
-        _backgroundImage = null;
+        BackgroundImage?.Dispose();
+        BackgroundImage = null;
         _navigationService.Dispose();
         _toastCts?.Dispose();
         _toastCts = null;

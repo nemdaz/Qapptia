@@ -1,9 +1,9 @@
 using System;
+using System.Linq;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
-using System.Linq;
-using Avalonia.Input;
 using Qapptia.App.Editor.ViewModels;
 
 namespace Qapptia.App.Editor.Controls;
@@ -32,7 +32,7 @@ public partial class EditorToolbarWidget : UserControl
                 int incomingDigits = e.Text.Count(char.IsDigit);
                 string selectedText = tb.SelectedText ?? "";
                 int selectedDigits = selectedText.Count(char.IsDigit);
-                
+
                 if (currentDigits - selectedDigits + incomingDigits > 4)
                 {
                     e.Handled = true;
@@ -59,10 +59,10 @@ public partial class EditorToolbarWidget : UserControl
                 if (tb != null && DataContext is EditorViewModel vm)
                 {
                     vm.SelectedZoomString = tb.Text ?? string.Empty;
-                    
+
                     // Cerrar el combo si está desplegado
                     cb.IsDropDownOpen = false;
-                    
+
                     // Remover el foco para confirmar la selección visualmente
                     this.Focusable = true;
                     this.Focus();

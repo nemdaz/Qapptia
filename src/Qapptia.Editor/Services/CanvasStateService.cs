@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.Json;
 using Avalonia;
 using Qapptia.Editor.Models;
+using Qapptia.Editor.Models.Geometry;
 using Serilog;
 
 namespace Qapptia.Editor.Services;
@@ -29,8 +30,7 @@ public sealed class CanvasStateService : ICanvasStateService
 
     public string? GetJsonPath(string? imagePath)
     {
-        if (string.IsNullOrEmpty(imagePath))
-            return null;
+        if (string.IsNullOrEmpty(imagePath)) return null;
 
         string parentDir = Path.GetDirectoryName(imagePath) ?? string.Empty;
         string baseName = Path.GetFileNameWithoutExtension(imagePath);
@@ -77,16 +77,13 @@ public sealed class CanvasStateService : ICanvasStateService
         ArgumentNullException.ThrowIfNull(state);
 
         string? path = GetJsonPath(imagePath);
-        if (string.IsNullOrEmpty(path))
-            return;
+        if (string.IsNullOrEmpty(path)) return;
 
         if (!state.HasModifications)
         {
             if (File.Exists(path))
             {
-                try
-                { File.Delete(path); }
-                catch { }
+                try { File.Delete(path); } catch { }
             }
             return;
         }
@@ -109,21 +106,21 @@ public sealed class CanvasStateService : ICanvasStateService
         }
     }
 
-    public List<VectorShape> CreateShapes(IEnumerable<VectorShapeDto> dtos)
+    public List<VectorGeometry> CreateShapes(IEnumerable<VectorShapeDto> dtos)
     {
         ArgumentNullException.ThrowIfNull(dtos);
 
-        var shapes = new List<VectorShape>();
+        var shapes = new List<VectorGeometry>();
         foreach (var dto in dtos)
         {
-            VectorShape? shape = dto.Type switch
+            VectorGeometry? shape = dto.Type switch
             {
-                "rect" => new RectangleShape(),
-                "arrow" => new ArrowShape(),
-                "ellipse" => new EllipseShape(),
-                "line" => new LineShape(),
-                "highlighter" => new HighlighterShape(),
-                "text" => new TextShape(),
+                "rect" => new RectangleGeometry(),
+                "arrow" => new ArrowGeometry(),
+                "ellipse" => new EllipseGeometry(),
+                "line" => new LineGeometry(),
+                "highlighter" => new HighlighterGeometry(),
+                "text" => new TextGeometry(),
                 _ => null
             };
 
@@ -133,7 +130,7 @@ public sealed class CanvasStateService : ICanvasStateService
                 shape.End = new Point(dto.Coords[2], dto.Coords[3]);
                 shape.Color = Qapptia.Editor.Core.Constants.ParseColorName(dto.Color);
 
-                if (shape is TextShape textShape && dto.Payload != null)
+                if (shape is TextGeometry textShape && dto.Payload != null)
                 {
                     if (dto.Payload.TryGetValue("text", out var textVal))
                     {
@@ -174,7 +171,7 @@ public sealed class CanvasStateService : ICanvasStateService
         return shapes;
     }
 
-    public List<VectorShapeDto> CreateDtos(IEnumerable<VectorShape> shapes)
+    public List<VectorShapeDto> CreateDtos(IEnumerable<VectorGeometry> shapes)
     {
         ArgumentNullException.ThrowIfNull(shapes);
 
@@ -182,18 +179,18 @@ public sealed class CanvasStateService : ICanvasStateService
         {
             Type = s switch
             {
-                RectangleShape => "rect",
-                ArrowShape => "arrow",
-                EllipseShape => "ellipse",
-                LineShape => "line",
-                HighlighterShape => "highlighter",
-                TextShape => "text",
+                RectangleGeometry => "rect",
+                ArrowGeometry => "arrow",
+                EllipseGeometry => "ellipse",
+                LineGeometry => "line",
+                HighlighterGeometry => "highlighter",
+                TextGeometry => "text",
                 _ => "unknown"
             },
             Id = s.Id.ToString(),
             Coords = new List<double> { s.Start.X, s.Start.Y, s.End.X, s.End.Y },
             Color = Qapptia.Editor.Core.Constants.GetColorName(s.Color),
-            Payload = s is TextShape ts ? new Dictionary<string, object>
+            Payload = s is TextGeometry ts ? new Dictionary<string, object>
             {
                 { "text", ts.Text },
                 { "text_size", ts.TextSize }
