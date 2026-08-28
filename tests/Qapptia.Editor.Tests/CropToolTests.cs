@@ -104,12 +104,37 @@ public sealed class CropToolTests : IDisposable
     }
 
     [Fact]
-    public void CropShouldApplyRejectsTooSmallOrIdentityRect()
+    public void CropShouldApplyValidatesMinimumSize()
     {
         var tool = ShapeFactory.Crop;
 
         CropTool.ShouldApplyCrop(new Rect(0, 0, 5, 5), imageWidth: 1000, imageHeight: 800).Should().BeFalse();
-        CropTool.ShouldApplyCrop(new Rect(0, 0, 1000, 800), imageWidth: 1000, imageHeight: 800).Should().BeFalse();
+        CropTool.ShouldApplyCrop(new Rect(0, 0, 1000, 800), imageWidth: 1000, imageHeight: 800).Should().BeTrue();
         CropTool.ShouldApplyCrop(new Rect(0, 0, 500, 400), imageWidth: 1000, imageHeight: 800).Should().BeTrue();
+    }
+
+    [Fact]
+    public void HitTestCropReturnsBodyOnlyOnPerimeter()
+    {
+        var cropRect = new Rect(100, 100, 200, 200);
+
+        // Centro interior: No debe ser Body (debe ser None para confirmar al hacer clic)
+        HitTestEngine.HitTestCrop(new Point(200, 200), cropRect).Should().Be(HandleType.None);
+
+        // Exterior lejano: Debe ser None
+        HitTestEngine.HitTestCrop(new Point(50, 50), cropRect).Should().Be(HandleType.None);
+
+        // Perímetro entre esquinas y centros: Debe ser Body (para arrastre perimetral)
+        HitTestEngine.HitTestCrop(new Point(150, 100), cropRect).Should().Be(HandleType.Body);
+        HitTestEngine.HitTestCrop(new Point(300, 150), cropRect).Should().Be(HandleType.Body);
+
+        // Esquina superior izquierda: Debe ser TopLeft
+        HitTestEngine.HitTestCrop(new Point(100, 100), cropRect).Should().Be(HandleType.TopLeft);
+    }
+
+    [Fact]
+    public void HitTestEngineReturnsArrowCursorForNoneHandle()
+    {
+        HitTestEngine.GetCursorForCropHandle(HandleType.None).Should().Be(StandardCursorType.Arrow);
     }
 }

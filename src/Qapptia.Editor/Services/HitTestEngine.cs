@@ -65,6 +65,15 @@ public static class HitTestEngine
         return DistanceSquared(pt, projection) <= tolerance * tolerance;
     }
 
+    public static bool HitTestRectPerimeter(Point pt, Rect rect, double tolerance)
+    {
+        if (PointToLineDistance(pt, rect.TopLeft, rect.TopRight, tolerance)) return true;
+        if (PointToLineDistance(pt, rect.TopRight, rect.BottomRight, tolerance)) return true;
+        if (PointToLineDistance(pt, rect.BottomRight, rect.BottomLeft, tolerance)) return true;
+        if (PointToLineDistance(pt, rect.BottomLeft, rect.TopLeft, tolerance)) return true;
+        return false;
+    }
+
     public static HandleType HitTestCrop(Point pt, Rect cropRect)
     {
         if (HitTestHandle(pt, cropRect.TopLeft)) return HandleType.TopLeft;
@@ -77,7 +86,7 @@ public static class HitTestEngine
         if (HitTestHandle(pt, new Point(cropRect.Left, cropRect.Center.Y))) return HandleType.LeftCenter;
         if (HitTestHandle(pt, new Point(cropRect.Right, cropRect.Center.Y))) return HandleType.RightCenter;
 
-        if (cropRect.Contains(pt)) return HandleType.Body;
+        if (HitTestRectPerimeter(pt, cropRect, Constants.GripSize)) return HandleType.Body;
 
         return HandleType.None;
     }
@@ -95,7 +104,7 @@ public static class HitTestEngine
             HandleType.BottomLeft => Avalonia.Input.StandardCursorType.BottomLeftCorner,
             HandleType.BottomRight => Avalonia.Input.StandardCursorType.BottomRightCorner,
             HandleType.Body => Avalonia.Input.StandardCursorType.SizeAll,
-            _ => Avalonia.Input.StandardCursorType.Cross
+            _ => Avalonia.Input.StandardCursorType.Arrow
         };
     }
 

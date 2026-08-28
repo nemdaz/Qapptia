@@ -531,20 +531,43 @@ public partial class EditorViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<PaletteColorItem> AvailableColors { get; }
 
+    private Tool? _previousTool;
+
     [RelayCommand]
     public void SelectTool(string toolName)
     {
         var tool = AvailableTools.FirstOrDefault(t => string.Equals(t.Id, toolName, StringComparison.OrdinalIgnoreCase));
         if (tool != null)
         {
-            ActiveTool = tool;
+            SelectTool(tool);
         }
     }
 
     public void SelectTool(Tool tool)
     {
         ArgumentNullException.ThrowIfNull(tool);
+
+        // Si se vuelve a pulsar la herramienta Crop estando activa, se desactiva (toggle off)
+        if (tool is CropTool && ActiveTool is CropTool)
+        {
+            DeactivateCropTool();
+            return;
+        }
+
+        if (ActiveTool is not CropTool)
+        {
+            _previousTool = ActiveTool;
+        }
+
         ActiveTool = tool;
+    }
+
+    public void DeactivateCropTool()
+    {
+        if (ActiveTool is CropTool)
+        {
+            ActiveTool = _previousTool ?? ShapeFactory.Arrow;
+        }
     }
 
     [RelayCommand]

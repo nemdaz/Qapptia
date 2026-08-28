@@ -216,6 +216,13 @@ public class EditorCanvas : Control
                 e.Handled = true;
                 return;
             }
+            else
+            {
+                ViewModel.DeactivateCropTool();
+                InvalidateVisual();
+                e.Handled = true;
+                return;
+            }
         }
 
         // 1. Si ya estamos en modo de ingreso de texto activo:
