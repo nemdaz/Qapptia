@@ -11,7 +11,9 @@ public interface ICanvasStateService
 {
     string? GetJsonPath(string? imagePath);
     CanvasState Load(string imagePath);
+    CanvasState Load(string imagePath, string? mediaId);
     void Save(CanvasState state, string imagePath);
+    string? FastExtractMediaId(string jsonPath);
 
     List<VectorGeometry> CreateShapes(IEnumerable<VectorShapeDto> dtos);
     List<VectorShapeDto> CreateDtos(IEnumerable<VectorGeometry> shapes);

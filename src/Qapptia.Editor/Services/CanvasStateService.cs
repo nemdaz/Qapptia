@@ -35,25 +35,123 @@ public sealed class CanvasStateService : ICanvasStateService
         string parentDir = Path.GetDirectoryName(imagePath) ?? string.Empty;
         string baseName = Path.GetFileNameWithoutExtension(imagePath);
         string annotationDir = Path.Combine(parentDir, Qapptia.Core.Constants.DrawingExtension);
-        return Path.Combine(annotationDir, $"{baseName}.json");
+        return Path.Combine(annotationDir, $"{baseName}{Qapptia.Core.Constants.JsonFileExtension}");
     }
 
-    public CanvasState Load(string imagePath)
+    public CanvasState Load(string imagePath) => Load(imagePath, null);
+
+    public CanvasState Load(string imagePath, string? mediaId)
     {
-        string? path = GetJsonPath(imagePath);
-        if (string.IsNullOrEmpty(path) || !File.Exists(path))
+        string? targetPath = GetJsonPath(imagePath);
+        if (string.IsNullOrEmpty(targetPath)) return new CanvasState();
+
+        // 1. Apertura nominal directa O(1)
+        if (File.Exists(targetPath))
         {
-            return new CanvasState();
+            return DeserializeState(targetPath);
         }
+
+        // 2. Si no existe, obtener mediaId de la imagen si no fue provisto
+        if (string.IsNullOrEmpty(mediaId))
+        {
+            var (extractedId, _) = Qapptia.Core.Services.ImageMetadataService.GetImageMetadata(imagePath);
+            mediaId = extractedId;
+        }
+
+        // 3. Si tenemos mediaId, buscar en el directorio de persistencia si hay un JSON huérfano con ese mediaId
+        if (!string.IsNullOrEmpty(mediaId))
+        {
+            string parentDir = Path.GetDirectoryName(imagePath) ?? string.Empty;
+            string annotationDir = Path.Combine(parentDir, Qapptia.Core.Constants.DrawingExtension);
+
+            if (Directory.Exists(annotationDir))
+            {
+                try
+                {
+                    foreach (var file in Directory.EnumerateFiles(annotationDir, Qapptia.Core.Constants.JsonSearchPattern))
+                    {
+                        string? fileMediaId = FastExtractMediaId(file);
+                        if (string.Equals(fileMediaId, mediaId, StringComparison.OrdinalIgnoreCase))
+                        {
+                            // Reconciliación: auto-renombrar al nombre de la imagen actual
+                            try
+                            {
+                                File.Move(file, targetPath, overwrite: true);
+                                _logger?.Information("Persistencia re-vinculada por MediaId: {OldPath} -> {NewPath}", file, targetPath);
+                                return DeserializeState(targetPath);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger?.Warning(ex, "No se pudo auto-renombrar {OldPath} a {NewPath}", file, targetPath);
+                                return DeserializeState(file);
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger?.Warning(ex, "Error al buscar JSON por MediaId en {Dir}", annotationDir);
+                }
+            }
+        }
+
+        return new CanvasState();
+    }
+
+    public string? FastExtractMediaId(string jsonPath) => FastExtractMediaId(jsonPath, _logger);
+
+    public static string? FastExtractMediaId(string jsonPath, ILogger? logger = null)
+    {
+        if (string.IsNullOrEmpty(jsonPath) || !File.Exists(jsonPath)) return null;
 
         try
         {
-            string json = File.ReadAllText(path);
+            using var fs = new FileStream(jsonPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            if (fs.Length == 0) return null;
+
+            int bytesToRead = (int)Math.Min(Qapptia.Core.Constants.JsonHeaderBufferSize, fs.Length);
+            var buffer = new byte[bytesToRead];
+            int bytesRead = fs.Read(buffer, 0, bytesToRead);
+            if (bytesRead <= 0) return null;
+
+            string header = System.Text.Encoding.UTF8.GetString(buffer, 0, bytesRead);
+            return ExtractJsonValue(header, Qapptia.Core.Constants.MetadataPropertyMediaId);
+        }
+        catch (Exception ex)
+        {
+            logger?.Debug(ex, "Error al extraer cabecera rápida de {Path}", jsonPath);
+            return null;
+        }
+    }
+
+    private static string? ExtractJsonValue(string header, string key)
+    {
+        int keyIndex = header.IndexOf($"\"{key}\"", StringComparison.OrdinalIgnoreCase);
+        if (keyIndex < 0) return null;
+
+        int colonIndex = header.IndexOf(':', keyIndex);
+        if (colonIndex < 0) return null;
+
+        int quoteStart = header.IndexOf('"', colonIndex + 1);
+        if (quoteStart < 0) return null;
+
+        int quoteEnd = header.IndexOf('"', quoteStart + 1);
+        if (quoteEnd <= quoteStart) return null;
+
+        return header[(quoteStart + 1)..quoteEnd];
+    }
+
+    private CanvasState DeserializeState(string path)
+    {
+        try
+        {
+            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using var reader = new StreamReader(fs);
+            string json = reader.ReadToEnd();
             using var doc = JsonDocument.Parse(json);
 
             if (doc.RootElement.ValueKind == JsonValueKind.Array)
             {
-                // Retrocompatibilidad con formato legado de array plano
                 var shapeDtos = JsonSerializer.Deserialize<List<VectorShapeDto>>(json);
                 return new CanvasState { Shapes = shapeDtos ?? new() };
             }
@@ -95,6 +193,36 @@ public sealed class CanvasStateService : ICanvasStateService
             {
                 var dirInfo = Directory.CreateDirectory(dir);
                 dirInfo.Attributes |= FileAttributes.Hidden;
+            }
+
+            // Si el JSON nominal no existe pero hay un archivo huérfano con el mismo MediaId, re-vincularlo renombrándolo a la ruta nominal
+            if (!File.Exists(path) && !string.IsNullOrEmpty(state.MediaId))
+            {
+                foreach (var orphanFile in Directory.EnumerateFiles(dir, Qapptia.Core.Constants.JsonSearchPattern))
+                {
+                    if (!string.Equals(orphanFile, path, StringComparison.OrdinalIgnoreCase))
+                    {
+                        string? orphanMediaId = FastExtractMediaId(orphanFile, _logger);
+                        if (string.Equals(orphanMediaId, state.MediaId, StringComparison.OrdinalIgnoreCase))
+                        {
+                            try
+                            {
+                                File.Move(orphanFile, path, overwrite: true);
+                                _logger?.Information("Persistencia re-vinculada en guardado: {OldPath} -> {NewPath}", orphanFile, path);
+                                break;
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger?.Warning(ex, "No se pudo re-vincular huérfano {OldPath} a {NewPath}", orphanFile, path);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (string.IsNullOrEmpty(state.MediaType))
+            {
+                state.MediaType = Qapptia.Core.Constants.ResolveMediaType(imagePath);
             }
 
             string json = JsonSerializer.Serialize(state, s_jsonOptions);

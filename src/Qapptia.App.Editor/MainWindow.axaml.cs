@@ -217,11 +217,12 @@ public partial class MainWindow : Window
         if (DataContext is EditorViewModel vm && vm.SelectedNode is FileItem fileNode)
         {
             string filePath = fileNode.FullPath;
-            string? guid = vm.CurrentImageId;
+            string? mediaId = vm.CurrentImageId;
 
-            if (string.IsNullOrEmpty(guid))
+            if (string.IsNullOrEmpty(mediaId))
             {
-                guid = await Qapptia.Core.Services.ImageMetadataService.EnsureImageIdAsync(filePath);
+                var (newId, _) = Qapptia.Core.Services.ImageMetadataService.EnsureImageMetadata(filePath);
+                mediaId = newId;
             }
 
             vm.CommitCurrentState();
@@ -232,7 +233,7 @@ public partial class MainWindow : Window
             try
             {
                 // 1. Crear backup comprimido seguro (.bak.gz)
-                await Qapptia.Core.Services.ImageBurnService.CreateCompressedBackupAsync(filePath, guid);
+                await Qapptia.Core.Services.ImageBurnService.CreateCompressedBackupAsync(filePath, mediaId);
 
                 // 2. Quemar Canvas a PNG
                 var bounds = canvas.Bounds;
@@ -259,8 +260,8 @@ public partial class MainWindow : Window
                     }
                 }
 
-                // 3. Persistir imagen quemada y preservar metadatos GUID
-                await Qapptia.Core.Services.ImageBurnService.SaveBurnedImageAsync(filePath, pngBytes, guid);
+                // 3. Persistir imagen quemada y preservar metadatos de medio
+                await Qapptia.Core.Services.ImageBurnService.SaveBurnedImageAsync(filePath, pngBytes, mediaId);
 
                 // 4. Limpiar UI y recargar
                 vm.OnBurnCompleted();

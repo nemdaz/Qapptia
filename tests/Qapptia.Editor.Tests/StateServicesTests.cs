@@ -160,6 +160,112 @@ public sealed class StateServicesTests : IDisposable
     }
 
     [Fact]
+    public void CanvasStateServiceSerializesMediaIdAndMediaTypeAtHeader()
+    {
+        var imagePath = Path.Combine(_testDir, "test_metadata.png");
+        File.WriteAllBytes(imagePath, new byte[] { 1, 2, 3 });
+
+        string testMediaId = Guid.NewGuid().ToString();
+        var canvasState = new CanvasState
+        {
+            MediaId = testMediaId,
+            MediaType = Qapptia.Core.Constants.MediaTypePng,
+            Crop = new List<double> { 5, 5, 200, 100 }
+        };
+
+        _canvasStateService.Save(canvasState, imagePath);
+
+        var jsonPath = _canvasStateService.GetJsonPath(imagePath)!;
+        File.Exists(jsonPath).Should().BeTrue();
+
+        string jsonContent = File.ReadAllText(jsonPath);
+        jsonContent.Should().Contain("\"Qapptia.mediaId\": \"" + testMediaId + "\"");
+        jsonContent.Should().Contain("\"Qapptia.mediaType\": \"image/png\"");
+
+        string? fastId = _canvasStateService.FastExtractMediaId(jsonPath);
+        fastId.Should().Be(testMediaId);
+    }
+
+    [Fact]
+    public async Task CanvasStateServiceRecoversOrphanJsonWhenImageIsRenamed()
+    {
+        // 1. Crear imagen original y guardar estado
+        var oldImagePath = Path.Combine(_testDir, "original_capture.png");
+        await File.WriteAllBytesAsync(oldImagePath, new byte[] { 10, 20, 30 });
+
+        var (mediaId, mediaType) = await Qapptia.Core.Services.ImageMetadataService.EnsureImageMetadataAsync(oldImagePath);
+
+        var canvasState = new CanvasState
+        {
+            MediaId = mediaId,
+            MediaType = mediaType,
+            Rotation = 180,
+            Shapes = new List<VectorShapeDto>
+            {
+                new VectorShapeDto { Type = "line", Coords = new List<double> { 0, 0, 50, 50 }, Color = "Red" }
+            }
+        };
+
+        _canvasStateService.Save(canvasState, oldImagePath);
+        var oldJsonPath = _canvasStateService.GetJsonPath(oldImagePath)!;
+        File.Exists(oldJsonPath).Should().BeTrue();
+
+        // 2. Renombrar imagen (simulando Windows Explorer fuera de la app)
+        var newImagePath = Path.Combine(_testDir, "renamed_report.png");
+        File.Move(oldImagePath, newImagePath);
+        File.Exists(oldJsonPath).Should().BeTrue(); // El JSON sigue llamándose original_capture.json
+
+        // 3. Cargar con el nuevo nombre de imagen
+        var recoveredState = _canvasStateService.Load(newImagePath);
+
+        // 4. Verificar que se recuperó el estado y se auto-renombró el JSON
+        recoveredState.Rotation.Should().Be(180);
+        recoveredState.Shapes.Should().HaveCount(1);
+
+        var newJsonPath = _canvasStateService.GetJsonPath(newImagePath)!;
+        File.Exists(newJsonPath).Should().BeTrue();
+        File.Exists(oldJsonPath).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task CanvasStateServiceSaveCleansOrphanJsonWithSameMediaId()
+    {
+        var imagePath = Path.Combine(_testDir, "save_cleanup.png");
+        await File.WriteAllBytesAsync(imagePath, new byte[] { 1, 2, 3 });
+
+        var (mediaId, mediaType) = await Qapptia.Core.Services.ImageMetadataService.EnsureImageMetadataAsync(imagePath);
+
+        // Guardar estado inicial
+        var state = new CanvasState
+        {
+            MediaId = mediaId,
+            MediaType = mediaType,
+            Rotation = 90
+        };
+        _canvasStateService.Save(state, imagePath);
+
+        var nominalJson = _canvasStateService.GetJsonPath(imagePath)!;
+        File.Exists(nominalJson).Should().BeTrue();
+
+        // Renombrar el JSON a otro nombre (simulando acción externa)
+        var orphanJson = Path.Combine(Path.GetDirectoryName(nominalJson)!, "orphan_random.json");
+        File.Move(nominalJson, orphanJson);
+        File.Exists(orphanJson).Should().BeTrue();
+        File.Exists(nominalJson).Should().BeFalse();
+
+        // Guardar nuevo estado sobre la imagen
+        state.Rotation = 270;
+        _canvasStateService.Save(state, imagePath);
+
+        // El JSON nominal debe existir con la rotación actualizada y el huérfano debe ser eliminado
+        File.Exists(nominalJson).Should().BeTrue();
+        File.Exists(orphanJson).Should().BeFalse();
+
+        var loaded = _canvasStateService.Load(imagePath);
+        loaded.Rotation.Should().Be(270);
+    }
+
+    [Fact]
     public void ToolsDeclareCorrectTargetShapeTypes()
     {
         ShapeFactory.Line.TargetShapeType.Should().Be<EditorGeometry.LineGeometry>();

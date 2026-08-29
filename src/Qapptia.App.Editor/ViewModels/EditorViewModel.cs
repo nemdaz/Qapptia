@@ -291,7 +291,10 @@ public partial class EditorViewModel : ObservableObject, IDisposable
                 var ms = new System.IO.MemoryStream(fileBytes);
                 var baseBitmap = new Avalonia.Media.Imaging.Bitmap(ms);
 
-                var canvasState = _canvasStateService.Load(file.FullPath);
+                var (mediaId, mediaType) = Qapptia.Core.Services.ImageMetadataService.EnsureImageMetadata(file.FullPath);
+                CurrentImageId = mediaId;
+
+                var canvasState = _canvasStateService.Load(file.FullPath, mediaId);
                 _currentRotation = canvasState.Rotation;
                 _currentCrop = canvasState.Crop;
 
@@ -325,11 +328,6 @@ public partial class EditorViewModel : ObservableObject, IDisposable
                 }
 
                 _currentImagePath = file.FullPath;
-
-                System.Threading.Tasks.Task.Run(async () =>
-                {
-                    CurrentImageId = await Qapptia.Core.Services.ImageMetadataService.EnsureImageIdAsync(file.FullPath);
-                });
 
                 ImageWidth = processedBitmap.Size.Width;
                 ImageHeight = processedBitmap.Size.Height;
@@ -365,6 +363,8 @@ public partial class EditorViewModel : ObservableObject, IDisposable
 
         var state = new CanvasState
         {
+            MediaId = CurrentImageId,
+            MediaType = Qapptia.Core.Constants.ResolveMediaType(_currentImagePath),
             Crop = _currentCrop,
             Rotation = _currentRotation,
             Shapes = _canvasStateService.CreateDtos(Shapes.Select(s => s.Geometry))
@@ -685,7 +685,11 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         ActiveCropRect = null;
         _currentRotation = 0;
         IsExporting = false;
-        _canvasStateService.Save(new CanvasState(), _currentImagePath);
+        _canvasStateService.Save(new CanvasState 
+        { 
+            MediaId = CurrentImageId, 
+            MediaType = Qapptia.Core.Constants.ResolveMediaType(_currentImagePath) 
+        }, _currentImagePath);
 
         // Forzamos la recarga de la imagen para que Avalonia la lea de nuevo
         string path = _currentImagePath;

@@ -12,8 +12,36 @@ public static class Constants
     public const string ShortcutCopyFile = "Ctrl+F";
     public const string DrawingExtension = ".dibujo";
     public static readonly string[] SupportedImageExtensions = { ".png", ".jpg", ".jpeg" };
-    public const string MetadataTagStart = "<QapptiaID>";
-    public const string MetadataTagEnd = "</QapptiaID>";
+    public const string MetadataBlockStart = "<QapptiaMetadata>";
+    public const string MetadataBlockEnd = "</QapptiaMetadata>";
+    public const string MetadataMediaIdStart = "<Qapptia.mediaId>";
+    public const string MetadataMediaIdEnd = "</Qapptia.mediaId>";
+    public const string MetadataMediaTypeStart = "<Qapptia.mediaType>";
+    public const string MetadataMediaTypeEnd = "</Qapptia.mediaType>";
+    public const string MetadataPropertyMediaId = "Qapptia.mediaId";
+    public const string MetadataPropertyMediaType = "Qapptia.mediaType";
+
+    // Constantes de persistencia y buffers de lectura rápida
+    public const string JsonFileExtension = ".json";
+    public const string JsonSearchPattern = "*.json";
+    public const int MetadataBufferSize = 256;
+    public const int JsonHeaderBufferSize = 512;
+
+    // Tipos MIME estándar (IANA / HTTP Content-Type)
+    public const string MediaTypePng = "image/png";
+    public const string MediaTypeJpeg = "image/jpeg";
+    public const string DefaultMediaType = MediaTypePng;
+
+    public static string ResolveMediaType(string filePath)
+    {
+        string ext = Path.GetExtension(filePath).ToLowerInvariant();
+        return ext switch
+        {
+            ".png" => MediaTypePng,
+            ".jpg" or ".jpeg" => MediaTypeJpeg,
+            _ => MediaTypePng
+        };
+    }
 
     // Nombres de ejecutables de la suite
     public const string CaptureExecutableName = "Qapptia.App.Capture.exe";

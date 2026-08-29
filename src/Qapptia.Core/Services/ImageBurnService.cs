@@ -13,7 +13,7 @@ public static class ImageBurnService
     /// <summary>
     /// Crea un backup comprimido (.bak.gz) del archivo original antes de quemar anotaciones.
     /// </summary>
-    public static async Task<string> CreateCompressedBackupAsync(string filePath, string imageId)
+    public static async Task<string> CreateCompressedBackupAsync(string filePath, string mediaId)
     {
         if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
         {
@@ -31,7 +31,7 @@ public static class ImageBurnService
         }
 
         string timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss", System.Globalization.CultureInfo.InvariantCulture);
-        string backupName = $"{fileName}_{imageId}_{timestamp}.bak.gz";
+        string backupName = $"{fileName}_{mediaId}_{timestamp}.bak.gz";
         string backupPath = Path.Combine(dibujoDir, backupName);
 
         using (var originalStream = File.OpenRead(filePath))
@@ -45,15 +45,16 @@ public static class ImageBurnService
     }
 
     /// <summary>
-    /// Guarda los bytes finales de la imagen quemada en disco y preserva su identificador GUID.
+    /// Guarda los bytes finales de la imagen quemada en disco y preserva sus metadatos MediaId y MediaType.
     /// </summary>
-    public static async Task SaveBurnedImageAsync(string filePath, byte[] pngBytes, string? imageId)
+    public static async Task SaveBurnedImageAsync(string filePath, byte[] pngBytes, string? mediaId, string? mediaType = null)
     {
         await File.WriteAllBytesAsync(filePath, pngBytes);
 
-        if (!string.IsNullOrEmpty(imageId))
+        if (!string.IsNullOrEmpty(mediaId))
         {
-            await ImageMetadataService.AppendImageIdAsync(filePath, imageId);
+            string resolvedType = mediaType ?? Constants.ResolveMediaType(filePath);
+            await ImageMetadataService.AppendMediaMetadataAsync(filePath, mediaId, resolvedType);
         }
     }
 

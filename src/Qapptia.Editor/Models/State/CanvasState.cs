@@ -9,13 +9,27 @@ namespace Qapptia.Editor.Models;
 public sealed class CanvasState
 {
     /// <summary>
+    /// Identificador único inmutable del medio asociado.
+    /// </summary>
+    [JsonPropertyName(Qapptia.Core.Constants.MetadataPropertyMediaId)]
+    [JsonPropertyOrder(-2)]
+    public string? MediaId { get; set; }
+
+    /// <summary>
+    /// Tipo MIME estándar (IANA / HTTP Content-Type) del medio asociado.
+    /// </summary>
+    [JsonPropertyName(Qapptia.Core.Constants.MetadataPropertyMediaType)]
+    [JsonPropertyOrder(-1)]
+    public string MediaType { get; set; } = Qapptia.Core.Constants.DefaultMediaType;
+
+    /// <summary>
     /// Coordenadas del recorte acumulado [x, y, width, height] o null si no se ha recortado.
     /// </summary>
     [JsonPropertyName("crop")]
     public List<double>? Crop { get; set; }
 
     /// <summary>
-    /// Ángulo acumulado de rotación en grados (0, 90, 180, 270).
+    /// Ángulo acumulado de rotación en grados.
     /// </summary>
     [JsonPropertyName("rotation")]
     public int Rotation { get; set; } = 0;

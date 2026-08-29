@@ -210,7 +210,38 @@ public sealed class NavigationService : INavigationService
     }
 
     private void OnFileSystemEvent(object sender, FileSystemEventArgs e) => TriggerDebouncedChange();
-    private void OnFileSystemRenamed(object sender, RenamedEventArgs e) => TriggerDebouncedChange();
+    private void OnFileSystemRenamed(object sender, RenamedEventArgs e)
+    {
+        try
+        {
+            string oldExt = Path.GetExtension(e.OldFullPath);
+            string newExt = Path.GetExtension(e.FullPath);
+
+            // Sincronizar archivo JSON correspondiente cuando una imagen admitida es renombrada
+            if (s_allowedExtensions.Contains(oldExt) && s_allowedExtensions.Contains(newExt))
+            {
+                string parentDir = Path.GetDirectoryName(e.FullPath) ?? string.Empty;
+                string oldBaseName = Path.GetFileNameWithoutExtension(e.OldFullPath);
+                string newBaseName = Path.GetFileNameWithoutExtension(e.FullPath);
+
+                string annotationDir = Path.Combine(parentDir, Qapptia.Core.Constants.DrawingExtension);
+                string oldJsonPath = Path.Combine(annotationDir, $"{oldBaseName}{Qapptia.Core.Constants.JsonFileExtension}");
+                string newJsonPath = Path.Combine(annotationDir, $"{newBaseName}{Qapptia.Core.Constants.JsonFileExtension}");
+
+                if (File.Exists(oldJsonPath))
+                {
+                    File.Move(oldJsonPath, newJsonPath, overwrite: true);
+                    _logger?.Information("Sincronización en tiempo real: JSON renombrado {Old} -> {New}", oldJsonPath, newJsonPath);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.Warning(ex, "Error al sincronizar renombramiento de imagen en tiempo real para {Path}", e.FullPath);
+        }
+
+        TriggerDebouncedChange();
+    }
 
     private void TriggerDebouncedChange()
     {
