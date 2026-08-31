@@ -1,5 +1,5 @@
 using System;
-
+using System.Collections.Generic;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -15,10 +15,10 @@ using Qapptia.Editor.Tools;
 
 namespace Qapptia.App.Editor.Controls;
 
-public class EditorCanvas : Control
+public class BoardCanvas : Control
 {
     public static readonly StyledProperty<EditorViewModel?> ViewModelProperty =
-        AvaloniaProperty.Register<EditorCanvas, EditorViewModel?>(nameof(ViewModel));
+        AvaloniaProperty.Register<BoardCanvas, EditorViewModel?>(nameof(ViewModel));
 
     public EditorViewModel? ViewModel
     {
@@ -28,7 +28,7 @@ public class EditorCanvas : Control
 
     private readonly DispatcherTimer _caretTimer;
 
-    public EditorCanvas()
+    public BoardCanvas()
     {
         ClipToBounds = true;
         Focusable = true;
@@ -135,7 +135,7 @@ public class EditorCanvas : Control
     private sealed class SkiaCanvasDrawOperation : Avalonia.Rendering.SceneGraph.ICustomDrawOperation
     {
         private readonly Rect _bounds;
-        private readonly System.Collections.Generic.IEnumerable<VectorShape> _shapes;
+        private readonly IEnumerable<VectorShape> _shapes;
         private readonly VectorShape? _currentShape;
         private readonly Rect? _cropRect;
         private readonly bool _isCropMode;
@@ -143,7 +143,7 @@ public class EditorCanvas : Control
 
         public SkiaCanvasDrawOperation(
             Rect bounds,
-            System.Collections.Generic.IEnumerable<VectorShape> shapes,
+            IEnumerable<VectorShape> shapes,
             VectorShape? currentShape,
             Rect? cropRect = null,
             bool isCropMode = false,
@@ -276,7 +276,6 @@ public class EditorCanvas : Control
                     e.Handled = true;
                     return;
                 }
-                // Si estaba vacío, continúa el flujo para crear/abrir el nuevo texto en la nueva posición
             }
         }
 
@@ -311,7 +310,7 @@ public class EditorCanvas : Control
                 }
                 else if (inputShape.IsOnBorder(point))
                 {
-                    // Clic en el borde: seleccionar como contenedor vectorial (para mover o presionar Suprimir)
+                    // Clic en el borde: seleccionar como contenedor vectorial
                     _interaction = CanvasInteraction.ManipulatingShape;
                 }
                 else
@@ -341,7 +340,7 @@ public class EditorCanvas : Control
             }
             else if (ViewModel.ActiveTool is TextWidgetTool textTool)
             {
-                var geometry = textTool.CreateTextShape(point, ViewModel.ActiveColor, ViewModel.ActiveTextSize, ViewModel.ActiveTypeface);
+                var geometry = textTool.CreateTextShape(point, ViewModel.ActiveColor, ViewModel.ActiveTextSize, null);
                 if (geometry != null)
                 {
                     var newShape = ShapeViewFactory.Wrap(geometry) as TextShape;
@@ -533,7 +532,11 @@ public class EditorCanvas : Control
                 var top = TopLevel.GetTopLevel(this);
                 if (top?.Clipboard != null)
                 {
-                    var pasteText = await top.Clipboard.TryGetTextAsync();
+                    string? pasteText = null;
+                    if (top.Clipboard is IAsyncDataTransfer dataTransfer)
+                    {
+                        pasteText = await dataTransfer.TryGetTextAsync();
+                    }
                     if (!string.IsNullOrEmpty(pasteText))
                     {
                         textInput.InsertText(pasteText);

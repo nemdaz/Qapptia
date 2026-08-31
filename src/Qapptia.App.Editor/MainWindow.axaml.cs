@@ -166,7 +166,7 @@ public partial class MainWindow : Window
         {
             vm.CommitCurrentState();
 
-            var canvas = this.FindControl<Qapptia.App.Editor.Controls.EditorCanvas>("MainCanvas");
+            var canvas = this.FindControl<Qapptia.App.Editor.Controls.BoardCanvas>("MainCanvas");
             if (canvas != null && vm.ImageWidth > 0 && vm.ImageHeight > 0)
             {
                 vm.IsExporting = true;
@@ -227,7 +227,7 @@ public partial class MainWindow : Window
 
             vm.CommitCurrentState();
 
-            var canvas = this.FindControl<Qapptia.App.Editor.Controls.EditorCanvas>("MainCanvas");
+            var canvas = this.FindControl<Qapptia.App.Editor.Controls.BoardCanvas>("MainCanvas");
             if (canvas == null) return;
 
             try

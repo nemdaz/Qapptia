@@ -44,7 +44,7 @@
                         </LayoutTransformControl.LayoutTransform>
                         <Border BoxShadow="0 4 16 0 #20000000" Width="{Binding ImageWidth}" Height="{Binding ImageHeight}" ClipToBounds="False">
                             <Panel ClipToBounds="False">
-                                <controls:EditorCanvas x:Name="MainCanvas" ViewModel="{Binding}" />
+                                <controls:BoardCanvas x:Name="MainCanvas" ViewModel="{Binding}" />
                                 <Canvas ClipToBounds="False">
                                     <controls:TextEditorWidget x:Name="TextOverlay" IsVisible="{Binding IsEditingText}"
                                                                Canvas.Left="{Binding CurrentTextBounds.X}"
