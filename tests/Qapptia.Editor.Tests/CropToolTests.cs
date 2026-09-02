@@ -44,7 +44,7 @@ public sealed class CropToolTests : IDisposable
         tool.DisplayName.Should().Be("Recortar");
         tool.Type.Should().Be(ToolType.Interactive);
         tool.DefaultCursor.Should().Be(StandardCursorType.Cross);
-        tool.IconData.Should().NotBeNullOrWhiteSpace();
+        tool.IconKey.Should().Be("IconCrop");
     }
 
     [Fact]

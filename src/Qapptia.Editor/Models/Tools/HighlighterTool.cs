@@ -9,6 +9,5 @@ public sealed class HighlighterTool : VectorTool<HighlighterGeometry>
 {
     public override string Id => "Highlighter";
     public override string DisplayName => "Resaltador";
-    public override string IconData => IconCatalog.Highlighter;
     public override string? Shortcut => "H";
 }

@@ -15,7 +15,6 @@ public class TextWidgetTool : Tool
 {
     public override string Id => "Text";
     public override string DisplayName => "Texto";
-    public override string IconData => IconCatalog.Text;
     public override string? Shortcut => "T";
     public override ToolType Type => ToolType.Widget;
     public override StandardCursorType DefaultCursor => StandardCursorType.Ibeam;

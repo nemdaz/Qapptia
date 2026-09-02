@@ -29,7 +29,7 @@
                     PointerMoved="DragHandle_PointerMoved"
                     PointerReleased="DragHandle_PointerReleased"
                     ToolTip.Tip="Arrastrar">
-                <PathIcon Data="M11 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm-2-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"
+                <PathIcon Data="{StaticResource IconDragHandle}"
                           Width="14" Height="14" Foreground="{DynamicResource M3OnSurfaceVariantBrush}" />
             </Border>
 
@@ -61,7 +61,7 @@
                     Background="{DynamicResource M3HoverBrush}" Foreground="{DynamicResource M3OnSurfaceBrush}" CornerRadius="3" MinWidth="22" HorizontalContentAlignment="Center" />
             
             <!-- Icono de información -->
-            <PathIcon Data="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"
+            <PathIcon Data="{StaticResource IconInfo}"
                       Width="13" Height="13" Foreground="{DynamicResource M3OnSurfaceVariantBrush}"
                       ToolTip.Tip="Usa Shift + Enter para saltos de línea"
                       Margin="2,0,2,0" VerticalAlignment="Center" />

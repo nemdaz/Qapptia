@@ -12,7 +12,6 @@ public sealed class RectangleTool : VectorTool<RectangleGeometry>
 {
     public override string Id => "Rectangle";
     public override string DisplayName => "Rectángulo";
-    public override string IconData => IconCatalog.Rectangle;
     public override string? Shortcut => "R";
 
     public override void UpdateDrawing(VectorGeometry shape, Point currentPoint, KeyModifiers modifiers)

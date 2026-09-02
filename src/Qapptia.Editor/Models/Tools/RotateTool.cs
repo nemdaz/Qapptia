@@ -13,7 +13,7 @@ namespace Qapptia.Editor.Tools;
 public sealed class RotateTool : ActionTool
 {
     public RotateTool(Action action)
-        : base("Rotate", "Rotar", IconCatalog.Rotate, null, action)
+        : base("Rotate", "Rotar", null, action)
     {
     }
 

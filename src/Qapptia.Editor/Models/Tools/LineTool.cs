@@ -9,6 +9,5 @@ public sealed class LineTool : VectorTool<LineGeometry>
 {
     public override string Id => "Line";
     public override string DisplayName => "Línea";
-    public override string IconData => IconCatalog.Line;
     public override string? Shortcut => "L";
 }

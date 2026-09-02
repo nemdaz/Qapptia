@@ -12,7 +12,6 @@ public sealed class EllipseTool : VectorTool<EllipseGeometry>
 {
     public override string Id => "Ellipse";
     public override string DisplayName => "Elipse";
-    public override string IconData => IconCatalog.Ellipse;
     public override string? Shortcut => "E";
 
     public override void UpdateDrawing(VectorGeometry shape, Point currentPoint, KeyModifiers modifiers)

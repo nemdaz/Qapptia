@@ -9,6 +9,5 @@ public sealed class ArrowTool : VectorTool<ArrowGeometry>
 {
     public override string Id => "Arrow";
     public override string DisplayName => "Flecha";
-    public override string IconData => IconCatalog.Arrow;
     public override string? Shortcut => "A";
 }

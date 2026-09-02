@@ -15,24 +15,21 @@ public class ActionTool : Tool
 
     public override string Id { get; }
     public override string DisplayName { get; }
-    public override string IconData { get; }
     public override string? Shortcut { get; }
     public override ToolType Type => ToolType.Action;
 
-    public ActionTool(string id, string displayName, string iconData, string? shortcut, Action action)
+    public ActionTool(string id, string displayName, string? shortcut, Action action)
     {
         Id = id;
         DisplayName = displayName;
-        IconData = iconData;
         Shortcut = shortcut;
         _syncAction = action ?? throw new ArgumentNullException(nameof(action));
     }
 
-    public ActionTool(string id, string displayName, string iconData, string? shortcut, Func<Task> asyncAction)
+    public ActionTool(string id, string displayName, string? shortcut, Func<Task> asyncAction)
     {
         Id = id;
         DisplayName = displayName;
-        IconData = iconData;
         Shortcut = shortcut;
         _asyncAction = asyncAction ?? throw new ArgumentNullException(nameof(asyncAction));
     }

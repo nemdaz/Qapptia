@@ -71,7 +71,7 @@ public sealed class RotationTests
         tool.Id.Should().Be("Rotate");
         tool.DisplayName.Should().Be("Rotar");
         tool.Type.Should().Be(ToolType.Action);
-        tool.IconData.Should().NotBeNullOrWhiteSpace();
+        tool.IconKey.Should().Be("IconRotate");
     }
 
     [Fact]

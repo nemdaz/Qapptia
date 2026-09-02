@@ -77,12 +77,12 @@ public class ToolHierarchyTests
     public async Task ActionToolExecutesActionsCorrectly()
     {
         bool syncExecuted = false;
-        var syncTool = new ActionTool("Sync", "Sync Action", "", null, () => syncExecuted = true);
+        var syncTool = new ActionTool("Sync", "Sync Action", null, () => syncExecuted = true);
         await syncTool.ExecuteAsync();
         Assert.True(syncExecuted);
 
         bool asyncExecuted = false;
-        var asyncTool = new ActionTool("Async", "Async Action", "", null, () =>
+        var asyncTool = new ActionTool("Async", "Async Action", null, () =>
         {
             asyncExecuted = true;
             return Task.CompletedTask;

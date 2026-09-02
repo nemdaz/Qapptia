@@ -11,7 +11,7 @@ public abstract class Tool
 {
     public abstract string Id { get; }
     public abstract string DisplayName { get; }
-    public abstract string IconData { get; }
+    public virtual string IconKey => $"Icon{Id}";
     public virtual string? Shortcut => null;
     public abstract ToolType Type { get; }
 
