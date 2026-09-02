@@ -19,6 +19,11 @@ public sealed class MacOSTrayIconService : ITrayIconService
         _logger.Warning("MacOSTrayIconService: Implementación nativa pendiente. El icono de la bandeja no se mostrará.");
     }
 
+    public void ShowNotification(string title, string message, TrayNotificationType type = TrayNotificationType.Info, int timeoutMs = Qapptia.Core.Constants.NotificationDurationMs)
+    {
+        _logger.Information("Notificación del sistema ({Type}): {Title} - {Message}", type, title, message);
+    }
+
     public void Dispose()
     {
         if (_disposed) return;

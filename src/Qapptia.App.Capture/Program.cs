@@ -1,3 +1,6 @@
+using System;
+using System.IO;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -155,7 +158,7 @@ internal sealed class HeadlessCaptureApp : Application
                 var exePath = Process.GetCurrentProcess().MainModule?.FileName;
                 if (!string.IsNullOrEmpty(exePath))
                 {
-                    Process.Start(new ProcessStartInfo(exePath) { UseShellExecute = true });
+                    Process.Start(new ProcessStartInfo(exePath, Qapptia.Core.Constants.ArgRestart) { UseShellExecute = true });
                 }
                 desktop.Shutdown();
             }));
@@ -163,6 +166,18 @@ internal sealed class HeadlessCaptureApp : Application
 
             var iconPath = Path.Combine(AppContext.BaseDirectory, Qapptia.Core.Constants.AssetsDirectoryName, Qapptia.Core.Constants.TrayIconFileName);
             trayService?.Initialize(menuDef, iconPath);
+
+            var isRestart = desktop.Args?.Any(a => string.Equals(a, Qapptia.Core.Constants.ArgRestart, StringComparison.OrdinalIgnoreCase)) ?? false;
+            var notificationTitle = Qapptia.Core.Constants.NotificationTitleCapture;
+            var notificationMessage = isRestart
+                ? Qapptia.Core.Constants.NotificationMessageCaptureRestarted
+                : Qapptia.Core.Constants.NotificationMessageCaptureStarted;
+
+            trayService?.ShowNotification(
+                notificationTitle,
+                notificationMessage,
+                TrayNotificationType.Info,
+                Qapptia.Core.Constants.NotificationDurationMs);
 
             logger?.Information("TrayIcon asignado a la aplicación de forma limpia.");
         }

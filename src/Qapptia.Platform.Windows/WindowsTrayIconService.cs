@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
+using Qapptia.Core;
 using Qapptia.Core.Abstractions;
 using Qapptia.Core.Extensions;
 using Qapptia.Platform.Windows.UI;
@@ -109,7 +110,7 @@ public sealed class WindowsTrayIconService : ITrayIconService
             _notifyIcon = new NotifyIcon
             {
                 ContextMenuStrip = _contextMenu,
-                Text = "Qapptia Screenshot",
+                Text = Constants.CaptureAppName,
                 Visible = true
             };
 
@@ -136,6 +137,35 @@ public sealed class WindowsTrayIconService : ITrayIconService
         // Limpieza final cuando sale del loop
         _notifyIcon?.Dispose();
         _contextMenu?.Dispose();
+    }
+
+    public void ShowNotification(string title, string message, TrayNotificationType type = TrayNotificationType.Info, int timeoutMs = Constants.NotificationDurationMs)
+    {
+        if (_disposed) return;
+
+        var icon = type switch
+        {
+            TrayNotificationType.Warning => ToolTipIcon.Warning,
+            TrayNotificationType.Error => ToolTipIcon.Error,
+            _ => ToolTipIcon.Info
+        };
+
+        void Execute()
+        {
+            if (_notifyIcon != null && _notifyIcon.Visible)
+            {
+                _notifyIcon.ShowBalloonTip(timeoutMs, title, message, icon);
+            }
+        }
+
+        if (_contextMenu != null && _contextMenu.InvokeRequired)
+        {
+            _contextMenu.BeginInvoke((MethodInvoker)Execute);
+        }
+        else
+        {
+            Execute();
+        }
     }
 
     public void Dispose()

@@ -43,6 +43,11 @@ public static class Constants
         };
     }
 
+    // Nombres de aplicaciones de la suite
+    public const string CaptureAppName = "Qapptia Capture";
+    public const string EditorAppName = "Qapptia Editor";
+    public const string ConfigAppName = "Qapptia Config";
+
     // Nombres de ejecutables de la suite
     public const string CaptureExecutableName = "Qapptia.App.Capture.exe";
     public const string EditorExecutableName = "Qapptia.App.Editor.exe";
@@ -52,6 +57,15 @@ public static class Constants
     public const string ArgEditor = "--editor";
     public const string ArgConfig = "--config";
     public const string ArgCapture = "--capture";
+    public const string ArgRestart = "--restart";
+
+    // Notificaciones del sistema
+    public const int NotificationDurationMs = 5000;
+    public const string NotificationTitleCapture = CaptureAppName;
+    public const string NotificationTitleEditor = EditorAppName;
+    public const string NotificationTitleConfig = ConfigAppName;
+    public const string NotificationMessageCaptureStarted = "El capturador está activo en segundo plano.";
+    public const string NotificationMessageCaptureRestarted = "El capturador se ha reiniciado correctamente.";
 
     // Nombres de recursos y carpetas de assets
     public const string AssetsDirectoryName = "Assets";

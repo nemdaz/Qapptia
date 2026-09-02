@@ -2,6 +2,9 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <RootNamespace>Qapptia.App.Config</RootNamespace>
+    <Product>Qapptia Config</Product>
+    <Title>Qapptia Config</Title>
+    <AssemblyTitle>Qapptia Config</AssemblyTitle>
     <ApplicationIcon>Assets\config_icon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
