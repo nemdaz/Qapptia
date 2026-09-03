@@ -46,9 +46,6 @@ public partial class CanvasBoardViewModel : ObservableObject, IDisposable
     private Rect? _activeCropRect;
 
     [ObservableProperty]
-    private bool _isExporting;
-
-    [ObservableProperty]
     private bool _isEditingText;
 
     [ObservableProperty]
@@ -354,7 +351,6 @@ public partial class CanvasBoardViewModel : ObservableObject, IDisposable
         Shapes.Clear();
         ActiveCropRect = null;
         _currentRotation = 0;
-        IsExporting = false;
 
         _canvasStateService.Save(new CanvasState
         {

@@ -28,7 +28,7 @@ public sealed class WindowsClipboardService : IClipboardService
         return Task.CompletedTask;
     }
 
-    public unsafe Task SetImageAsync(byte[] pngBytes, CancellationToken ct = default)
+    public Task SetImageAsync(byte[] pngBytes, CancellationToken ct = default)
     {
         try
         {
@@ -44,32 +44,49 @@ public sealed class WindowsClipboardService : IClipboardService
                 canvas.DrawBitmap(bitmap, 0, 0);
             }
 
-            byte[] pixelBytes = bgraBitmap.Bytes;
-            int dibSize = 40 + pixelBytes.Length; // 40 bytes para BITMAPINFOHEADER
+            return SetRawImageAsync(bgraBitmap.Bytes, info.Width, info.Height, pngBytes, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "Failed to set image to clipboard.");
+            throw; // Rethrow so the caller knows the operation failed
+        }
+    }
 
+    public unsafe Task SetRawImageAsync(byte[] bgraPixels, int width, int height, byte[]? pngBytes = null, CancellationToken ct = default)
+    {
+        if (bgraPixels == null || bgraPixels.Length == 0 || width <= 0 || height <= 0)
+        {
+            if (pngBytes != null && pngBytes.Length > 0)
+            {
+                return SetImageAsync(pngBytes, ct);
+            }
+            return Task.CompletedTask;
+        }
+
+        try
+        {
+            int dibSize = 40 + bgraPixels.Length;
             nint hGlobalDib = PInvoke.GlobalAlloc(GLOBAL_ALLOC_FLAGS.GMEM_MOVEABLE | GLOBAL_ALLOC_FLAGS.GMEM_ZEROINIT, (nuint)dibSize);
             if (hGlobalDib == 0)
-                throw new System.ComponentModel.Win32Exception(Marshal.GetLastPInvokeError(), "GlobalAlloc failed to allocate memory for clipboard DIB.");
+                throw new System.ComponentModel.Win32Exception(Marshal.GetLastPInvokeError(), "GlobalAlloc failed for DIB.");
 
             nint destDib = (nint)PInvoke.GlobalLock(new global::Windows.Win32.Foundation.HGLOBAL((void*)hGlobalDib));
             if (destDib != 0)
             {
-                // Escribir BITMAPINFOHEADER (40 bytes)
                 Marshal.WriteInt32(destDib, 0, 40); // biSize
-                Marshal.WriteInt32(destDib, 4, info.Width); // biWidth
-                Marshal.WriteInt32(destDib, 8, -info.Height); // biHeight (negativo significa de arriba hacia abajo)
+                Marshal.WriteInt32(destDib, 4, width); // biWidth
+                Marshal.WriteInt32(destDib, 8, -height); // biHeight (top-down)
                 Marshal.WriteInt16(destDib, 12, 1); // biPlanes
                 Marshal.WriteInt16(destDib, 14, 32); // biBitCount
                 Marshal.WriteInt32(destDib, 16, 0); // biCompression (BI_RGB)
-                Marshal.WriteInt32(destDib, 20, pixelBytes.Length); // biSizeImage
+                Marshal.WriteInt32(destDib, 20, bgraPixels.Length); // biSizeImage
                 Marshal.WriteInt32(destDib, 24, 2835); // biXPelsPerMeter (72 DPI)
                 Marshal.WriteInt32(destDib, 28, 2835); // biYPelsPerMeter
                 Marshal.WriteInt32(destDib, 32, 0); // biClrUsed
                 Marshal.WriteInt32(destDib, 36, 0); // biClrImportant
 
-                // Copiar los píxeles crudos BGRA
-                Marshal.Copy(pixelBytes, 0, destDib + 40, pixelBytes.Length);
-
+                Marshal.Copy(bgraPixels, 0, destDib + 40, bgraPixels.Length);
                 PInvoke.GlobalUnlock(new global::Windows.Win32.Foundation.HGLOBAL((void*)hGlobalDib));
             }
             else
@@ -78,32 +95,31 @@ public sealed class WindowsClipboardService : IClipboardService
                 throw new System.ComponentModel.Win32Exception(Marshal.GetLastPInvokeError(), "GlobalLock failed for DIB.");
             }
 
-            // También guardar en formato PNG, requerido por aplicaciones modernas como Word, navegadores, etc.
-            uint pngFormatId = PInvoke.RegisterClipboardFormat("PNG");
-            nint hGlobalPng = PInvoke.GlobalAlloc(GLOBAL_ALLOC_FLAGS.GMEM_MOVEABLE | GLOBAL_ALLOC_FLAGS.GMEM_ZEROINIT, (nuint)pngBytes.Length);
-            if (hGlobalPng != 0)
+            uint pngFormatId = 0;
+            nint hGlobalPng = 0;
+            if (pngBytes != null && pngBytes.Length > 0)
             {
-                nint destPng = (nint)PInvoke.GlobalLock(new global::Windows.Win32.Foundation.HGLOBAL((void*)hGlobalPng));
-                if (destPng != 0)
+                pngFormatId = PInvoke.RegisterClipboardFormat("PNG");
+                hGlobalPng = PInvoke.GlobalAlloc(GLOBAL_ALLOC_FLAGS.GMEM_MOVEABLE | GLOBAL_ALLOC_FLAGS.GMEM_ZEROINIT, (nuint)pngBytes.Length);
+                if (hGlobalPng != 0)
                 {
-                    Marshal.Copy(pngBytes, 0, destPng, pngBytes.Length);
-                    PInvoke.GlobalUnlock(new global::Windows.Win32.Foundation.HGLOBAL((void*)hGlobalPng));
+                    nint destPng = (nint)PInvoke.GlobalLock(new global::Windows.Win32.Foundation.HGLOBAL((void*)hGlobalPng));
+                    if (destPng != 0)
+                    {
+                        Marshal.Copy(pngBytes, 0, destPng, pngBytes.Length);
+                        PInvoke.GlobalUnlock(new global::Windows.Win32.Foundation.HGLOBAL((void*)hGlobalPng));
+                    }
                 }
             }
 
             if (PInvoke.OpenClipboard(default))
             {
                 PInvoke.EmptyClipboard();
-
-                // Set CF_DIB (8)
                 PInvoke.SetClipboardData(8, new global::Windows.Win32.Foundation.HANDLE(hGlobalDib));
-
-                // Set PNG
                 if (hGlobalPng != 0 && pngFormatId != 0)
                 {
                     PInvoke.SetClipboardData(pngFormatId, new global::Windows.Win32.Foundation.HANDLE(hGlobalPng));
                 }
-
                 PInvoke.CloseClipboard();
             }
             else
@@ -116,8 +132,8 @@ public sealed class WindowsClipboardService : IClipboardService
         }
         catch (Exception ex)
         {
-            _logger.Error(ex, "Failed to set image to clipboard.");
-            throw; // Rethrow so the caller knows the operation failed
+            _logger.Error(ex, "Failed to set raw image to clipboard.");
+            throw;
         }
 
         return Task.CompletedTask;

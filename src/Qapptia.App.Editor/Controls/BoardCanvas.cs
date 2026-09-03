@@ -119,7 +119,7 @@ public class BoardCanvas : Control
             context.DrawImage(ViewModel.BackgroundImage, rect);
         }
 
-        bool drawCropOverlay = !ViewModel.IsExporting && (ViewModel.IsCropToolActive || ViewModel.ActiveCropRect.HasValue);
+        bool drawCropOverlay = ViewModel.IsCropToolActive || ViewModel.ActiveCropRect.HasValue;
         var cropRectToDraw = drawCropOverlay ? (Rect?)GetCropRect() : null;
 
         // Delegar el dibujado de vectores y overlay de recorte a SkiaSharp (Monomotor puro)

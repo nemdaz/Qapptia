@@ -10,6 +10,7 @@ using Qapptia.Editor.Core;
 using Qapptia.Editor.Models;
 using Qapptia.Editor.Services;
 using Qapptia.Editor.Tools;
+using Qapptia.UI.Components.Controls;
 using Xunit;
 
 namespace Qapptia.Editor.Tests.ViewModels;
@@ -75,5 +76,62 @@ public sealed class EditorViewModelTests : IDisposable
         // 5. La herramienta activa debe ser Ellipse con su color Azul
         vm.ActiveTool.Should().BeOfType<EllipseTool>();
         vm.ActiveColor.Should().Be(Color.Parse("#FF0000FF"));
+    }
+
+    [Fact]
+    public async Task CopyImageToClipboardAsyncDelegatesToClipboardService()
+    {
+        var clipboardMock = new Mock<Qapptia.Core.Abstractions.IClipboardService>();
+        var vm = new EditorViewModel(_stateService, _testDir, _fontProviderMock.Object, clipboardService: clipboardMock.Object, canvasStateService: _canvasStateService);
+
+        byte[] testBytes = [1, 2, 3, 4];
+        await vm.CopyImageToClipboardAsync(testBytes);
+
+        clipboardMock.Verify(c => c.SetImageAsync(testBytes, System.Threading.CancellationToken.None), Times.Once);
+        vm.ToastMessage.Should().Be(Qapptia.App.Editor.Common.Constants.ToastImageCopied);
+        vm.ToastType.Should().Be(ToastNotificationType.Success);
+    }
+
+    [Fact]
+    public async Task CopyImageToClipboardAsyncWarnsWhenClipboardServiceIsNull()
+    {
+        var vm = new EditorViewModel(_stateService, _testDir, _fontProviderMock.Object, clipboardService: null, canvasStateService: _canvasStateService);
+
+        byte[] testBytes = [1, 2, 3];
+        await vm.CopyImageToClipboardAsync(testBytes);
+
+        vm.ToastMessage.Should().Be(Qapptia.App.Editor.Common.Constants.ToastClipboardUnavailable);
+        vm.ToastType.Should().Be(ToastNotificationType.Warning);
+    }
+
+    [Fact]
+    public async Task CopyImageToClipboardAsyncHandlesExceptionGracefully()
+    {
+        var clipboardMock = new Mock<Qapptia.Core.Abstractions.IClipboardService>();
+        clipboardMock.Setup(c => c.SetImageAsync(It.IsAny<byte[]>(), System.Threading.CancellationToken.None))
+            .ThrowsAsync(new InvalidOperationException("Win32 error"));
+
+        var vm = new EditorViewModel(_stateService, _testDir, _fontProviderMock.Object, clipboardService: clipboardMock.Object, canvasStateService: _canvasStateService);
+
+        byte[] testBytes = [1, 2, 3];
+        await vm.CopyImageToClipboardAsync(testBytes);
+
+        vm.ToastMessage.Should().Be(Qapptia.App.Editor.Common.Constants.ToastCopyError);
+        vm.ToastType.Should().Be(ToastNotificationType.Error);
+    }
+
+    [Fact]
+    public async Task CopyImageToClipboardAsyncWithRawPixelsDelegatesToSetRawImageAsync()
+    {
+        var clipboardMock = new Mock<Qapptia.Core.Abstractions.IClipboardService>();
+        var vm = new EditorViewModel(_stateService, _testDir, _fontProviderMock.Object, clipboardService: clipboardMock.Object, canvasStateService: _canvasStateService);
+
+        byte[] rawPixels = [1, 2, 3, 4];
+        byte[] pngBytes = [5, 6, 7, 8];
+        await vm.CopyImageToClipboardAsync(rawPixels, 1, 1, pngBytes);
+
+        clipboardMock.Verify(c => c.SetRawImageAsync(rawPixels, 1, 1, pngBytes, System.Threading.CancellationToken.None), Times.Once);
+        vm.ToastMessage.Should().Be(Qapptia.App.Editor.Common.Constants.ToastImageCopied);
+        vm.ToastType.Should().Be(ToastNotificationType.Success);
     }
 }

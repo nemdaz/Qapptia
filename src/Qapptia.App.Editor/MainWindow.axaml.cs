@@ -4,6 +4,8 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.VisualTree;
 using Qapptia.App.Editor.ViewModels;
+using Qapptia.App.Editor.Services;
+using Qapptia.App.Editor.Common;
 using Qapptia.Editor.Models.Navigation;
 using Qapptia.Editor.Services;
 
@@ -160,48 +162,39 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void Vm_CopyRequested(object? sender, EventArgs e)
+    private void Vm_CopyRequested(object? sender, EventArgs e)
     {
-        if (DataContext is EditorViewModel vm)
+        if (DataContext is not EditorViewModel vm || vm.BackgroundImage == null || vm.ImageWidth <= 0 || vm.ImageHeight <= 0)
         {
-            vm.CommitCurrentState();
-
-            var canvas = this.FindControl<Qapptia.App.Editor.Controls.BoardCanvas>("MainCanvas");
-            if (canvas != null && vm.ImageWidth > 0 && vm.ImageHeight > 0)
-            {
-                vm.IsExporting = true;
-                vm.SetBurningMode(true);
-                canvas.InvalidateVisual();
-                var rtb = new Avalonia.Media.Imaging.RenderTargetBitmap(new PixelSize((int)vm.ImageWidth, (int)vm.ImageHeight));
-                rtb.Render(canvas);
-                vm.SetBurningMode(false);
-                vm.IsExporting = false;
-                canvas.InvalidateVisual();
-
-                using var ms = new System.IO.MemoryStream();
-                rtb.Save(ms, new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
-                byte[] finalBytes = ms.ToArray();
-                if (vm.ActiveCropRect.HasValue)
-                {
-                    var r = vm.ActiveCropRect.Value;
-                    finalBytes = Qapptia.Core.Services.ImageBurnService.CropImageBytesIfNeeded(finalBytes, (int)r.X, (int)r.Y, (int)r.Right, (int)r.Bottom);
-                }
-
-#if WINDOWS
-                try
-                {
-                    var clipboardService = new Qapptia.Platform.Windows.WindowsClipboardService(Serilog.Log.Logger);
-
-                    await clipboardService.SetImageAsync(finalBytes);
-                    vm.ShowToast("Imagen copiada al portapapeles", Qapptia.Editor.Models.NotificationType.Success);
-                }
-                catch (Exception)
-                {
-                    vm.ShowToast("Error al copiar al portapapeles", Qapptia.Editor.Models.NotificationType.Error);
-                }
-#endif
-            }
+            return;
         }
+
+        Serilog.Log.Information("Copiando contenido del tablero al portapapeles...");
+
+        vm.CommitCurrentState();
+
+        var (rawPixels, width, height, pngBytes) = BoardImageExporter.ExportBurnedImage(
+            vm.BackgroundImage,
+            vm.Shapes.ToList(),
+            vm.ActiveCropRect,
+            vm.ImageWidth,
+            vm.ImageHeight);
+
+        _ = System.Threading.Tasks.Task.Run(async () =>
+        {
+            try
+            {
+                await vm.CopyImageToClipboardAsync(rawPixels, width, height, pngBytes);
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Logger.Error(ex, "Error al serializar imagen para portapapeles.");
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    vm.ShowToast(Constants.ToastCopyError, Qapptia.Editor.Models.NotificationType.Error);
+                });
+            }
+        });
     }
 
     private void Vm_RotateRequested(object? sender, EventArgs e)
@@ -212,65 +205,57 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void Vm_SaveRequested(object? sender, EventArgs e)
+    private void Vm_SaveRequested(object? sender, EventArgs e)
     {
-        if (DataContext is EditorViewModel vm && vm.SelectedNode is FileItem fileNode)
+        if (DataContext is not EditorViewModel vm || vm.SelectedNode is not FileItem fileNode || vm.BackgroundImage == null || vm.ImageWidth <= 0 || vm.ImageHeight <= 0)
         {
-            string filePath = fileNode.FullPath;
-            string? mediaId = vm.CurrentImageId;
+            return;
+        }
 
-            if (string.IsNullOrEmpty(mediaId))
-            {
-                var (newId, _) = Qapptia.Core.Services.ImageMetadataService.EnsureImageMetadata(filePath);
-                mediaId = newId;
-            }
+        string filePath = fileNode.FullPath;
+        string? mediaId = vm.CurrentImageId;
+        Serilog.Log.Information("Guardando imagen del tablero en {Path}...", filePath);
 
-            vm.CommitCurrentState();
+        if (string.IsNullOrEmpty(mediaId))
+        {
+            var (newId, _) = Qapptia.Core.Services.ImageMetadataService.EnsureImageMetadata(filePath);
+            mediaId = newId;
+        }
 
-            var canvas = this.FindControl<Qapptia.App.Editor.Controls.BoardCanvas>("MainCanvas");
-            if (canvas == null) return;
+        vm.CommitCurrentState();
 
+        var (_, _, _, pngBytes) = BoardImageExporter.ExportBurnedImage(
+            vm.BackgroundImage,
+            vm.Shapes.ToList(),
+            vm.ActiveCropRect,
+            vm.ImageWidth,
+            vm.ImageHeight);
+
+        _ = System.Threading.Tasks.Task.Run(async () =>
+        {
             try
             {
                 // 1. Crear backup comprimido seguro (.bak.gz)
                 await Qapptia.Core.Services.ImageBurnService.CreateCompressedBackupAsync(filePath, mediaId);
 
-                // 2. Quemar Canvas a PNG
-                var bounds = canvas.Bounds;
-                int width = Math.Max(1, (int)bounds.Width);
-                int height = Math.Max(1, (int)bounds.Height);
-                var rtb = new Avalonia.Media.Imaging.RenderTargetBitmap(new Avalonia.PixelSize(width, height), new Avalonia.Vector(96, 96));
-                
-                vm.IsExporting = true;
-                vm.SetBurningMode(true);
-                rtb.Render(canvas);
-                vm.SetBurningMode(false);
-                vm.IsExporting = false;
-
-                byte[] pngBytes;
-                using (var ms = new System.IO.MemoryStream())
-                {
-                    var options = new Avalonia.Media.Imaging.PngBitmapEncoderOptions();
-                    rtb.Save(ms, options);
-                    pngBytes = ms.ToArray();
-                    if (vm.ActiveCropRect.HasValue)
-                    {
-                        var r = vm.ActiveCropRect.Value;
-                        pngBytes = Qapptia.Core.Services.ImageBurnService.CropImageBytesIfNeeded(pngBytes, (int)r.X, (int)r.Y, (int)r.Right, (int)r.Bottom);
-                    }
-                }
-
-                // 3. Persistir imagen quemada y preservar metadatos de medio
+                // 2. Persistir imagen quemada y preservar metadatos de medio
                 await Qapptia.Core.Services.ImageBurnService.SaveBurnedImageAsync(filePath, pngBytes, mediaId);
 
-                // 4. Limpiar UI y recargar
-                vm.OnBurnCompleted();
-                vm.ShowToast("Imagen guardada", Qapptia.Editor.Models.NotificationType.Success);
+                // 3. Limpiar UI y notificar
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    vm.OnBurnCompleted();
+                    vm.ShowToast(Constants.ToastImageSaved, Qapptia.Editor.Models.NotificationType.Success);
+                });
             }
             catch (Exception ex)
             {
-                vm.ShowToast($"Error al guardar la imagen: {ex.Message}", Qapptia.Editor.Models.NotificationType.Error);
+                Serilog.Log.Logger.Error(ex, "Error al guardar la imagen quemada.");
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    vm.ShowToast($"{Constants.ToastSaveErrorPrefix}{ex.Message}", Qapptia.Editor.Models.NotificationType.Error);
+                });
             }
-        }
+        });
     }
 }

@@ -14,7 +14,8 @@ using CommunityToolkit.Mvvm.Input;
 using Qapptia.App.Editor.ViewModels.Shapes;
 using Qapptia.Core.Abstractions;
 using Qapptia.Core.Configuration;
-using Qapptia.Editor.Core;
+using IFontProvider = Qapptia.Editor.Core.IFontProvider;
+using Qapptia.App.Editor.Common;
 using Qapptia.Editor.Models;
 using Qapptia.Editor.Models.Navigation;
 using Qapptia.Editor.Services;
@@ -166,7 +167,6 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     public double ImageWidth => Board.ImageWidth;
     public double ImageHeight => Board.ImageHeight;
     public Rect? ActiveCropRect { get => Board.ActiveCropRect; set => Board.ActiveCropRect = value; }
-    public bool IsExporting { get => Board.IsExporting; set => Board.IsExporting = value; }
     public bool IsEditingText => Board.IsEditingText;
     public Rect CurrentTextBounds { get => Board.CurrentTextBounds; set => Board.CurrentTextBounds = value; }
     public ITextInputShape? ActiveTextInputShape => Board.ActiveTextInputShape;
@@ -196,13 +196,12 @@ public partial class EditorViewModel : ObservableObject, IDisposable
 
     // --- Métodos de Delegación del Tablero y Herramientas ---
     public void StartTextInput(ITextInputShape shape) => Board.StartTextInput(shape);
-    public void SetBurningMode(bool isBurning) => Board.SetBurningMode(isBurning);
     public void ClearSelection() => Board.ClearSelection();
     public void TriggerRedraw() => Board.TriggerRedraw();
     public void RotateImage()
     {
         Board.RotateImage();
-        ShowToast("Imagen rotada 90°", NotificationType.Info);
+        ShowToast(Constants.ToastImageRotated90, NotificationType.Info);
     }
     public void SaveCurrentAnnotations() => Board.SaveCurrentAnnotations();
     public void DeactivateCropTool() => Toolbar.DeactivateCropTool();
@@ -258,14 +257,47 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             try
             {
                 await _clipboardService.SetFileDropListAsync(new[] { filePath });
-                ShowToast("Archivo copiado al portapapeles", NotificationType.Success);
+                ShowToast(Constants.ToastFileCopied, NotificationType.Success);
             }
             catch
             {
-                ShowToast("Error al copiar el archivo", NotificationType.Error);
+                ShowToast(Constants.ToastFileError, NotificationType.Error);
             }
         }
     }
+
+    public IClipboardService? ClipboardService => _clipboardService;
+
+    public async Task CopyImageToClipboardAsync(byte[] rawPixels, int width, int height, byte[] pngBytes)
+    {
+        if (_clipboardService != null)
+        {
+            try
+            {
+                if (rawPixels.Length > 0 && width > 0 && height > 0)
+                {
+                    await _clipboardService.SetRawImageAsync(rawPixels, width, height, pngBytes);
+                }
+                else
+                {
+                    await _clipboardService.SetImageAsync(pngBytes);
+                }
+                ShowToast(Constants.ToastImageCopied, NotificationType.Success);
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Logger.Error(ex, "Error al copiar la imagen al portapapeles.");
+                ShowToast(Constants.ToastCopyError, NotificationType.Error);
+            }
+        }
+        else
+        {
+            ShowToast(Constants.ToastClipboardUnavailable, NotificationType.Warning);
+        }
+    }
+
+    public Task CopyImageToClipboardAsync(byte[] imageBytes)
+        => CopyImageToClipboardAsync(Array.Empty<byte>(), 0, 0, imageBytes);
 
     [RelayCommand]
     public void OpenConfig()
@@ -280,18 +312,19 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             }
             else
             {
-                ShowToast("No se encontró la aplicación de configuración.", NotificationType.Error);
+                ShowToast(Constants.ToastConfigNotFound, NotificationType.Error);
             }
         }
         catch (Exception ex)
         {
-            ShowToast("Error al abrir configuración.", NotificationType.Error);
+            ShowToast(Constants.ToastConfigError, NotificationType.Error);
             Log.Error(ex, "Error opening config app from editor");
         }
     }
 
     public void ShowToast(string message, NotificationType type)
     {
+        Serilog.Log.Information("Confirmación visual Toast: {Message} ({Type})", message, type);
         ToastMessage = message;
         ToastType = type switch
         {
