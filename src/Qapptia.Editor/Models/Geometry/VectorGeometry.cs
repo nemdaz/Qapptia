@@ -36,7 +36,7 @@ public abstract class VectorGeometry
     /// </summary>
     public virtual bool AutoStartsTextInputOnCreation => false;
 
-    public abstract HandleType HitTest(Point point);
+    public abstract HandleType HitTest(Point point, float zoom = 1.0f);
 
     /// <summary>
     /// Traslada la figura en el lienzo por un diferencial (dx, dy).
@@ -146,9 +146,9 @@ public abstract class VectorGeometry
         isSelecting = false;
     }
 
-    public virtual StandardCursorType? GetCursorType(Point point)
+    public virtual StandardCursorType? GetCursorType(Point point, float zoom = 1.0f)
     {
-        var handle = HitTest(point);
+        var handle = HitTest(point, zoom);
         if (handle == HandleType.None) return null;
 
         return handle switch

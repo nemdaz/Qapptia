@@ -12,42 +12,43 @@ namespace Qapptia.Editor.Services;
 /// </summary>
 public static class HitTestEngine
 {
-    public static bool HitTestHandle(Point pt, Point center)
+    public static bool HitTestHandle(Point pt, Point center, float zoom = 1.0f)
     {
-        float size = (float)Constants.GripSize * 2.0f * 1.3f; // 30% larger hit area
+        float safeZoom = Math.Max(0.01f, zoom);
+        float size = (float)Constants.GripSize * 2.0f * 1.3f / safeZoom; // 30% larger hit area, scaled inversely to zoom
         var rect = new Rect(center.X - size / 2, center.Y - size / 2, size, size);
         return rect.Contains(pt);
     }
 
-    public static HandleType HitTestHandlesEnds(Point pt, Point start, Point end)
+    public static HandleType HitTestHandlesEnds(Point pt, Point start, Point end, float zoom = 1.0f)
     {
-        if (HitTestHandle(pt, start)) return HandleType.Start;
-        if (HitTestHandle(pt, end)) return HandleType.End;
+        if (HitTestHandle(pt, start, zoom)) return HandleType.Start;
+        if (HitTestHandle(pt, end, zoom)) return HandleType.End;
         return HandleType.None;
     }
 
-    public static HandleType HitTestHandlesCorners(Point pt, Rect boundingBox)
+    public static HandleType HitTestHandlesCorners(Point pt, Rect boundingBox, float zoom = 1.0f)
     {
-        if (HitTestHandle(pt, boundingBox.TopLeft)) return HandleType.TopLeft;
-        if (HitTestHandle(pt, boundingBox.TopRight)) return HandleType.TopRight;
-        if (HitTestHandle(pt, boundingBox.BottomLeft)) return HandleType.BottomLeft;
-        if (HitTestHandle(pt, boundingBox.BottomRight)) return HandleType.BottomRight;
+        if (HitTestHandle(pt, boundingBox.TopLeft, zoom)) return HandleType.TopLeft;
+        if (HitTestHandle(pt, boundingBox.TopRight, zoom)) return HandleType.TopRight;
+        if (HitTestHandle(pt, boundingBox.BottomLeft, zoom)) return HandleType.BottomLeft;
+        if (HitTestHandle(pt, boundingBox.BottomRight, zoom)) return HandleType.BottomRight;
         return HandleType.None;
     }
 
-    public static HandleType HitTestHandlesCenters(Point pt, Rect boundingBox)
+    public static HandleType HitTestHandlesCenters(Point pt, Rect boundingBox, float zoom = 1.0f)
     {
-        if (HitTestHandle(pt, new Point(boundingBox.Center.X, boundingBox.Top))) return HandleType.TopCenter;
-        if (HitTestHandle(pt, new Point(boundingBox.Center.X, boundingBox.Bottom))) return HandleType.BottomCenter;
-        if (HitTestHandle(pt, new Point(boundingBox.Left, boundingBox.Center.Y))) return HandleType.LeftCenter;
-        if (HitTestHandle(pt, new Point(boundingBox.Right, boundingBox.Center.Y))) return HandleType.RightCenter;
+        if (HitTestHandle(pt, new Point(boundingBox.Center.X, boundingBox.Top), zoom)) return HandleType.TopCenter;
+        if (HitTestHandle(pt, new Point(boundingBox.Center.X, boundingBox.Bottom), zoom)) return HandleType.BottomCenter;
+        if (HitTestHandle(pt, new Point(boundingBox.Left, boundingBox.Center.Y), zoom)) return HandleType.LeftCenter;
+        if (HitTestHandle(pt, new Point(boundingBox.Right, boundingBox.Center.Y), zoom)) return HandleType.RightCenter;
         return HandleType.None;
     }
 
-    public static HandleType HitTestHandlesSides(Point pt, Rect boundingBox)
+    public static HandleType HitTestHandlesSides(Point pt, Rect boundingBox, float zoom = 1.0f)
     {
-        if (HitTestHandle(pt, new Point(boundingBox.Left, boundingBox.Center.Y))) return HandleType.LeftCenter;
-        if (HitTestHandle(pt, new Point(boundingBox.Right, boundingBox.Center.Y))) return HandleType.RightCenter;
+        if (HitTestHandle(pt, new Point(boundingBox.Left, boundingBox.Center.Y), zoom)) return HandleType.LeftCenter;
+        if (HitTestHandle(pt, new Point(boundingBox.Right, boundingBox.Center.Y), zoom)) return HandleType.RightCenter;
         return HandleType.None;
     }
 
@@ -74,19 +75,20 @@ public static class HitTestEngine
         return false;
     }
 
-    public static HandleType HitTestCrop(Point pt, Rect cropRect)
+    public static HandleType HitTestCrop(Point pt, Rect cropRect, float zoom = 1.0f)
     {
-        if (HitTestHandle(pt, cropRect.TopLeft)) return HandleType.TopLeft;
-        if (HitTestHandle(pt, cropRect.TopRight)) return HandleType.TopRight;
-        if (HitTestHandle(pt, cropRect.BottomLeft)) return HandleType.BottomLeft;
-        if (HitTestHandle(pt, cropRect.BottomRight)) return HandleType.BottomRight;
+        if (HitTestHandle(pt, cropRect.TopLeft, zoom)) return HandleType.TopLeft;
+        if (HitTestHandle(pt, cropRect.TopRight, zoom)) return HandleType.TopRight;
+        if (HitTestHandle(pt, cropRect.BottomLeft, zoom)) return HandleType.BottomLeft;
+        if (HitTestHandle(pt, cropRect.BottomRight, zoom)) return HandleType.BottomRight;
 
-        if (HitTestHandle(pt, new Point(cropRect.Center.X, cropRect.Top))) return HandleType.TopCenter;
-        if (HitTestHandle(pt, new Point(cropRect.Center.X, cropRect.Bottom))) return HandleType.BottomCenter;
-        if (HitTestHandle(pt, new Point(cropRect.Left, cropRect.Center.Y))) return HandleType.LeftCenter;
-        if (HitTestHandle(pt, new Point(cropRect.Right, cropRect.Center.Y))) return HandleType.RightCenter;
+        if (HitTestHandle(pt, new Point(cropRect.Center.X, cropRect.Top), zoom)) return HandleType.TopCenter;
+        if (HitTestHandle(pt, new Point(cropRect.Center.X, cropRect.Bottom), zoom)) return HandleType.BottomCenter;
+        if (HitTestHandle(pt, new Point(cropRect.Left, cropRect.Center.Y), zoom)) return HandleType.LeftCenter;
+        if (HitTestHandle(pt, new Point(cropRect.Right, cropRect.Center.Y), zoom)) return HandleType.RightCenter;
 
-        if (HitTestRectPerimeter(pt, cropRect, Constants.GripSize)) return HandleType.Body;
+        float safeZoom = Math.Max(0.01f, zoom);
+        if (HitTestRectPerimeter(pt, cropRect, Constants.GripSize / safeZoom)) return HandleType.Body;
 
         return HandleType.None;
     }

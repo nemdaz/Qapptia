@@ -13,7 +13,7 @@ public class HighlighterShape : VectorShape
     public HighlighterShape() : base(new HighlighterGeometry()) { }
     public HighlighterShape(HighlighterGeometry geometry) : base(geometry) { }
 
-    public override void RenderSkia(SKCanvas canvas)
+    public override void RenderSkia(SKCanvas canvas, float zoom = 1.0f)
     {
         using var paint = new SKPaint
         {
@@ -29,7 +29,7 @@ public class HighlighterShape : VectorShape
 
         if (IsSelected)
         {
-            ShapeRenderHelper.DrawHandlesSkiaCorners(canvas, rect);
+            ShapeRenderHelper.DrawHandlesSkiaCorners(canvas, rect, zoom);
         }
     }
 }

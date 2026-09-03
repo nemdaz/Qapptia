@@ -19,7 +19,7 @@ public interface ITextInputShape
     event System.EventHandler? FocusRequested;
     void RequestFocus();
 
-    bool IsOnBorder(Point point, double tolerance = 6.0);
+    bool IsOnBorder(Point point, float zoom = 1.0f, double baseTolerance = 6.0);
     void OnPointerPressedInTextInput(Point point, KeyModifiers modifiers, int clickCount, out bool isSelecting);
     bool HandleKeyDown(Key key, KeyModifiers modifiers, out bool shouldCommit);
     void InsertText(string text);

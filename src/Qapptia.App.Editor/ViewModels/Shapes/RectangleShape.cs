@@ -13,7 +13,7 @@ public class RectangleShape : VectorShape
     public RectangleShape() : base(new RectangleGeometry()) { }
     public RectangleShape(RectangleGeometry geometry) : base(geometry) { }
 
-    public override void RenderSkia(SKCanvas canvas)
+    public override void RenderSkia(SKCanvas canvas, float zoom = 1.0f)
     {
         using var paint = new SKPaint
         {
@@ -32,7 +32,7 @@ public class RectangleShape : VectorShape
 
         if (IsSelected)
         {
-            ShapeRenderHelper.DrawHandlesSkiaCorners(canvas, rect);
+            ShapeRenderHelper.DrawHandlesSkiaCorners(canvas, rect, zoom);
         }
     }
 }

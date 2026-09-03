@@ -9,11 +9,11 @@ namespace Qapptia.Editor.Models.Geometry;
 /// </summary>
 public class LineGeometry : VectorGeometry
 {
-    public override HandleType HitTest(Point point)
+    public override HandleType HitTest(Point point, float zoom = 1.0f)
     {
         if (IsSelected)
         {
-            var handle = HitTestEngine.HitTestHandlesEnds(point, Start, End);
+            var handle = HitTestEngine.HitTestHandlesEnds(point, Start, End, zoom);
             if (handle != HandleType.None) return handle;
         }
 

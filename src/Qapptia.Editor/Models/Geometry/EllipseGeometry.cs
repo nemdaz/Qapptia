@@ -10,12 +10,12 @@ namespace Qapptia.Editor.Models.Geometry;
 /// </summary>
 public class EllipseGeometry : VectorGeometry
 {
-    public override HandleType HitTest(Point point)
+    public override HandleType HitTest(Point point, float zoom = 1.0f)
     {
         var rect = GetBoundingBox();
         if (IsSelected)
         {
-            var handle = HitTestEngine.HitTestHandlesCenters(point, rect);
+            var handle = HitTestEngine.HitTestHandlesCenters(point, rect, zoom);
             if (handle != HandleType.None) return handle;
         }
 

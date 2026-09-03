@@ -14,7 +14,7 @@ public class ArrowShape : VectorShape
     public ArrowShape() : base(new ArrowGeometry()) { }
     public ArrowShape(ArrowGeometry geometry) : base(geometry) { }
 
-    public override void RenderSkia(SKCanvas canvas)
+    public override void RenderSkia(SKCanvas canvas, float zoom = 1.0f)
     {
         using var paint = new SKPaint
         {
@@ -33,7 +33,7 @@ public class ArrowShape : VectorShape
 
         if (IsSelected)
         {
-            ShapeRenderHelper.DrawHandlesSkiaEnds(canvas, Start, End);
+            ShapeRenderHelper.DrawHandlesSkiaEnds(canvas, Start, End, zoom);
         }
     }
 

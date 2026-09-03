@@ -8,12 +8,12 @@ namespace Qapptia.Editor.Models.Geometry;
 /// </summary>
 public class HighlighterGeometry : VectorGeometry
 {
-    public override HandleType HitTest(Point point)
+    public override HandleType HitTest(Point point, float zoom = 1.0f)
     {
         var rect = GetBoundingBox();
         if (IsSelected)
         {
-            var handle = HitTestEngine.HitTestHandlesCorners(point, rect);
+            var handle = HitTestEngine.HitTestHandlesCorners(point, rect, zoom);
             if (handle != HandleType.None) return handle;
         }
 

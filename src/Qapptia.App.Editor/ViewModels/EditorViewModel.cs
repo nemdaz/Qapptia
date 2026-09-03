@@ -150,6 +150,10 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             if (!string.IsNullOrEmpty(e.PropertyName))
             {
                 OnPropertyChanged(e.PropertyName);
+                if (e.PropertyName == nameof(CanvasViewportViewModel.ZoomLevel))
+                {
+                    Board.TriggerRedraw();
+                }
             }
         };
 

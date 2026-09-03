@@ -493,16 +493,18 @@ public class TextGeometry : VectorGeometry, ITextInputShape
         return line.StartIndex + bestChar;
     }
 
-    public override HandleType HitTest(Point point)
+    public override HandleType HitTest(Point point, float zoom = 1.0f)
     {
         var boxRect = GetBoundingBox();
         if (IsSelected || IsEditing)
         {
-            var handle = HitTestEngine.HitTestHandlesSides(point, boxRect);
+            var handle = HitTestEngine.HitTestHandlesSides(point, boxRect, zoom);
             if (handle != HandleType.None) return handle;
         }
 
-        var inflatedRect = new Rect(boxRect.X - 4, boxRect.Y - 4, boxRect.Width + 8, boxRect.Height + 8);
+        float safeZoom = Math.Max(0.01f, zoom);
+        double margin = 4.0 / safeZoom;
+        var inflatedRect = new Rect(boxRect.X - margin, boxRect.Y - margin, boxRect.Width + margin * 2, boxRect.Height + margin * 2);
         return inflatedRect.Contains(point) ? HandleType.Body : HandleType.None;
     }
 
@@ -532,8 +534,10 @@ public class TextGeometry : VectorGeometry, ITextInputShape
     /// <summary>
     /// Determina si un punto se encuentra en la zona perimetral del recuadro de texto (borde de agarre/selección).
     /// </summary>
-    public bool IsOnBorder(Point point, double tolerance = 6.0)
+    public bool IsOnBorder(Point point, float zoom = 1.0f, double baseTolerance = 6.0)
     {
+        float safeZoom = Math.Max(0.01f, zoom);
+        double tolerance = baseTolerance / safeZoom;
         var box = GetBoundingBox();
         var outer = new Rect(box.X - tolerance, box.Y - tolerance, box.Width + tolerance * 2, box.Height + tolerance * 2);
         if (!outer.Contains(point)) return false;
@@ -542,9 +546,9 @@ public class TextGeometry : VectorGeometry, ITextInputShape
         return !inner.Contains(point);
     }
 
-    public override StandardCursorType? GetCursorType(Point point)
+    public override StandardCursorType? GetCursorType(Point point, float zoom = 1.0f)
     {
-        var handle = HitTest(point);
+        var handle = HitTest(point, zoom);
         if (handle == HandleType.LeftCenter || handle == HandleType.RightCenter)
         {
             return StandardCursorType.LeftSide;
@@ -552,7 +556,7 @@ public class TextGeometry : VectorGeometry, ITextInputShape
 
         if (handle == HandleType.Body)
         {
-            if (IsOnBorder(point))
+            if (IsOnBorder(point, zoom))
             {
                 return StandardCursorType.SizeAll;
             }

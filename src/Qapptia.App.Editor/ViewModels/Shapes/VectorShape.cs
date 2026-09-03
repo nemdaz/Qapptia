@@ -24,7 +24,7 @@ public abstract class VectorShape
     /// </summary>
     public VectorGeometry Geometry { get; }
 
-    public abstract void RenderSkia(SKCanvas canvas);
+    public abstract void RenderSkia(SKCanvas canvas, float zoom = 1.0f);
 
     // Passthroughs — delegan en la geometría para mantener la fuente única de verdad.
 
@@ -41,9 +41,9 @@ public abstract class VectorShape
 
     public virtual void Move(double dx, double dy) => Geometry.Move(dx, dy);
     public virtual void DragHandle(HandleType handle, double dx, double dy, ref HandleType activeHandle) => Geometry.DragHandle(handle, dx, dy, ref activeHandle);
-    public virtual HandleType HitTest(Point point) => Geometry.HitTest(point);
+    public virtual HandleType HitTest(Point point, float zoom = 1.0f) => Geometry.HitTest(point, zoom);
     public virtual void OnPointerPressedInTextInput(Point point, KeyModifiers modifiers, int clickCount, out bool isSelecting) => Geometry.OnPointerPressedInTextInput(point, modifiers, clickCount, out isSelecting);
-    public virtual StandardCursorType? GetCursorType(Point point) => Geometry.GetCursorType(point);
+    public virtual StandardCursorType? GetCursorType(Point point, float zoom = 1.0f) => Geometry.GetCursorType(point, zoom);
 
     public void Rotate(double angleDegrees) => Geometry.Rotate(angleDegrees);
     public void RotateAroundPoint(Point pivot, double angleDegrees) => Geometry.RotateAroundPoint(pivot, angleDegrees);

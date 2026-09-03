@@ -51,14 +51,14 @@ public class TextShape : VectorShape, ITextInputShape
     }
 
     public void RequestFocus() => TextGeometry.RequestFocus();
-    public bool IsOnBorder(Point point, double tolerance = 6.0) => TextGeometry.IsOnBorder(point, tolerance);
+    public bool IsOnBorder(Point point, float zoom = 1.0f, double baseTolerance = 6.0) => TextGeometry.IsOnBorder(point, zoom, baseTolerance);
     public bool HandleKeyDown(Key key, KeyModifiers modifiers, out bool shouldCommit) => TextGeometry.HandleKeyDown(key, modifiers, out shouldCommit);
     public void InsertText(string text) => TextGeometry.InsertText(text);
     public void DeleteBackward() => TextGeometry.DeleteBackward();
 
     public int GetCaretIndexFromPoint(Point point) => TextGeometry.GetCaretIndexFromPoint(point);
 
-    public override void RenderSkia(SKCanvas canvas)
+    public override void RenderSkia(SKCanvas canvas, float zoom = 1.0f)
     {
         var tg = TextGeometry;
         using var font = tg.CreateSKFont();
@@ -67,6 +67,7 @@ public class TextShape : VectorShape, ITextInputShape
 
         var boxRect = tg.BoundingBox;
         var (baseOffsetX, baseOffsetY, startY) = tg.GetRenderOffsets(font);
+        float safeZoom = Math.Max(0.01f, zoom);
 
         // 1. Marco delimitador y manetas laterales (activos simultáneamente en selección y edición)
         if (IsSelected || IsEditing)
@@ -75,14 +76,14 @@ public class TextShape : VectorShape, ITextInputShape
             {
                 Color = IsEditing ? Constants.TextToolBorderSKColor : new SKColor(0, 120, 215, 140),
                 Style = SKPaintStyle.Stroke,
-                StrokeWidth = 1.0f,
-                PathEffect = IsEditing ? null : SKPathEffect.CreateDash([4f, 4f], 0),
+                StrokeWidth = 1.0f / safeZoom,
+                PathEffect = IsEditing ? null : SKPathEffect.CreateDash([4f / safeZoom, 4f / safeZoom], 0),
                 IsAntialias = true
             };
             var skBoxRect = new SKRect((float)boxRect.X, (float)boxRect.Y, (float)boxRect.Right, (float)boxRect.Bottom);
-            canvas.DrawRoundRect(skBoxRect, 2f, 2f, borderPaint);
+            canvas.DrawRoundRect(skBoxRect, 2f / safeZoom, 2f / safeZoom, borderPaint);
 
-            ShapeRenderHelper.DrawHandlesSkiaSides(canvas, boxRect);
+            ShapeRenderHelper.DrawHandlesSkiaSides(canvas, boxRect, zoom);
         }
 
         // 2. Fondo de selección de texto (si hay selección activa)
@@ -160,8 +161,9 @@ public class TextShape : VectorShape, ITextInputShape
             using var caretPaintBlack = new SKPaint { Color = Constants.TextToolCaretBlack, IsAntialias = false };
             using var caretPaintWhite = new SKPaint { Color = Constants.TextToolCaretWhite, IsAntialias = false };
 
-            canvas.DrawRect(caretX, caretY, 1.0f, caretHeight, caretPaintBlack);
-            canvas.DrawRect(caretX + 1.0f, caretY, 1.0f, caretHeight, caretPaintWhite);
+            float caretW = 1.0f / safeZoom;
+            canvas.DrawRect(caretX, caretY, caretW, caretHeight, caretPaintBlack);
+            canvas.DrawRect(caretX + caretW, caretY, caretW, caretHeight, caretPaintWhite);
         }
     }
 }

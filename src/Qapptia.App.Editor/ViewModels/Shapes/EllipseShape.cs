@@ -13,7 +13,7 @@ public class EllipseShape : VectorShape
     public EllipseShape() : base(new EllipseGeometry()) { }
     public EllipseShape(EllipseGeometry geometry) : base(geometry) { }
 
-    public override void RenderSkia(SKCanvas canvas)
+    public override void RenderSkia(SKCanvas canvas, float zoom = 1.0f)
     {
         using var paint = new SKPaint
         {
@@ -35,7 +35,7 @@ public class EllipseShape : VectorShape
 
         if (IsSelected)
         {
-            ShapeRenderHelper.DrawHandlesSkiaCenters(canvas, rect);
+            ShapeRenderHelper.DrawHandlesSkiaCenters(canvas, rect, zoom);
         }
     }
 }

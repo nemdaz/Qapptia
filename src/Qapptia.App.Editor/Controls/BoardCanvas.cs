@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -60,6 +61,7 @@ public class BoardCanvas : Control
                 oldVm.ImageLoaded -= OnViewModelImageLoaded;
                 oldVm.RequestRedraw -= OnViewModelImageLoaded;
                 oldVm.TextInputFocusRequested -= OnTextInputFocusRequested;
+                oldVm.PropertyChanged -= OnViewModelPropertyChanged;
             }
 
             if (change.NewValue is EditorViewModel newVm)
@@ -67,7 +69,17 @@ public class BoardCanvas : Control
                 newVm.ImageLoaded += OnViewModelImageLoaded;
                 newVm.RequestRedraw += OnViewModelImageLoaded;
                 newVm.TextInputFocusRequested += OnTextInputFocusRequested;
+                newVm.PropertyChanged += OnViewModelPropertyChanged;
             }
+        }
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(EditorViewModel.ZoomLevel))
+        {
+            UpdateCursor(_lastMousePos);
+            InvalidateVisual();
         }
     }
 
@@ -121,6 +133,7 @@ public class BoardCanvas : Control
 
         bool drawCropOverlay = ViewModel.IsCropToolActive || ViewModel.ActiveCropRect.HasValue;
         var cropRectToDraw = drawCropOverlay ? (Rect?)GetCropRect() : null;
+        float zoom = (float)ViewModel.ZoomLevel;
 
         // Delegar el dibujado de vectores y overlay de recorte a SkiaSharp (Monomotor puro)
         context.Custom(new SkiaCanvasDrawOperation(
@@ -129,7 +142,8 @@ public class BoardCanvas : Control
             _currentDrawingShape,
             cropRectToDraw,
             ViewModel.IsCropToolActive,
-            new Rect(0, 0, ViewModel.ImageWidth, ViewModel.ImageHeight)));
+            new Rect(0, 0, ViewModel.ImageWidth, ViewModel.ImageHeight),
+            zoom));
     }
 
     private sealed class SkiaCanvasDrawOperation : Avalonia.Rendering.SceneGraph.ICustomDrawOperation
@@ -140,6 +154,7 @@ public class BoardCanvas : Control
         private readonly Rect? _cropRect;
         private readonly bool _isCropMode;
         private readonly Rect _imageBounds;
+        private readonly float _zoom;
 
         public SkiaCanvasDrawOperation(
             Rect bounds,
@@ -147,7 +162,8 @@ public class BoardCanvas : Control
             VectorShape? currentShape,
             Rect? cropRect = null,
             bool isCropMode = false,
-            Rect imageBounds = default)
+            Rect imageBounds = default,
+            float zoom = 1.0f)
         {
             _bounds = bounds;
             _shapes = shapes;
@@ -155,6 +171,7 @@ public class BoardCanvas : Control
             _cropRect = cropRect;
             _isCropMode = isCropMode;
             _imageBounds = imageBounds;
+            _zoom = zoom;
         }
 
         public Rect Bounds => _bounds;
@@ -176,16 +193,16 @@ public class BoardCanvas : Control
             // Renderizar todos los vectores guardados
             foreach (var shape in _shapes)
             {
-                shape.RenderSkia(canvas);
+                shape.RenderSkia(canvas, _zoom);
             }
 
             // Renderizar la figura que se está dibujando actualmente en vivo
-            _currentShape?.RenderSkia(canvas);
+            _currentShape?.RenderSkia(canvas, _zoom);
 
             // Renderizar overlay de recorte interactivo
             if (_cropRect != null && _imageBounds.Width > 0 && _imageBounds.Height > 0)
             {
-                ShapeRenderHelper.DrawCropOverlay(canvas, _cropRect.Value, _imageBounds, _isCropMode);
+                ShapeRenderHelper.DrawCropOverlay(canvas, _cropRect.Value, _imageBounds, _isCropMode, _zoom);
             }
         }
     }
@@ -198,6 +215,7 @@ public class BoardCanvas : Control
         if (ViewModel == null) return;
 
         var point = e.GetPosition(this);
+        float zoom = (float)ViewModel.ZoomLevel;
         _lastMousePos = point;
         _pointerPressedPoint = point;
         _hasDragged = false;
@@ -207,7 +225,7 @@ public class BoardCanvas : Control
         if (ViewModel.IsCropToolActive)
         {
             var cropRect = GetCropRect();
-            var handle = HitTestEngine.HitTestCrop(point, cropRect);
+            var handle = HitTestEngine.HitTestCrop(point, cropRect, zoom);
             if (handle != HandleType.None)
             {
                 _cropActiveHandle = handle;
@@ -228,7 +246,7 @@ public class BoardCanvas : Control
         // 1. Si ya estamos en modo de ingreso de texto activo:
         if (ViewModel.IsEditingText && ViewModel.ActiveTextInputShape is VectorShape activeShape && activeShape is ITextInputShape activeInput)
         {
-            var handle = activeShape.HitTest(point);
+            var handle = activeShape.HitTest(point, zoom);
             if (handle != HandleType.None)
             {
                 if (handle == HandleType.LeftCenter || handle == HandleType.RightCenter)
@@ -243,7 +261,7 @@ public class BoardCanvas : Control
                 }
 
                 // Clic en el borde perimetral del recuadro: pasar a modo contenedor
-                if (activeInput.IsOnBorder(point))
+                if (activeInput.IsOnBorder(point, zoom))
                 {
                     ViewModel.CommitCurrentState();
                     activeShape.IsSelected = true;
@@ -285,7 +303,7 @@ public class BoardCanvas : Control
         for (int i = ViewModel.Shapes.Count - 1; i >= 0; i--)
         {
             var shape = ViewModel.Shapes[i];
-            var handle = shape.HitTest(point);
+            var handle = shape.HitTest(point, zoom);
             if (handle != HandleType.None)
             {
                 hitShape = shape;
@@ -308,7 +326,7 @@ public class BoardCanvas : Control
                 {
                     _interaction = CanvasInteraction.ManipulatingShape;
                 }
-                else if (inputShape.IsOnBorder(point))
+                else if (inputShape.IsOnBorder(point, zoom))
                 {
                     // Clic en el borde: seleccionar como contenedor vectorial
                     _interaction = CanvasInteraction.ManipulatingShape;
@@ -381,18 +399,19 @@ public class BoardCanvas : Control
             return;
         }
 
-        // Detectar si el usuario comenzó a arrastrar
+        // Detectar si el usuario comenzó a arrastrar (umbral de 3 píxeles físicos en pantalla)
         if (!_hasDragged && e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
         {
+            double dragThreshold = 3.0 / Math.Max(0.01, ViewModel?.ZoomLevel ?? 1.0);
             double distSq = (point.X - _pointerPressedPoint.X) * (point.X - _pointerPressedPoint.X) +
                             (point.Y - _pointerPressedPoint.Y) * (point.Y - _pointerPressedPoint.Y);
-            if (distSq > 9) // Umbral de 3 píxeles
+            if (distSq > dragThreshold * dragThreshold)
             {
                 _hasDragged = true;
             }
         }
 
-        if (ViewModel.IsCropToolActive && _cropActiveHandle != HandleType.None && e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        if (ViewModel != null && ViewModel.IsCropToolActive && _cropActiveHandle != HandleType.None && e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
         {
             double dx = point.X - _lastMousePos.X;
             double dy = point.Y - _lastMousePos.Y;
@@ -411,7 +430,7 @@ public class BoardCanvas : Control
 
         if (_interaction == CanvasInteraction.DrawingShape && _currentDrawingShape != null)
         {
-            if (ViewModel.ActiveTool is VectorTool vectorTool)
+            if (ViewModel?.ActiveTool is VectorTool vectorTool)
             {
                 vectorTool.UpdateDrawing(_currentDrawingShape.Geometry, point, e.KeyModifiers);
             }
@@ -625,12 +644,13 @@ public class BoardCanvas : Control
     private void UpdateCursor(Point point)
     {
         if (ViewModel == null) return;
+        float zoom = (float)ViewModel.ZoomLevel;
 
         // 0. Modo Recorte
         if (ViewModel.IsCropToolActive)
         {
             var cropRect = GetCropRect();
-            var handle = HitTestEngine.HitTestCrop(point, cropRect);
+            var handle = HitTestEngine.HitTestCrop(point, cropRect, zoom);
             Cursor = new Cursor(HitTestEngine.GetCursorForCropHandle(handle));
             return;
         }
@@ -638,7 +658,7 @@ public class BoardCanvas : Control
         // 1. Si hay una figura seleccionada (o en edición), delegar en su propio método polimórfico
         if (_selectedShape != null)
         {
-            var cursorType = _selectedShape.GetCursorType(point);
+            var cursorType = _selectedShape.GetCursorType(point, zoom);
             if (cursorType != null)
             {
                 Cursor = new Cursor(cursorType.Value);
@@ -650,7 +670,7 @@ public class BoardCanvas : Control
         for (int i = ViewModel.Shapes.Count - 1; i >= 0; i--)
         {
             var shape = ViewModel.Shapes[i];
-            var cursorType = shape.GetCursorType(point);
+            var cursorType = shape.GetCursorType(point, zoom);
             if (cursorType != null)
             {
                 Cursor = new Cursor(cursorType.Value);

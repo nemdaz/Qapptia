@@ -13,7 +13,7 @@ public class LineShape : VectorShape
     public LineShape() : base(new LineGeometry()) { }
     public LineShape(LineGeometry geometry) : base(geometry) { }
 
-    public override void RenderSkia(SKCanvas canvas)
+    public override void RenderSkia(SKCanvas canvas, float zoom = 1.0f)
     {
         using var paint = new SKPaint
         {
@@ -29,7 +29,7 @@ public class LineShape : VectorShape
 
         if (IsSelected)
         {
-            ShapeRenderHelper.DrawHandlesSkiaEnds(canvas, Start, End);
+            ShapeRenderHelper.DrawHandlesSkiaEnds(canvas, Start, End, zoom);
         }
     }
 }

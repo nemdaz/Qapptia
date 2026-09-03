@@ -10,17 +10,20 @@ namespace Qapptia.App.Editor.ViewModels.Shapes;
 /// </summary>
 public static class ShapeRenderHelper
 {
-    public static void DrawHandle(SKCanvas canvas, Point center)
+    public static void DrawHandle(SKCanvas canvas, Point center, float zoom = 1.0f)
     {
-        float size = (float)Constants.GripSize * 1.5f * 1.3f; // 30% larger
+        float safeZoom = Math.Max(0.01f, zoom);
+        float size = (float)Constants.GripSize * 1.5f * 1.3f / safeZoom; // 30% larger, zoom-compensated
         float radius = size / 2.0f;
+        float shadowOffsetY = 1f / safeZoom;
+        float blur = 2f / safeZoom;
 
         using var shadowPaint = new SKPaint
         {
             Color = SKColors.Black.WithAlpha(80),
             Style = SKPaintStyle.Fill,
             IsAntialias = true,
-            MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 2f)
+            MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, blur)
         };
 
         using var paint = new SKPaint
@@ -31,41 +34,43 @@ public static class ShapeRenderHelper
         };
 
         // Draw shadow slightly offset
-        canvas.DrawCircle((float)center.X, (float)center.Y + 1f, radius, shadowPaint);
+        canvas.DrawCircle((float)center.X, (float)center.Y + shadowOffsetY, radius, shadowPaint);
         // Draw white circle
         canvas.DrawCircle((float)center.X, (float)center.Y, radius, paint);
     }
 
-    public static void DrawHandlesSkiaEnds(SKCanvas canvas, Point start, Point end)
+    public static void DrawHandlesSkiaEnds(SKCanvas canvas, Point start, Point end, float zoom = 1.0f)
     {
-        DrawHandle(canvas, start);
-        DrawHandle(canvas, end);
+        DrawHandle(canvas, start, zoom);
+        DrawHandle(canvas, end, zoom);
     }
 
-    public static void DrawHandlesSkiaCorners(SKCanvas canvas, Rect boundingBox)
+    public static void DrawHandlesSkiaCorners(SKCanvas canvas, Rect boundingBox, float zoom = 1.0f)
     {
-        DrawHandle(canvas, boundingBox.TopLeft);
-        DrawHandle(canvas, boundingBox.TopRight);
-        DrawHandle(canvas, boundingBox.BottomLeft);
-        DrawHandle(canvas, boundingBox.BottomRight);
+        DrawHandle(canvas, boundingBox.TopLeft, zoom);
+        DrawHandle(canvas, boundingBox.TopRight, zoom);
+        DrawHandle(canvas, boundingBox.BottomLeft, zoom);
+        DrawHandle(canvas, boundingBox.BottomRight, zoom);
     }
 
-    public static void DrawHandlesSkiaCenters(SKCanvas canvas, Rect boundingBox)
+    public static void DrawHandlesSkiaCenters(SKCanvas canvas, Rect boundingBox, float zoom = 1.0f)
     {
-        DrawHandle(canvas, new Point(boundingBox.Center.X, boundingBox.Top));
-        DrawHandle(canvas, new Point(boundingBox.Center.X, boundingBox.Bottom));
-        DrawHandle(canvas, new Point(boundingBox.Left, boundingBox.Center.Y));
-        DrawHandle(canvas, new Point(boundingBox.Right, boundingBox.Center.Y));
+        DrawHandle(canvas, new Point(boundingBox.Center.X, boundingBox.Top), zoom);
+        DrawHandle(canvas, new Point(boundingBox.Center.X, boundingBox.Bottom), zoom);
+        DrawHandle(canvas, new Point(boundingBox.Left, boundingBox.Center.Y), zoom);
+        DrawHandle(canvas, new Point(boundingBox.Right, boundingBox.Center.Y), zoom);
     }
 
-    public static void DrawHandlesSkiaSides(SKCanvas canvas, Rect boundingBox)
+    public static void DrawHandlesSkiaSides(SKCanvas canvas, Rect boundingBox, float zoom = 1.0f)
     {
-        DrawHandle(canvas, new Point(boundingBox.Left, boundingBox.Center.Y));
-        DrawHandle(canvas, new Point(boundingBox.Right, boundingBox.Center.Y));
+        DrawHandle(canvas, new Point(boundingBox.Left, boundingBox.Center.Y), zoom);
+        DrawHandle(canvas, new Point(boundingBox.Right, boundingBox.Center.Y), zoom);
     }
 
-    public static void DrawCropSquareHandle(SKCanvas canvas, Point center, float size = 10f)
+    public static void DrawCropSquareHandle(SKCanvas canvas, Point center, float zoom = 1.0f, float baseSize = 10f)
     {
+        float safeZoom = Math.Max(0.01f, zoom);
+        float size = baseSize / safeZoom;
         float half = size / 2.0f;
         var skRect = new SKRect((float)center.X - half, (float)center.Y - half, (float)center.X + half, (float)center.Y + half);
 
@@ -74,7 +79,7 @@ public static class ShapeRenderHelper
             Color = SKColors.Black.WithAlpha(90),
             Style = SKPaintStyle.Fill,
             IsAntialias = true,
-            MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 2f)
+            MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 2f / safeZoom)
         };
 
         using var fillPaint = new SKPaint
@@ -88,12 +93,12 @@ public static class ShapeRenderHelper
         {
             Color = SKColors.Black.WithAlpha(160),
             Style = SKPaintStyle.Stroke,
-            StrokeWidth = 1f,
+            StrokeWidth = 1f / safeZoom,
             IsAntialias = true
         };
 
         // Sombra
-        var shadowRect = new SKRect(skRect.Left, skRect.Top + 1f, skRect.Right, skRect.Bottom + 1f);
+        var shadowRect = new SKRect(skRect.Left, skRect.Top + (1f / safeZoom), skRect.Right, skRect.Bottom + (1f / safeZoom));
         canvas.DrawRect(shadowRect, shadowPaint);
 
         // Cuadrado blanco y borde
@@ -104,8 +109,10 @@ public static class ShapeRenderHelper
     private static readonly float[] s_cropActiveDashIntervals = { 6f, 4f };
     private static readonly float[] s_cropInactiveDashIntervals = { 3f, 3f };
 
-    public static void DrawCropOverlay(SKCanvas canvas, Rect cropRect, Rect imageBounds, bool drawHandles)
+    public static void DrawCropOverlay(SKCanvas canvas, Rect cropRect, Rect imageBounds, bool drawHandles, float zoom = 1.0f)
     {
+        float safeZoom = Math.Max(0.01f, zoom);
+
         // 1. Oscurecimiento exterior (Scrim)
         using var scrimPaint = new SKPaint
         {
@@ -144,16 +151,17 @@ public static class ShapeRenderHelper
             {
                 Color = SKColors.Black.WithAlpha(180),
                 Style = SKPaintStyle.Stroke,
-                StrokeWidth = 2f,
+                StrokeWidth = 2f / safeZoom,
                 IsAntialias = true
             };
 
+            float[] activeDashes = { s_cropActiveDashIntervals[0] / safeZoom, s_cropActiveDashIntervals[1] / safeZoom };
             using var dashPaint = new SKPaint
             {
                 Color = SKColors.White,
                 Style = SKPaintStyle.Stroke,
-                StrokeWidth = 1.5f,
-                PathEffect = SKPathEffect.CreateDash(s_cropActiveDashIntervals, 0),
+                StrokeWidth = 1.5f / safeZoom,
+                PathEffect = SKPathEffect.CreateDash(activeDashes, 0),
                 IsAntialias = true
             };
 
@@ -161,15 +169,15 @@ public static class ShapeRenderHelper
             canvas.DrawRect(cropSkRect, dashPaint);
 
             // 3. Tiradores cuadrados (4 esquinas + 4 centros de arista)
-            DrawCropSquareHandle(canvas, cropRect.TopLeft);
-            DrawCropSquareHandle(canvas, cropRect.TopRight);
-            DrawCropSquareHandle(canvas, cropRect.BottomLeft);
-            DrawCropSquareHandle(canvas, cropRect.BottomRight);
+            DrawCropSquareHandle(canvas, cropRect.TopLeft, safeZoom);
+            DrawCropSquareHandle(canvas, cropRect.TopRight, safeZoom);
+            DrawCropSquareHandle(canvas, cropRect.BottomLeft, safeZoom);
+            DrawCropSquareHandle(canvas, cropRect.BottomRight, safeZoom);
 
-            DrawCropSquareHandle(canvas, new Point(cropRect.Center.X, cropRect.Top));
-            DrawCropSquareHandle(canvas, new Point(cropRect.Center.X, cropRect.Bottom));
-            DrawCropSquareHandle(canvas, new Point(cropRect.Left, cropRect.Center.Y));
-            DrawCropSquareHandle(canvas, new Point(cropRect.Right, cropRect.Center.Y));
+            DrawCropSquareHandle(canvas, new Point(cropRect.Center.X, cropRect.Top), safeZoom);
+            DrawCropSquareHandle(canvas, new Point(cropRect.Center.X, cropRect.Bottom), safeZoom);
+            DrawCropSquareHandle(canvas, new Point(cropRect.Left, cropRect.Center.Y), safeZoom);
+            DrawCropSquareHandle(canvas, new Point(cropRect.Right, cropRect.Center.Y), safeZoom);
         }
         else
         {
@@ -178,16 +186,17 @@ public static class ShapeRenderHelper
             {
                 Color = SKColors.Black.WithAlpha(140),
                 Style = SKPaintStyle.Stroke,
-                StrokeWidth = 1.5f,
+                StrokeWidth = 1.5f / safeZoom,
                 IsAntialias = true
             };
 
+            float[] inactiveDashes = { s_cropInactiveDashIntervals[0] / safeZoom, s_cropInactiveDashIntervals[1] / safeZoom };
             using var inactiveDashPaint = new SKPaint
             {
                 Color = SKColors.White.WithAlpha(200),
                 Style = SKPaintStyle.Stroke,
-                StrokeWidth = 1f,
-                PathEffect = SKPathEffect.CreateDash(s_cropInactiveDashIntervals, 0),
+                StrokeWidth = 1f / safeZoom,
+                PathEffect = SKPathEffect.CreateDash(inactiveDashes, 0),
                 IsAntialias = true
             };
 
