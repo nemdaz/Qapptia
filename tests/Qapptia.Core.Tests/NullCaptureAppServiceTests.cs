@@ -30,7 +30,7 @@ public sealed class NullCaptureAppServiceTests
     public async Task CheckStatusAsyncReturnsFalse()
     {
         var service = NullCaptureAppService.Instance;
-        bool status = await service.CheckStatusAsync();
+        bool status = await service.CheckStatusAsync(TestContext.Current.CancellationToken);
         status.Should().BeFalse();
     }
 
@@ -38,7 +38,7 @@ public sealed class NullCaptureAppServiceTests
     public async Task LaunchOrWakeAsyncReturnsFalse()
     {
         var service = NullCaptureAppService.Instance;
-        bool result = await service.LaunchOrWakeAsync();
+        bool result = await service.LaunchOrWakeAsync(TestContext.Current.CancellationToken);
         result.Should().BeFalse();
     }
 

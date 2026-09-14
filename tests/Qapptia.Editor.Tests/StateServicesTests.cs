@@ -198,7 +198,7 @@ public sealed class StateServicesTests : IDisposable
     {
         // 1. Crear imagen original y guardar estado
         var oldImagePath = Path.Combine(_testDir, "original_capture.png");
-        await File.WriteAllBytesAsync(oldImagePath, s_minimalPng);
+        await File.WriteAllBytesAsync(oldImagePath, s_minimalPng, TestContext.Current.CancellationToken);
 
         var (mediaId, mediaType, _) = await Qapptia.Core.Services.ImageMetadataService.EnsureImageMetadataAsync(oldImagePath);
 
@@ -238,7 +238,7 @@ public sealed class StateServicesTests : IDisposable
     public async Task CanvasStateServiceSaveCleansOrphanJsonWithSameMediaId()
     {
         var imagePath = Path.Combine(_testDir, "save_cleanup.png");
-        await File.WriteAllBytesAsync(imagePath, s_minimalPng);
+        await File.WriteAllBytesAsync(imagePath, s_minimalPng, TestContext.Current.CancellationToken);
 
         var (mediaId, mediaType, _) = await Qapptia.Core.Services.ImageMetadataService.EnsureImageMetadataAsync(imagePath);
 

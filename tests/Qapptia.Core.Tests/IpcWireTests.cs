@@ -16,10 +16,10 @@ public class IpcWireTests
         var original = new ThemeChangedNotification { Theme = "light" };
         using var stream = new MemoryStream();
 
-        await IpcWire.WriteFrameAsync(stream, original);
+        await IpcWire.WriteFrameAsync(stream, original, TestContext.Current.CancellationToken);
         stream.Position = 0;
 
-        var decoded = await IpcWire.ReadFrameAsync(stream);
+        var decoded = await IpcWire.ReadFrameAsync(stream, TestContext.Current.CancellationToken);
 
         Assert.NotNull(decoded);
         var themeMsg = Assert.IsType<ThemeChangedNotification>(decoded);
@@ -33,10 +33,10 @@ public class IpcWireTests
         var original = new RefreshTrayIconRequest();
         using var stream = new MemoryStream();
 
-        await IpcWire.WriteFrameAsync(stream, original);
+        await IpcWire.WriteFrameAsync(stream, original, TestContext.Current.CancellationToken);
         stream.Position = 0;
 
-        var decoded = await IpcWire.ReadFrameAsync(stream);
+        var decoded = await IpcWire.ReadFrameAsync(stream, TestContext.Current.CancellationToken);
 
         Assert.NotNull(decoded);
         Assert.IsType<RefreshTrayIconRequest>(decoded);
@@ -60,10 +60,10 @@ public class IpcWireTests
         foreach (var msg in messages)
         {
             using var stream = new MemoryStream();
-            await IpcWire.WriteFrameAsync(stream, msg);
+            await IpcWire.WriteFrameAsync(stream, msg, TestContext.Current.CancellationToken);
             stream.Position = 0;
 
-            var decoded = await IpcWire.ReadFrameAsync(stream);
+            var decoded = await IpcWire.ReadFrameAsync(stream, TestContext.Current.CancellationToken);
             Assert.NotNull(decoded);
             Assert.Equal(msg.Type, decoded.Type);
             Assert.Equal(msg.GetType(), decoded.GetType());
@@ -91,11 +91,11 @@ public class IpcWireTests
             logger);
 
         using var server = new QapptiaIpcServer(testChannel, testPipe, dispatcher, logger);
-        await server.StartAsync();
+        await server.StartAsync(TestContext.Current.CancellationToken);
 
         try
         {
-            var response = await QapptiaIpcClient.SendAsync(testChannel, new ThemeChangedNotification { Theme = "light" });
+            var response = await QapptiaIpcClient.SendAsync(testChannel, new ThemeChangedNotification { Theme = "light" }, timeoutMs: 5000, ct: TestContext.Current.CancellationToken);
             Assert.NotNull(response);
             var ack = Assert.IsType<Ack>(response);
             Assert.Equal(IpcMessageType.ThemeChanged, ack.OriginalType);
@@ -103,7 +103,7 @@ public class IpcWireTests
         }
         finally
         {
-            await server.StopAsync();
+            await server.StopAsync(TestContext.Current.CancellationToken);
         }
     }
 }

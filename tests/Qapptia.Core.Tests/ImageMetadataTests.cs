@@ -105,7 +105,7 @@ public sealed class ImageMetadataTests : IDisposable
     public async Task EnsureImageMetadataInjectsXmpInPngAndReadsSynchronouslyAndAsynchronously()
     {
         var filePath = Path.Combine(_testDir, "sample.png");
-        await File.WriteAllBytesAsync(filePath, CreateMinimalValidPng());
+        await File.WriteAllBytesAsync(filePath, CreateMinimalValidPng(), TestContext.Current.CancellationToken);
 
         var (mediaId, mediaType, createdAt) = await ImageMetadataService.EnsureImageMetadataAsync(filePath);
 
@@ -130,7 +130,7 @@ public sealed class ImageMetadataTests : IDisposable
     public async Task EnsureImageMetadataInjectsXmpInJpeg()
     {
         var filePath = Path.Combine(_testDir, "photo.jpg");
-        await File.WriteAllBytesAsync(filePath, CreateMinimalValidJpeg());
+        await File.WriteAllBytesAsync(filePath, CreateMinimalValidJpeg(), TestContext.Current.CancellationToken);
 
         var (mediaId, mediaType, _) = await ImageMetadataService.EnsureImageMetadataAsync(filePath);
 
@@ -288,7 +288,7 @@ public sealed class ImageMetadataTests : IDisposable
     public async Task ImageBurnServiceCreatesBackupWithMediaId()
     {
         var filePath = Path.Combine(_testDir, "capture_burn.png");
-        await File.WriteAllBytesAsync(filePath, CreateMinimalValidPng());
+        await File.WriteAllBytesAsync(filePath, CreateMinimalValidPng(), TestContext.Current.CancellationToken);
 
         string testMediaId = Guid.NewGuid().ToString();
         string backupPath = await ImageBurnService.CreateCompressedBackupAsync(filePath, testMediaId);

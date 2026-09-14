@@ -17,14 +17,13 @@ using Qapptia.Editor.Models;
 using Qapptia.Editor.Services;
 using SkiaSharp;
 using Xunit;
-using Xunit.Abstractions;
 using EditorGeometry = Qapptia.Editor.Models.Geometry;
 
 namespace Qapptia.Editor.Tests.Performance;
 
 public sealed class CopyPipelinePerformanceTests : IDisposable
 {
-    private readonly ITestOutputHelper _output;
+
     private readonly string _testDir;
     private readonly EditorStateService _stateService;
     private readonly CanvasStateService _canvasStateService;
@@ -44,9 +43,8 @@ public sealed class CopyPipelinePerformanceTests : IDisposable
         }
     }
 
-    public CopyPipelinePerformanceTests(ITestOutputHelper output)
+    public CopyPipelinePerformanceTests()
     {
-        _output = output;
         _testDir = Path.Combine(Path.GetTempPath(), "Qapptia_Perf_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_testDir);
         _stateService = new EditorStateService(_testDir, "state.json");
@@ -173,11 +171,11 @@ public sealed class CopyPipelinePerformanceTests : IDisposable
         long totalElapsedMs = totalStopwatch.ElapsedMilliseconds;
 
         // 4. Reporte detallado de tiempos
-        _output.WriteLine($"=== RESULTADOS BENCHMARK PIPELINE DE COPIADO (1080p + Vectores) ===");
-        _output.WriteLine($"Paso A (ExportBurnedImage - Render + CopyPixels + Fast PNG): {exportStopwatch.ElapsedMilliseconds} ms");
-        _output.WriteLine($"Paso B (Portapapeles + Toast): {clipboardStopwatch.ElapsedMilliseconds} ms");
-        _output.WriteLine($"TIEMPO TOTAL DEL PIPELINE: {totalElapsedMs} ms");
-        _output.WriteLine($"==================================================================");
+        TestContext.Current.TestOutputHelper!.WriteLine($"=== RESULTADOS BENCHMARK PIPELINE DE COPIADO (1080p + Vectores) ===");
+        TestContext.Current.TestOutputHelper!.WriteLine($"Paso A (ExportBurnedImage - Render + CopyPixels + Fast PNG): {exportStopwatch.ElapsedMilliseconds} ms");
+        TestContext.Current.TestOutputHelper!.WriteLine($"Paso B (Portapapeles + Toast): {clipboardStopwatch.ElapsedMilliseconds} ms");
+        TestContext.Current.TestOutputHelper!.WriteLine($"TIEMPO TOTAL DEL PIPELINE: {totalElapsedMs} ms");
+        TestContext.Current.TestOutputHelper!.WriteLine($"==================================================================");
 
         // 5. Assert: Invariantes y rendimiento estricto (< 1 segundo)
         clipboardPixelsReceived.Should().NotBeNull();
