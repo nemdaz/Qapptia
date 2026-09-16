@@ -98,23 +98,140 @@
             <!-- Right Sidebar (Explorador) -->
             <Border Grid.Column="2" Background="{DynamicResource M3SurfaceContainerBrush}" BorderBrush="{DynamicResource M3OutlineVariantBrush}" BorderThickness="1,0,0,0">
                 <Grid RowDefinitions="Auto, *">
+                    <Grid.Resources>
+                        <ControlTheme x:Key="SidebarListBoxItemTheme" TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}" x:DataType="nav:NavigationItem">
+                            <Setter Property="Classes.FolderNode" Value="{Binding IsFolder}" />
+                            <Setter Property="Classes.EmptyNode" Value="{Binding IsEmptyConfirmed}" />
+                            <Setter Property="Padding" Value="0" />
+                            <Setter Property="MinHeight" Value="28" />
+                            <Setter Property="Background" Value="Transparent" />
+                            <Setter Property="CornerRadius" Value="4" />
+                        </ControlTheme>
+                    </Grid.Resources>
+                    <Grid.Styles>
+                        <Style Selector="ListBoxItem">
+                            <Setter Property="Padding" Value="0" />
+                            <Setter Property="MinHeight" Value="28" />
+                            <Setter Property="Background" Value="Transparent" />
+                            <Setter Property="CornerRadius" Value="4" />
+                        </Style>
+                        <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                            <Setter Property="Background" Value="{DynamicResource M3HoverBrush}" />
+                        </Style>
+                        <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+                            <Setter Property="Background" Value="{DynamicResource M3PrimaryContainerBrush}" />
+                        </Style>
+                        <Style Selector="ListBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                            <Setter Property="Background" Value="{DynamicResource M3PrimaryContainerBrush}" />
+                        </Style>
+                        <Style Selector="ListBoxItem TextBlock">
+                            <Setter Property="Foreground" Value="{DynamicResource M3OnSurfaceBrush}" />
+                        </Style>
+                        <Style Selector="ListBoxItem:selected TextBlock">
+                            <Setter Property="Foreground" Value="{DynamicResource M3OnPrimaryContainerBrush}" />
+                        </Style>
+                        <Style Selector="ListBoxItem PathIcon">
+                            <Setter Property="Foreground" Value="{DynamicResource M3OnSurfaceVariantBrush}" />
+                        </Style>
+                        <Style Selector="ListBoxItem:selected PathIcon">
+                            <Setter Property="Foreground" Value="{DynamicResource M3OnPrimaryContainerBrush}" />
+                        </Style>
+                        <Style Selector="ListBoxItem:selected ToggleButton#PART_ExpandCollapseChevron PathIcon#ChevronIcon">
+                            <Setter Property="Foreground" Value="{DynamicResource M3OnPrimaryContainerBrush}" />
+                        </Style>
+
+                        <Style Selector="ToggleButton#PART_ExpandCollapseChevron">
+                            <Setter Property="Width" Value="16" />
+                            <Setter Property="Height" Value="16" />
+                            <Setter Property="Margin" Value="0" />
+                            <Setter Property="Background" Value="Transparent" />
+                            <Setter Property="Padding" Value="0" />
+                            <Setter Property="Template">
+                                <ControlTemplate>
+                                    <Border Background="Transparent" Width="16" Height="16" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <PathIcon x:Name="ChevronIcon" Data="{StaticResource IconChevronRight}" Width="8" Height="8" Foreground="{DynamicResource M3OnSurfaceVariantBrush}" RenderTransformOrigin="50%,50%">
+                                            <PathIcon.RenderTransform>
+                                                <RotateTransform Angle="0" />
+                                            </PathIcon.RenderTransform>
+                                            <PathIcon.Transitions>
+                                                <Transitions>
+                                                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" />
+                                                </Transitions>
+                                            </PathIcon.Transitions>
+                                        </PathIcon>
+                                    </Border>
+                                </ControlTemplate>
+                            </Setter>
+                        </Style>
+                        <Style Selector="ToggleButton#PART_ExpandCollapseChevron:checked /template/ PathIcon#ChevronIcon">
+                            <Setter Property="RenderTransform" Value="rotate(90deg)" />
+                        </Style>
+                        <!-- Vacío confirmado por el indexador: chevron transparente e intocable, conservando la alineación de 16 px -->
+                        <Style Selector="ToggleButton#PART_ExpandCollapseChevron.empty">
+                            <Setter Property="Opacity" Value="0" />
+                            <Setter Property="IsHitTestVisible" Value="False" />
+                        </Style>
+                    </Grid.Styles>
+                    <Grid.DataTemplates>
+                        <DataTemplate DataType="nav:GroupItem">
+                            <StackPanel Orientation="Horizontal" Spacing="4" Background="Transparent" MinHeight="28"
+                                        Margin="{Binding IndentMargin}"
+                                        PointerPressed="GroupItem_PointerPressed"
+                                        Opacity="{Binding IsDimmed, Converter={StaticResource BoolToDimmedOpacityConverter}}">
+                                <ToggleButton x:Name="PART_ExpandCollapseChevron"
+                                              IsChecked="{Binding IsExpanded, Mode=TwoWay}"
+                                              Classes.empty="{Binding IsEmptyConfirmed}" />
+                                <PathIcon Data="{Binding IconKey, Converter={StaticResource KeyToGeometryConverter}}"
+                                          Width="14" Height="14" />
+                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="13" Padding="0,2" VerticalAlignment="Center" />
+                                <!-- Spinner Asíncrono Real Vectorial -->
+                                <PathIcon Classes="spinner" Classes.spinning="{Binding IsLoading}" IsVisible="{Binding IsLoading}" Margin="4,0,0,0" ToolTip.Tip="Cargando..." />
+                                <!-- Indicador visual al final del texto para la fecha actual (hoy) -->
+                                <PathIcon Classes="today-badge"
+                                          IsVisible="{Binding IsToday}"
+                                          ToolTip.Tip="Hoy" />
+                            </StackPanel>
+                        </DataTemplate>
+                        <DataTemplate DataType="nav:FileItem">
+                            <Border Background="Transparent" PointerPressed="FileItem_PointerPressed" MinHeight="26" Margin="{Binding IndentMargin}">
+                                <Border.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="Abrir"
+                                                  Command="{Binding $parent[Window].((vm:EditorViewModel)DataContext).OpenFileCommand}"
+                                                  CommandParameter="{Binding}" />
+                                        <MenuItem Header="Mostrar en carpeta"
+                                                  Command="{Binding $parent[Window].((vm:EditorViewModel)DataContext).ShowInFolderCommand}"
+                                                  CommandParameter="{Binding}" />
+                                    </ContextMenu>
+                                </Border.ContextMenu>
+                                <StackPanel Orientation="Horizontal" Spacing="4" Background="Transparent">
+                                    <!-- Espacio reservado para el chevron (16x16) para alineación pixel-perfect con carpetas -->
+                                    <Border Width="16" Height="16" Background="Transparent" IsHitTestVisible="False" />
+                                    <!-- Imagen -->
+                                    <PathIcon Data="{StaticResource IconImage}" Width="14" Height="14" />
+                                    <TextBlock Text="{Binding Name}" FontSize="13" Padding="0,2" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </Grid.DataTemplates>
+
                     <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="12,10,12,8">
                         <TextBlock Grid.Column="0" Text="Explorador" Foreground="{DynamicResource M3OnSurfaceBrush}" FontWeight="SemiBold" VerticalAlignment="Center" />
                         
                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
                             <!-- Selector de vistas [ Árbol | Calendario ] -->
                             <Button Command="{Binding SetSidebarViewModeCommand}"
-                                    CommandParameter="{x:Static vm:SidebarViewMode.Tree}"
-                                    Classes="sidebar-toggle"
-                                    Classes.active="{Binding IsTreeViewActive}"
-                                    ToolTip.Tip="Vista de árbol">
+                                     CommandParameter="{x:Static vm:SidebarViewMode.Tree}"
+                                     Classes="sidebar-toggle"
+                                     Classes.active="{Binding IsTreeViewActive}"
+                                     ToolTip.Tip="Vista de árbol">
                                 <PathIcon Data="{StaticResource IconAccountTree}" Width="13" Height="13"/>
                             </Button>
                             <Button Command="{Binding SetSidebarViewModeCommand}"
-                                    CommandParameter="{x:Static vm:SidebarViewMode.Calendar}"
-                                    Classes="sidebar-toggle"
-                                    Classes.active="{Binding IsCalendarViewActive}"
-                                    ToolTip.Tip="Vista de calendario">
+                                     CommandParameter="{x:Static vm:SidebarViewMode.Calendar}"
+                                     Classes="sidebar-toggle"
+                                     Classes.active="{Binding IsCalendarViewActive}"
+                                     ToolTip.Tip="Vista de calendario">
                                 <PathIcon Data="{StaticResource IconCalendarMonth}" Width="13" Height="13"/>
                             </Button>
 
@@ -125,79 +242,20 @@
                         </StackPanel>
                     </Grid>
                     
-                    <TreeView Grid.Row="1" ItemsSource="{Binding SidebarGroups}" SelectedItem="{Binding SelectedNode}" Background="Transparent" BorderThickness="0">
-                        <TreeView.ItemContainerTheme>
-                            <ControlTheme TargetType="TreeViewItem" BasedOn="{StaticResource {x:Type TreeViewItem}}" x:DataType="nav:NavigationItem">
-                                <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
-                            </ControlTheme>
-                        </TreeView.ItemContainerTheme>
-                        <TreeView.Styles>
-                            <Style Selector="ToggleButton#PART_ExpandCollapseChevron">
-                                <Setter Property="Width" Value="12" />
-                                <Setter Property="Height" Value="12" />
-                                <Setter Property="Margin" Value="0,0,2,0" />
-                                <Setter Property="Template">
-                                    <ControlTemplate>
-                                        <Border Background="Transparent" Width="12" Height="12">
-                                            <PathIcon x:Name="ChevronIcon" Data="{StaticResource IconChevronRight}" Width="8" Height="8" Foreground="{DynamicResource M3OnSurfaceVariantBrush}" RenderTransformOrigin="50%,50%">
-                                                <PathIcon.RenderTransform>
-                                                    <RotateTransform Angle="0" />
-                                                </PathIcon.RenderTransform>
-                                                <PathIcon.Transitions>
-                                                    <Transitions>
-                                                        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" />
-                                                    </Transitions>
-                                                </PathIcon.Transitions>
-                                            </PathIcon>
-                                        </Border>
-                                    </ControlTemplate>
-                                </Setter>
-                            </Style>
-                            <Style Selector="ToggleButton#PART_ExpandCollapseChevron:checked /template/ PathIcon#ChevronIcon">
-                                <Setter Property="RenderTransform" Value="rotate(90deg)" />
-                            </Style>
-                            <!-- Reserva de espacio homogéneo compacto para ítems sin hijos garantizando alineación vertical estricta -->
-                            <Style Selector="TreeViewItem:empty /template/ ToggleButton#PART_ExpandCollapseChevron">
-                                <Setter Property="IsVisible" Value="True" />
-                                <Setter Property="Opacity" Value="0" />
-                                <Setter Property="IsHitTestVisible" Value="False" />
-                            </Style>
-                        </TreeView.Styles>
-                        <TreeView.DataTemplates>
-                            <TreeDataTemplate DataType="nav:GroupItem" ItemsSource="{Binding Items}">
-                                <StackPanel Orientation="Horizontal" Spacing="6" Background="Transparent"
-                                            Opacity="{Binding IsDimmed, Converter={StaticResource BoolToDimmedOpacityConverter}}">
-                                    <PathIcon Data="{Binding IconKey, Converter={StaticResource KeyToGeometryConverter}}"
-                                              Width="14" Height="14"
-                                              Foreground="{DynamicResource M3OnSurfaceVariantBrush}"/>
-                                    <TextBlock Text="{Binding Name}" Foreground="{DynamicResource M3OnSurfaceBrush}" FontWeight="SemiBold" FontSize="13" Padding="0,2" VerticalAlignment="Center" />
-                                    <!-- Indicador visual al final del texto para la fecha actual (hoy) -->
-                                    <PathIcon Classes="today-badge"
-                                              IsVisible="{Binding IsToday}"
-                                              ToolTip.Tip="Hoy" />
-                                </StackPanel>
-                            </TreeDataTemplate>
-                            <DataTemplate DataType="nav:FileItem">
-                                <Border Background="Transparent" PointerPressed="FileItem_PointerPressed">
-                                    <Border.ContextMenu>
-                                        <ContextMenu>
-                                            <MenuItem Header="Abrir"
-                                                      Command="{Binding $parent[Window].((vm:EditorViewModel)DataContext).OpenFileCommand}"
-                                                      CommandParameter="{Binding}" />
-                                            <MenuItem Header="Mostrar en carpeta"
-                                                      Command="{Binding $parent[Window].((vm:EditorViewModel)DataContext).ShowInFolderCommand}"
-                                                      CommandParameter="{Binding}" />
-                                        </ContextMenu>
-                                    </Border.ContextMenu>
-                                    <StackPanel Orientation="Horizontal" Spacing="6" Background="Transparent">
-                                        <!-- Imagen -->
-                                        <PathIcon Data="{StaticResource IconImage}" Width="14" Height="14" Foreground="{DynamicResource M3OnSurfaceVariantBrush}"/>
-                                        <TextBlock Text="{Binding Name}" Foreground="{DynamicResource M3OnSurfaceBrush}" FontSize="13" Padding="0,2" VerticalAlignment="Center" />
-                                    </StackPanel>
-                                </Border>
-                            </DataTemplate>
-                        </TreeView.DataTemplates>
-                    </TreeView>
+                    <!-- Vista de Navegación Virtualizada Unificada (Árbol / Calendario a 60 FPS) -->
+                    <ListBox x:Name="SidebarTreeView" Grid.Row="1"
+                             ItemsSource="{Binding ActiveFlatItems}"
+                             SelectedItem="{Binding SelectedNode, Mode=TwoWay}"
+                             ItemContainerTheme="{StaticResource SidebarListBoxItemTheme}"
+                             Background="Transparent" BorderThickness="0"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto">
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel />
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                    </ListBox>
                 </Grid>
             </Border>
             

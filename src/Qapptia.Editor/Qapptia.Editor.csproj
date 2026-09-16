@@ -8,8 +8,10 @@
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Avalonia.Skia" />
     <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="DynamicData" />
     <PackageReference Include="Serilog" />
     <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="System.Reactive" />
   </ItemGroup>
 
   <ItemGroup>

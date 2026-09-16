@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading.Tasks;
 using Qapptia.Editor.Models;
 using Serilog;
 
@@ -25,6 +26,14 @@ public sealed class EditorStateService : IEditorStateService
     private readonly ILogger? _logger;
     private readonly object _gate = new();
 
+    // Fuente única de verdad en memoria: evita relecturas síncronas de disco en el hilo de UI
+    private EditorState? _cachedState;
+
+    // Escritor diferido coalescido: el último snapshot solicitado siempre prevalece en disco
+    private readonly object _asyncSaveGate = new();
+    private string? _pendingJson;
+    private bool _asyncSaveActive;
+
     public EditorStateService(string basePath, string stateFileName, ILogger? logger = null)
     {
         _basePath = basePath;
@@ -45,22 +54,29 @@ public sealed class EditorStateService : IEditorStateService
     {
         lock (_gate)
         {
+            if (_cachedState != null)
+            {
+                return _cachedState;
+            }
+
             string path = GetStatePath();
             if (!File.Exists(path))
             {
-                return new EditorState();
+                _cachedState = new EditorState();
+                return _cachedState;
             }
 
             try
             {
                 string json = File.ReadAllText(path);
-                var state = JsonSerializer.Deserialize<EditorState>(json, s_jsonOptions);
-                return state ?? new EditorState();
+                _cachedState = JsonSerializer.Deserialize<EditorState>(json, s_jsonOptions) ?? new EditorState();
+                return _cachedState;
             }
             catch (Exception ex)
             {
                 _logger?.Warning(ex, "Error al leer {Path}. Devolviendo estado por defecto.", path);
-                return new EditorState();
+                _cachedState = new EditorState();
+                return _cachedState;
             }
         }
     }
@@ -69,6 +85,7 @@ public sealed class EditorStateService : IEditorStateService
     {
         lock (_gate)
         {
+            _cachedState = state;
             string path = GetStatePath();
             try
             {
@@ -81,5 +98,54 @@ public sealed class EditorStateService : IEditorStateService
                 _logger?.Error(ex, "Error al guardar en {Path}.", path);
             }
         }
+    }
+
+    public void SaveDeferred(EditorState state)
+    {
+        string json;
+        lock (_gate)
+        {
+            _cachedState = state;
+            // Snapshot consistente congelado en el hilo llamante; solo la escritura es asíncrona
+            state.Layout.ExpandedFolders.Sort();
+            json = JsonSerializer.Serialize(state, s_jsonOptions);
+        }
+
+        lock (_asyncSaveGate)
+        {
+            _pendingJson = json;
+            if (_asyncSaveActive)
+            {
+                return; // El escritor en curso recoge el snapshot más reciente
+            }
+            _asyncSaveActive = true;
+        }
+
+        _ = Task.Run(async () =>
+        {
+            while (true)
+            {
+                string? payload;
+                lock (_asyncSaveGate)
+                {
+                    payload = _pendingJson;
+                    _pendingJson = null;
+                    if (payload == null)
+                    {
+                        _asyncSaveActive = false;
+                        return;
+                    }
+                }
+
+                try
+                {
+                    await File.WriteAllTextAsync(GetStatePath(), payload).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.Error(ex, "Error al guardar el estado en segundo plano.");
+                }
+            }
+        });
     }
 }

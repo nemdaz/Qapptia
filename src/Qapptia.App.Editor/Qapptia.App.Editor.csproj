@@ -32,8 +32,10 @@
       <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
     </PackageReference>
     <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="DynamicData" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="System.Reactive" />
   </ItemGroup>
 
   <ItemGroup>

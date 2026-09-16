@@ -70,6 +70,20 @@ public partial class MainWindow : Window
 
         // Registrar evento de rueda del ratón con Tunnel para interceptarlo antes que el ScrollViewer
         this.AddHandler(Avalonia.Input.InputElement.PointerWheelChangedEvent, EditorScrollViewer_PointerWheelChanged, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+
+        // Evitar que eventos RequestBringIntoView espurios reseteen el scroll del panel lateral al principio
+        AttachSidebarScrollHandler(this.FindControl<ListBox>("SidebarTreeView"));
+    }
+
+    private static void AttachSidebarScrollHandler(ListBox? listBox)
+    {
+        listBox?.AddHandler(Control.RequestBringIntoViewEvent, (s, e) =>
+        {
+            if (e.TargetObject != listBox && e.TargetObject is not ListBoxItem { IsSelected: true })
+            {
+                e.Handled = true;
+            }
+        }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
     }
 
     public void InitializeWithViewModel(EditorViewModel vm)
@@ -88,6 +102,21 @@ public partial class MainWindow : Window
         vm.RotateRequested += Vm_RotateRequested;
         vm.SaveRequested += Vm_SaveRequested;
         vm.FitImageRequested += Vm_FitImageRequested;
+
+        vm.PropertyChanged += (s, e) =>
+        {
+            if (e.PropertyName == nameof(EditorViewModel.SelectedNode) && vm.SelectedNode != null)
+            {
+                var listBox = this.FindControl<ListBox>("SidebarTreeView");
+                if (listBox != null)
+                {
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                    {
+                        listBox.ScrollIntoView(vm.SelectedNode);
+                    }, Avalonia.Threading.DispatcherPriority.Background);
+                }
+            }
+        };
     }
 
     private void InitializeKeyBindings(EditorViewModel vm)
@@ -255,6 +284,18 @@ public partial class MainWindow : Window
                 });
             }
         });
+    }
+
+    private void GroupItem_PointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
+    {
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed &&
+            sender is Avalonia.Controls.Control { DataContext: GroupItem group })
+        {
+            if (e.Source is not Avalonia.Controls.Primitives.ToggleButton)
+            {
+                group.IsExpanded = !group.IsExpanded;
+            }
+        }
     }
 
     private void FileItem_PointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)

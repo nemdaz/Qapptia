@@ -18,6 +18,7 @@ public sealed class CalendarGroupItem : GroupItem
         IconKey = kind switch
         {
             GroupKind.Year or GroupKind.Month => "IconCalendarMonth",
+            GroupKind.Week => "IconViewWeek",
             _ => "IconCalendarToday"
         };
     }

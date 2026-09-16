@@ -16,7 +16,7 @@ using Qapptia.Editor.Core;
 using Qapptia.Editor.Models;
 using Qapptia.Editor.Services;
 using SkiaSharp;
-using Xunit;
+using Qapptia.Editor.Tests.ViewModels;
 using EditorGeometry = Qapptia.Editor.Models.Geometry;
 
 namespace Qapptia.Editor.Tests.Performance;
@@ -29,19 +29,7 @@ public sealed class CopyPipelinePerformanceTests : IDisposable
     private readonly CanvasStateService _canvasStateService;
     private readonly Mock<IFontProvider> _fontProviderMock;
 
-    static CopyPipelinePerformanceTests()
-    {
-        try
-        {
-            AppBuilder.Configure<Application>()
-                .UsePlatformDetect()
-                .SetupWithoutStarting();
-        }
-        catch
-        {
-            // Ignorar si la plataforma de Avalonia ya fue inicializada en este proceso
-        }
-    }
+
 
     public CopyPipelinePerformanceTests()
     {
@@ -70,6 +58,8 @@ public sealed class CopyPipelinePerformanceTests : IDisposable
     [Fact]
     public async Task CopyPipelineWith1080pImageAndMultipleVectorsCompletesInLessThanOneSecond()
     {
+        await SidebarVisualTests.Session.Dispatch(async () =>
+        {
         // 1. Arrange: Simular imagen 1920x1080 Full HD con fondo y formas dibujadas
         const int width = 1920;
         const int height = 1080;
@@ -186,5 +176,6 @@ public sealed class CopyPipelinePerformanceTests : IDisposable
         vm.ToastMessage.Should().Be(Qapptia.App.Editor.Common.Constants.ToastImageCopied);
 
         totalElapsedMs.Should().BeLessThan(1000, "el proceso completo de copiado hasta el Toast debe tomar estrictamente menos de 1 segundo (1000 ms)");
+        }, TestContext.Current.CancellationToken);
     }
 }

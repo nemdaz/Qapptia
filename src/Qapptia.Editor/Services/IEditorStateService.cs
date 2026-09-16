@@ -9,4 +9,10 @@ public interface IEditorStateService
 {
     EditorState Load();
     void Save(EditorState state);
+
+    /// <summary>
+    /// Persistencia no bloqueante: congela el snapshot serializando en el hilo llamante
+    /// y delega la escritura a disco a un escritor en segundo plano coalescido.
+    /// </summary>
+    void SaveDeferred(EditorState state);
 }

@@ -124,6 +124,18 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         Viewport = new CanvasViewportViewModel();
         Board = new CanvasBoardViewModel(canvasService, stateService);
 
+        var initialState = stateService.Load();
+        if (!string.IsNullOrEmpty(initialState.Session.LastSelectedFile) && File.Exists(initialState.Session.LastSelectedFile))
+        {
+            var initialFile = new FileInfo(initialState.Session.LastSelectedFile);
+            Board.LoadImage(new FileItem
+            {
+                Name = initialFile.Name,
+                FullPath = initialFile.FullName,
+                EffectiveDateUtc = Qapptia.Core.Services.ImageMetadataService.GetEffectiveDate(initialFile)
+            });
+        }
+
         Sidebar.ToastRequested += (msg, type) => ShowToast(msg, type);
         Board.ImageLoadFailed += (s, path) => ShowToast(Constants.ToastFileCorrupted, NotificationType.Error);
 
@@ -132,14 +144,16 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         {
             if (file != null)
             {
+                if (!File.Exists(file.FullPath))
+                {
+                    ShowToast(Constants.ToastFileNotFound, NotificationType.Error);
+                    return;
+                }
+
                 if (!string.Equals(file.FullPath, Board.CurrentImagePath, StringComparison.OrdinalIgnoreCase))
                 {
                     Board.LoadImage(file);
                 }
-            }
-            else
-            {
-                Board.ClearImage();
             }
         };
 
@@ -253,7 +267,12 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     public ObservableCollection<string> ZoomOptions => Viewport.ZoomOptions;
     public string SelectedZoomString { get => Viewport.SelectedZoomString; set => Viewport.SelectedZoomString = value; }
 
+    public ObservableCollection<GroupItem> TreeGroups => Sidebar.TreeGroups;
+    public ObservableCollection<GroupItem> CalendarGroups => Sidebar.CalendarGroups;
     public ObservableCollection<GroupItem> SidebarGroups => Sidebar.SidebarGroups;
+    public ReadOnlyObservableCollection<NavigationItem> FlatTreeItems => Sidebar.FlatTreeItems;
+    public ReadOnlyObservableCollection<NavigationItem> FlatCalendarItems => Sidebar.FlatCalendarItems;
+    public ReadOnlyObservableCollection<NavigationItem> ActiveFlatItems => Sidebar.ActiveFlatItems;
     public SidebarViewMode SidebarViewMode => Sidebar.ViewMode;
     public bool IsTreeViewActive => Sidebar.IsTreeViewActive;
     public bool IsCalendarViewActive => Sidebar.IsCalendarViewActive;

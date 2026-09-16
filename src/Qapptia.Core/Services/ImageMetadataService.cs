@@ -148,6 +148,7 @@ public static class ImageMetadataService
                 File.Move(tempFilePath, filePath, overwrite: true);
                 File.SetCreationTimeUtc(filePath, originalCreation);
                 File.SetLastWriteTimeUtc(filePath, originalWrite);
+                InvalidateEffectiveDateCache(filePath);
             }
             else if (File.Exists(tempFilePath))
             {
@@ -219,6 +220,66 @@ public static class ImageMetadataService
         catch
         {
             return DateTime.UtcNow;
+        }
+    }
+
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (long Length, DateTime LastWriteUtc, DateTime EffectiveDate)> s_effectiveDateCache = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Invalida la entrada en caché de fecha efectiva para un archivo.
+    /// </summary>
+    public static void InvalidateEffectiveDateCache(string filePath)
+    {
+        if (!string.IsNullOrEmpty(filePath))
+        {
+            s_effectiveDateCache.TryRemove(filePath, out _);
+        }
+    }
+
+    /// <summary>
+    /// Resuelve la fecha efectiva canónica de un archivo conforme a la cascada del plan:
+    /// 1. Prioridad Canónica: Metadato embebido en bytes (<Qapptia.createdAt>).
+    /// 2. Fallback Natural del Sistema de Archivos: CreationTimeUtc.
+    /// </summary>
+    public static DateTime GetEffectiveDate(FileInfo fileInfo)
+    {
+        try
+        {
+            if (s_effectiveDateCache.TryGetValue(fileInfo.FullName, out var cached) &&
+                cached.Length == fileInfo.Length &&
+                cached.LastWriteUtc == fileInfo.LastWriteTimeUtc)
+            {
+                return cached.EffectiveDate;
+            }
+
+            var (_, _, createdAt) = GetImageMetadata(fileInfo.FullName);
+            DateTime resolvedDate = (createdAt.HasValue && createdAt.Value > DateTime.MinValue)
+                ? createdAt.Value
+                : GetFileCreationTimeUtc(fileInfo);
+
+            s_effectiveDateCache[fileInfo.FullName] = (fileInfo.Length, fileInfo.LastWriteTimeUtc, resolvedDate);
+            return resolvedDate;
+        }
+        catch
+        {
+            return GetFileCreationTimeUtc(fileInfo);
+        }
+    }
+
+    /// <summary>
+    /// Resuelve la fecha efectiva canónica de un archivo conforme a la cascada del plan a partir de su ruta.
+    /// </summary>
+    public static DateTime GetEffectiveDate(string filePath)
+    {
+        try
+        {
+            var fileInfo = new FileInfo(filePath);
+            if (!fileInfo.Exists) return DateTime.MinValue;
+            return GetEffectiveDate(fileInfo);
+        }
+        catch
+        {
+            return GetFileCreationTimeUtc(filePath);
         }
     }
 }
