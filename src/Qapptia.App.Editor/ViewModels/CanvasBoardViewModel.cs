@@ -58,6 +58,7 @@ public partial class CanvasBoardViewModel : ObservableObject, IDisposable
     public string? CurrentImagePath => _currentImagePath;
 
     public string? CurrentImageId { get; private set; }
+    public void SetCurrentImageId(string? mediaId) => CurrentImageId = mediaId;
 
     public event EventHandler? ImageLoaded;
     public event EventHandler<string>? ImageLoadFailed;

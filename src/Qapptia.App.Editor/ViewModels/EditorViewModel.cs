@@ -249,6 +249,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     public float ActiveTextSize => Board.ActiveTextSize;
     public string? CurrentImagePath => Board.CurrentImagePath;
     public string? CurrentImageId => Board.CurrentImageId;
+    public void SetCurrentImageId(string? mediaId) => Board.SetCurrentImageId(mediaId);
 
     public Tool ActiveTool { get => Toolbar.ActiveTool; set => Toolbar.ActiveTool = value; }
     public Color ActiveColor { get => Toolbar.ActiveColor; set => Toolbar.ActiveColor = value; }

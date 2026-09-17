@@ -45,17 +45,76 @@ public static class ImageBurnService
     }
 
     /// <summary>
-    /// Guarda los bytes finales de la imagen quemada en disco y preserva sus metadatos MediaId y MediaType.
+    /// Guarda los bytes finales de la imagen quemada en disco, preservando la fecha de creación original (ISO 16684-1),
+    /// registrando la fecha de modificación y garantizando la adopción oficial de imágenes externas.
     /// </summary>
-    public static async Task SaveBurnedImageAsync(string filePath, byte[] pngBytes, string? mediaId, string? mediaType = null)
+    public static async Task SaveBurnedImageAsync(
+        string filePath,
+        byte[] pngBytes,
+        string? mediaId,
+        string? mediaType = null,
+        DateTime? createdAt = null,
+        DateTime? modifyDate = null)
     {
-        byte[] finalBytes = pngBytes;
-        if (!string.IsNullOrEmpty(mediaId))
+        DateTime? originalCreationTime = null;
+        DateTime? resolvedCreatedAt = createdAt;
+        string resolvedMediaId = mediaId ?? string.Empty;
+
+        if (File.Exists(filePath))
         {
-            string resolvedType = mediaType ?? Constants.ResolveMediaType(filePath);
-            finalBytes = ImageMetadataService.InjectMetadata(pngBytes, mediaId, resolvedType);
+            try
+            {
+                originalCreationTime = File.GetCreationTimeUtc(filePath);
+
+                if (!resolvedCreatedAt.HasValue || resolvedCreatedAt.Value <= DateTime.MinValue)
+                {
+                    var (existingId, _, existingDate) = ImageMetadataService.GetImageMetadata(filePath);
+                    if (string.IsNullOrEmpty(resolvedMediaId) && !string.IsNullOrEmpty(existingId))
+                    {
+                        resolvedMediaId = existingId;
+                    }
+
+                    resolvedCreatedAt = (existingDate.HasValue && existingDate.Value > DateTime.MinValue)
+                        ? existingDate.Value
+                        : originalCreationTime;
+                }
+            }
+            catch
+            {
+                // Fallback silencioso ante bloqueo transitorio de archivo
+            }
         }
 
+        // Si es una imagen externa sin MediaId previo, adoptarla con un nuevo GUID
+        if (string.IsNullOrWhiteSpace(resolvedMediaId))
+        {
+            resolvedMediaId = Guid.NewGuid().ToString();
+        }
+
+        resolvedCreatedAt ??= (originalCreationTime ?? DateTime.UtcNow);
+        DateTime resolvedModifyDate = modifyDate ?? DateTime.UtcNow;
+
+        string resolvedType = mediaType ?? Constants.ResolveMediaType(filePath);
+        byte[] finalBytes = ImageMetadataService.InjectMetadata(
+            pngBytes,
+            resolvedMediaId,
+            resolvedType,
+            resolvedCreatedAt,
+            resolvedModifyDate);
+
         await File.WriteAllBytesAsync(filePath, finalBytes);
+
+        if (originalCreationTime.HasValue && originalCreationTime.Value > DateTime.MinValue)
+        {
+            try
+            {
+                File.SetCreationTimeUtc(filePath, originalCreationTime.Value);
+            }
+            catch
+            {
+            }
+        }
+
+        ImageMetadataService.InvalidateEffectiveDateCache(filePath);
     }
 }

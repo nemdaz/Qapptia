@@ -278,12 +278,17 @@ public partial class MainWindow : Window
 
         string filePath = fileNode.FullPath;
         string? mediaId = vm.CurrentImageId;
+        DateTime originalCreatedAt = fileNode.EffectiveDateUtc > DateTime.MinValue
+            ? fileNode.EffectiveDateUtc
+            : Qapptia.Core.Services.ImageMetadataService.GetEffectiveDate(filePath);
+
         Serilog.Log.Information("Guardando imagen del tablero en {Path}...", filePath);
 
         if (string.IsNullOrEmpty(mediaId))
         {
-            var (newId, _, _) = Qapptia.Core.Services.ImageMetadataService.EnsureImageMetadata(filePath);
+            var (newId, _, _) = Qapptia.Core.Services.ImageMetadataService.EnsureImageMetadata(filePath, createdAt: originalCreatedAt);
             mediaId = newId;
+            vm.SetCurrentImageId(newId);
         }
 
         vm.CommitCurrentState();
@@ -302,8 +307,14 @@ public partial class MainWindow : Window
                 // 1. Crear backup comprimido seguro (.bak.gz)
                 await Qapptia.Core.Services.ImageBurnService.CreateCompressedBackupAsync(filePath, mediaId);
 
-                // 2. Persistir imagen quemada y preservar metadatos de medio
-                await Qapptia.Core.Services.ImageBurnService.SaveBurnedImageAsync(filePath, pngBytes, mediaId);
+                // 2. Persistir imagen quemada y preservar metadatos de medio, fecha de creación y fecha de modificación
+                await Qapptia.Core.Services.ImageBurnService.SaveBurnedImageAsync(
+                    filePath, 
+                    pngBytes, 
+                    mediaId, 
+                    mediaType: null, 
+                    createdAt: originalCreatedAt, 
+                    modifyDate: DateTime.UtcNow);
 
                 // 3. Limpiar UI y notificar
                 Avalonia.Threading.Dispatcher.UIThread.Post(() =>
