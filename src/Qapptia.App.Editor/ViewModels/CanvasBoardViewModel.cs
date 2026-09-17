@@ -347,28 +347,46 @@ public partial class CanvasBoardViewModel : ObservableObject, IDisposable
         TextInputFocusRequested?.Invoke(this, EventArgs.Empty);
     }
 
-    public void OnBurnCompleted(SidebarViewModel sidebar)
+    public void OnBurnCompleted(byte[]? burnedBytes = null)
     {
         if (string.IsNullOrEmpty(_currentImagePath)) return;
+
+        string path = _currentImagePath;
 
         Shapes.Clear();
         ActiveCropRect = null;
         _currentRotation = 0;
+        _currentCrop = null;
 
         _canvasStateService.Save(new CanvasState
         {
             MediaId = CurrentImageId,
-            MediaType = Qapptia.Core.Constants.ResolveMediaType(_currentImagePath)
-        }, _currentImagePath);
+            MediaType = Qapptia.Core.Constants.ResolveMediaType(path)
+        }, path);
 
-        string path = _currentImagePath;
-        sidebar.SelectedNode = null;
-
-        var nodeToSelect = sidebar.FindNodeByPath(path);
-        if (nodeToSelect != null)
+        try
         {
-            sidebar.SelectedNode = nodeToSelect;
+            byte[] bytes = burnedBytes ?? (File.Exists(path) ? File.ReadAllBytes(path) : Array.Empty<byte>());
+            if (bytes.Length > 0)
+            {
+                using var ms = new MemoryStream(bytes);
+                var newBitmap = new Bitmap(ms);
+
+                BackgroundImage?.Dispose();
+                BackgroundImage = newBitmap;
+                ImageWidth = newBitmap.Size.Width;
+                ImageHeight = newBitmap.Size.Height;
+                HasImage = true;
+            }
         }
+        catch (Exception ex)
+        {
+            Serilog.Log.Logger.Error(ex, "Error al refrescar la imagen quemada en el tablero.");
+        }
+
+        ClearSelection();
+        RequestRedraw?.Invoke(this, EventArgs.Empty);
+        ImageLoaded?.Invoke(this, EventArgs.Empty);
     }
 
     public void Dispose()

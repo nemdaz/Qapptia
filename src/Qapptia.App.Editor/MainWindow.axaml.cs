@@ -308,7 +308,7 @@ public partial class MainWindow : Window
                 // 3. Limpiar UI y notificar
                 Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                 {
-                    vm.OnBurnCompleted();
+                    vm.OnBurnCompleted(pngBytes);
                     vm.ShowToast(Constants.ToastImageSaved, Qapptia.Editor.Models.NotificationType.Success);
                 });
             }

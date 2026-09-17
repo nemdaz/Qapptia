@@ -292,7 +292,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     }
     public void SaveCurrentAnnotations() => Board.SaveCurrentAnnotations();
     public void DeactivateCropTool() => Toolbar.DeactivateCropTool();
-    public void OnBurnCompleted() => Board.OnBurnCompleted(Sidebar);
+    public void OnBurnCompleted(byte[]? burnedBytes = null) => Board.OnBurnCompleted(burnedBytes);
 
     // --- Comandos Globales ---
     [RelayCommand]

@@ -16,6 +16,7 @@ using DynamicData;
 using FluentAssertions;
 using Qapptia.App.Editor;
 using Qapptia.App.Editor.ViewModels;
+using Qapptia.App.Editor.ViewModels.Shapes;
 using Qapptia.Editor.Models.Navigation;
 using Qapptia.Editor.Services;
 using Xunit;
@@ -1568,6 +1569,65 @@ public class SidebarVisualTests
                 {
                     window.Close();
                 }
+            }, TestContext.Current.CancellationToken);
+        }
+        finally
+        {
+            try { Directory.Delete(tempDir, true); } catch { }
+        }
+    }
+
+    [Fact]
+    public async Task CanvasBoardOnBurnCompletedRefreshesBackgroundImageAndClearsShapes()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), "burn_test_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            await Session.Dispatch(() =>
+            {
+                var stateService = new EditorStateService(tempDir, "state.json");
+                var canvasStateService = new CanvasStateService();
+                var vm = new CanvasBoardViewModel(canvasStateService, stateService);
+                var testFile = Path.Combine(tempDir, "test_burn.png");
+                File.WriteAllBytes(testFile, s_minimalPng);
+
+                vm.LoadImage(new FileItem
+                {
+                    Name = "test_burn.png",
+                    FullPath = testFile
+                });
+
+                var oldBitmap = vm.BackgroundImage;
+                oldBitmap.Should().NotBeNull();
+
+                vm.Shapes.Add(new RectangleShape { Start = new Avalonia.Point(2, 2), End = new Avalonia.Point(10, 10), Color = Avalonia.Media.Colors.Red });
+                vm.Shapes.Should().HaveCount(1);
+                vm.HasImage.Should().BeTrue();
+
+                using var surface = SkiaSharp.SKSurface.Create(new SkiaSharp.SKImageInfo(30, 30));
+                surface.Canvas.Clear(SkiaSharp.SKColors.Blue);
+                using var image = surface.Snapshot();
+                using var data = image.Encode(SkiaSharp.SKEncodedImageFormat.Png, 100);
+                byte[] burnedPng = data.ToArray();
+
+                bool redrawFired = false;
+                bool imageLoadedFired = false;
+                vm.RequestRedraw += (s, e) => redrawFired = true;
+                vm.ImageLoaded += (s, e) => imageLoadedFired = true;
+
+                vm.OnBurnCompleted(burnedPng);
+
+                vm.Shapes.Should().BeEmpty();
+                vm.HasImage.Should().BeTrue();
+                vm.BackgroundImage.Should().NotBeNull();
+                ReferenceEquals(vm.BackgroundImage, oldBitmap).Should().BeFalse("El BackgroundImage debe haberse reemplazado por la nueva imagen quemada");
+                vm.ActiveCropRect.Should().BeNull();
+                redrawFired.Should().BeTrue();
+                imageLoadedFired.Should().BeTrue();
+
+                var savedState = canvasStateService.Load(testFile, vm.CurrentImageId);
+                savedState.Shapes.Should().BeEmpty("Las formas quemadas deben limpiarse del estado persistido");
             }, TestContext.Current.CancellationToken);
         }
         finally
