@@ -57,6 +57,18 @@ public partial class MainWindow : Window
                 currentVm.CommitCurrentState();
             }
         };
+
+        this.Loaded += (s, e) =>
+        {
+            if (DataContext is EditorViewModel currentVm && currentVm.SelectedNode == null && !string.IsNullOrEmpty(currentVm.Sidebar.ActiveFilePath))
+            {
+                var match = currentVm.Sidebar.FindNodeByPath(currentVm.Sidebar.ActiveFilePath);
+                if (match != null)
+                {
+                    currentVm.SelectedNode = match;
+                }
+            }
+        };
     }
 
     private void InitializeScrollHandlers()
@@ -112,7 +124,32 @@ public partial class MainWindow : Window
                 {
                     Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                     {
-                        listBox.ScrollIntoView(vm.SelectedNode);
+                        if (vm.SelectedNode != null)
+                        {
+                            if (listBox.SelectedItem != vm.SelectedNode)
+                            {
+                                listBox.SelectedItem = vm.SelectedNode;
+                            }
+                            listBox.ScrollIntoView(vm.SelectedNode);
+                        }
+                    }, Avalonia.Threading.DispatcherPriority.Background);
+                }
+            }
+            else if (e.PropertyName == nameof(EditorViewModel.ActiveFlatItems) || e.PropertyName == nameof(EditorViewModel.SidebarViewMode))
+            {
+                var listBox = this.FindControl<ListBox>("SidebarTreeView");
+                if (listBox != null && vm.SelectedNode != null)
+                {
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                    {
+                        if (vm.SelectedNode != null)
+                        {
+                            if (listBox.SelectedItem != vm.SelectedNode)
+                            {
+                                listBox.SelectedItem = vm.SelectedNode;
+                            }
+                            listBox.ScrollIntoView(vm.SelectedNode);
+                        }
                     }, Avalonia.Threading.DispatcherPriority.Background);
                 }
             }

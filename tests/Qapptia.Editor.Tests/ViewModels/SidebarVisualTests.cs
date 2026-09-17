@@ -1209,6 +1209,373 @@ public class SidebarVisualTests
             try { Directory.Delete(tempDir, true); } catch { }
         }
     }
+
+    [Fact]
+    public async Task FlatTreeAdapterRefreshSubtreeShouldPreserveSelectionInListBox()
+    {
+        await Session.Dispatch(() =>
+        {
+            var folder = new FolderItem { Name = "DayNode", FullPath = "C:/Captures/2026-09-16", IsExpanded = true };
+            var file1 = new FileItem { Name = "file1.png", FullPath = "C:/Captures/2026-09-16/file1.png", Parent = folder };
+            folder.ItemsSource.Add(file1);
+
+            var window = new MainWindow { Width = 800, Height = 600 };
+            window.Show();
+
+            try
+            {
+                var listBox = window.GetVisualDescendants().OfType<ListBox>().FirstOrDefault();
+                Assert.NotNull(listBox);
+
+                var groups = new System.Collections.ObjectModel.ObservableCollection<GroupItem> { folder };
+                using var adapter = new FlatTreeAdapter(groups);
+                listBox!.ItemsSource = adapter.FlatItems;
+                listBox.SelectedItem = file1;
+                Dispatcher.UIThread.RunJobs();
+
+                listBox.SelectedItem.Should().Be(file1, "ListBox debe tener seleccionado file1");
+
+                // Simular lo que hace InsertFilesSorted cuando llega otro archivo o nueva lista
+                var file2 = new FileItem { Name = "file2.png", FullPath = "C:/Captures/2026-09-16/file2.png", Parent = folder };
+                NavigationService.InsertFilesSorted(folder, new[] { file2 });
+                Dispatcher.UIThread.RunJobs();
+
+                // Verificar si ListBox perdió la selección!
+                listBox.SelectedItem.Should().NotBeNull("ListBox NO debe perder la selección tras la actualización de la colección");
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    public async Task SwitchingFromCalendarToTreeShouldMaintainFileSelectionInBothViewModelAndListBox()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), "Qapptia_SwitchTest_" + Guid.NewGuid().ToString("N"));
+        var dayDir = Path.Combine(tempDir, "2026-09", "2026-09-16");
+        Directory.CreateDirectory(dayDir);
+        var shotPath = Path.Combine(dayDir, "Qapptia_20260916_153831.png");
+        File.WriteAllBytes(shotPath, s_minimalPng);
+        var shotPath2 = Path.Combine(dayDir, "Qapptia_20260916_153830.png");
+        File.WriteAllBytes(shotPath2, s_minimalPng);
+
+        try
+        {
+            await Session.Dispatch(async () =>
+            {
+                var stateService = new EditorStateService(tempDir, "editor_state.json");
+                var state = stateService.Load();
+                state.Layout.SidebarViewMode = "Calendar";
+                state.Layout.ExpandedFolders = new List<string> { tempDir };
+                state.Session.LastSelectedFile = shotPath;
+                stateService.Save(state);
+
+                using var navService = new NavigationService();
+                var editorVm = new EditorViewModel(stateService, tempDir, new Moq.Mock<Qapptia.Editor.Core.IFontProvider>().Object, navigationService: navService);
+
+                var window = new MainWindow { Width = 800, Height = 600 };
+                window.InitializeWithViewModel(editorVm);
+                window.Show();
+
+                try
+                {
+                    var listBox = window.GetVisualDescendants().OfType<ListBox>().FirstOrDefault();
+                    Assert.NotNull(listBox);
+
+                    Dispatcher.UIThread.RunJobs();
+
+                    // Assert Calendar mode selection
+                    editorVm.SelectedNode.Should().NotBeNull("editorVm.SelectedNode debe estar seleccionado al arrancar en Calendario");
+                    ((FileItem)editorVm.SelectedNode!).FullPath.Should().Be(shotPath);
+                    listBox!.SelectedItem.Should().NotBeNull("listBox.SelectedItem debe estar seleccionado en Calendario");
+
+                    // Act 1: Switch to Tree mode
+                    await editorVm.SetSidebarViewModeCommand.ExecuteAsync(SidebarViewMode.Tree);
+                    await Task.Delay(300);
+                    Dispatcher.UIThread.RunJobs();
+
+                    // Assert Tree mode selection
+                    editorVm.SelectedNode.Should().NotBeNull("editorVm.SelectedNode debe mantenerse seleccionado al alternar a Árbol");
+                    ((FileItem)editorVm.SelectedNode!).FullPath.Should().Be(shotPath);
+                    listBox.SelectedItem.Should().NotBeNull("listBox.SelectedItem debe mantenerse seleccionado al alternar a Árbol");
+                    ((FileItem)listBox.SelectedItem!).FullPath.Should().Be(shotPath);
+
+                    // Act 2: Switch back to Calendar mode
+                    await editorVm.SetSidebarViewModeCommand.ExecuteAsync(SidebarViewMode.Calendar);
+                    await Task.Delay(300);
+                    Dispatcher.UIThread.RunJobs();
+
+                    // Assert Calendar mode retention
+                    editorVm.SelectedNode.Should().NotBeNull("editorVm.SelectedNode debe mantenerse seleccionado al regresar a Calendario");
+                    ((FileItem)editorVm.SelectedNode!).FullPath.Should().Be(shotPath);
+                    listBox.SelectedItem.Should().NotBeNull("listBox.SelectedItem debe mantenerse seleccionado al regresar a Calendario");
+                    ((FileItem)listBox.SelectedItem!).FullPath.Should().Be(shotPath);
+                }
+                finally
+                {
+                    window.Close();
+                }
+            }, TestContext.Current.CancellationToken);
+        }
+        finally
+        {
+            try { Directory.Delete(tempDir, true); } catch { }
+        }
+    }
+
+    [Fact]
+    public async Task ExpandingCollapsedNodeAfterViewSwitchShouldImmediatelySelectActiveFileInBothViews()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), "Qapptia_ExpandSwitchTest_" + Guid.NewGuid().ToString("N"));
+        var dayDir = Path.Combine(tempDir, "2026-09", "2026-09-16");
+        Directory.CreateDirectory(dayDir);
+        var shotPath = Path.Combine(dayDir, "Qapptia_20260916_153831.png");
+        File.WriteAllBytes(shotPath, s_minimalPng);
+
+        try
+        {
+            await Session.Dispatch(async () =>
+            {
+                // Configurar: Arbol con nodo expandido y archivo seleccionado; Calendario con nodo colapsado
+                var stateService = new EditorStateService(tempDir, "editor_state.json");
+                var state = stateService.Load();
+                state.Layout.SidebarViewMode = "Tree";
+                state.Layout.ExpandedFolders = new List<string> { tempDir, Path.Combine(tempDir, "2026-09"), dayDir };
+                state.Layout.ExpandedCalendarGroups = new List<string>(); // Calendario completamente colapsado
+                state.Session.LastSelectedFile = shotPath;
+                stateService.Save(state);
+
+                using var navService = new NavigationService();
+                var editorVm = new EditorViewModel(stateService, tempDir, new Moq.Mock<Qapptia.Editor.Core.IFontProvider>().Object, navigationService: navService);
+
+                var window = new MainWindow { Width = 800, Height = 600 };
+                window.InitializeWithViewModel(editorVm);
+                window.Show();
+
+                try
+                {
+                    var listBox = window.GetVisualDescendants().OfType<ListBox>().FirstOrDefault();
+                    Assert.NotNull(listBox);
+
+                    Dispatcher.UIThread.RunJobs();
+
+                    // 1. Inicia en Arbol: nodo expandido y archivo seleccionado
+                    editorVm.SidebarViewMode.Should().Be(SidebarViewMode.Tree);
+                    editorVm.SelectedNode.Should().NotBeNull();
+                    ((FileItem)editorVm.SelectedNode!).FullPath.Should().Be(shotPath);
+                    listBox!.SelectedItem.Should().Be(editorVm.SelectedNode);
+
+                    // 2. Cambiar a Calendario (nodo colapsado): no debe haber archivo seleccionado
+                    await editorVm.SetSidebarViewModeCommand.ExecuteAsync(SidebarViewMode.Calendar);
+                    Dispatcher.UIThread.RunJobs();
+
+                    editorVm.SidebarViewMode.Should().Be(SidebarViewMode.Calendar);
+                    editorVm.SelectedNode.Should().BeNull("En Calendario el nodo esta colapsado, no debe seleccionarse");
+                    listBox.SelectedItem.Should().BeNull();
+
+                    // 3. Expandir los nodos de Calendario hasta el dia que contiene el archivo
+                    // Buscar el dia correspondiente a la fecha del archivo
+                    var dayNode = navService.FindCalendarDay(new DateTime(2026, 9, 16));
+                    Assert.NotNull(dayNode);
+
+                    // Expandir ancestros (Año, Mes, Semana) y finalmente el Día
+                    var ancestors = new List<GroupItem>();
+                    for (GroupItem? cur = dayNode; cur != null; cur = cur.Parent as GroupItem)
+                    {
+                        ancestors.Insert(0, cur);
+                    }
+
+                    foreach (var ancestor in ancestors)
+                    {
+                        ancestor.IsExpanded = true;
+                        Dispatcher.UIThread.RunJobs();
+                    }
+
+                    // 4. Incidencia del usuario: al expandir el dia que contiene el archivo, DEBE seleccionarlo
+                    editorVm.SelectedNode.Should().NotBeNull("Al expandir el nodo contenedor en Calendario, debe seleccionarse el archivo activo");
+                    ((FileItem)editorVm.SelectedNode!).FullPath.Should().Be(shotPath);
+                    listBox.SelectedItem.Should().NotBeNull("ListBox debe reflejar el archivo seleccionado");
+                    ((FileItem)listBox.SelectedItem!).FullPath.Should().Be(shotPath);
+                }
+                finally
+                {
+                    window.Close();
+                }
+            }, TestContext.Current.CancellationToken);
+        }
+        finally
+        {
+            try { Directory.Delete(tempDir, true); } catch { }
+        }
+    }
+
+    [Fact]
+    public async Task ExpandingCollapsedFolderInTreeAfterStartingInCalendarShouldSelectActiveFile()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), "Qapptia_ExpandSwitchTreeTest_" + Guid.NewGuid().ToString("N"));
+        var dayDir = Path.Combine(tempDir, "2026-09", "2026-09-16");
+        Directory.CreateDirectory(dayDir);
+        var shotPath = Path.Combine(dayDir, "Qapptia_20260916_153831.png");
+        File.WriteAllBytes(shotPath, s_minimalPng);
+
+        try
+        {
+            await Session.Dispatch(async () =>
+            {
+                // Configurar: Calendario con nodo expandido y archivo seleccionado; Arbol con nodo colapsado
+                var stateService = new EditorStateService(tempDir, "editor_state.json");
+                var state = stateService.Load();
+                state.Layout.SidebarViewMode = "Calendar";
+                state.Layout.ExpandedFolders = new List<string>(); // Arbol completamente colapsado
+                state.Layout.ExpandedCalendarGroups = new List<string>
+                {
+                    "cal://2026",
+                    "cal://2026/09",
+                    "cal://2026/09/w38",
+                    "cal://2026/09/w38/2026-09-16"
+                };
+                state.Session.LastSelectedFile = shotPath;
+                stateService.Save(state);
+
+                using var navService = new NavigationService();
+                var editorVm = new EditorViewModel(stateService, tempDir, new Moq.Mock<Qapptia.Editor.Core.IFontProvider>().Object, navigationService: navService);
+
+                var window = new MainWindow { Width = 800, Height = 600 };
+                window.InitializeWithViewModel(editorVm);
+                window.Show();
+
+                try
+                {
+                    var listBox = window.GetVisualDescendants().OfType<ListBox>().FirstOrDefault();
+                    Assert.NotNull(listBox);
+
+                    Dispatcher.UIThread.RunJobs();
+
+                    // 1. Inicia en Calendario: nodo expandido y archivo seleccionado
+                    editorVm.SidebarViewMode.Should().Be(SidebarViewMode.Calendar);
+                    editorVm.SelectedNode.Should().NotBeNull();
+                    ((FileItem)editorVm.SelectedNode!).FullPath.Should().Be(shotPath);
+                    listBox!.SelectedItem.Should().Be(editorVm.SelectedNode);
+
+                    // 2. Cambiar a Arbol (nodo colapsado): no debe haber archivo seleccionado
+                    await editorVm.SetSidebarViewModeCommand.ExecuteAsync(SidebarViewMode.Tree);
+                    Dispatcher.UIThread.RunJobs();
+
+                    editorVm.SidebarViewMode.Should().Be(SidebarViewMode.Tree);
+                    editorVm.SelectedNode.Should().BeNull("En Arbol el nodo esta colapsado, no debe seleccionarse");
+                    listBox.SelectedItem.Should().BeNull();
+
+                    // 3. Expandir la carpeta raiz y subcarpetas hasta llegar a dayDir
+                    var rootFolder = editorVm.TreeGroups.OfType<FolderItem>().FirstOrDefault();
+                    Assert.NotNull(rootFolder);
+
+                    var folder202609 = rootFolder.ItemsSource.Items.OfType<FolderItem>().FirstOrDefault();
+                    Assert.NotNull(folder202609);
+
+                    var folderDay = folder202609.ItemsSource.Items.OfType<FolderItem>().FirstOrDefault();
+                    Assert.NotNull(folderDay);
+
+                    rootFolder.IsExpanded = true;
+                    Dispatcher.UIThread.RunJobs();
+
+                    folder202609.IsExpanded = true;
+                    Dispatcher.UIThread.RunJobs();
+
+                    folderDay.IsExpanded = true;
+                    Dispatcher.UIThread.RunJobs();
+
+                    // 4. Incidencia del usuario: al expandir la carpeta que contiene el archivo, DEBE seleccionarlo
+                    editorVm.SelectedNode.Should().NotBeNull("Al expandir la carpeta contenedora en Arbol, debe seleccionarse el archivo activo");
+                    ((FileItem)editorVm.SelectedNode!).FullPath.Should().Be(shotPath);
+                    listBox.SelectedItem.Should().NotBeNull("ListBox debe reflejar el archivo seleccionado");
+                    ((FileItem)listBox.SelectedItem!).FullPath.Should().Be(shotPath);
+                }
+                finally
+                {
+                    window.Close();
+                }
+            }, TestContext.Current.CancellationToken);
+        }
+        finally
+        {
+            try { Directory.Delete(tempDir, true); } catch { }
+        }
+    }
+
+    [Fact]
+    public async Task StartingInCalendarViewWhenIndexerPrunesEmptyYearsMustPreserveFileSelectionInViewModelAndListBox()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), "Qapptia_CalPruneTest_" + Guid.NewGuid().ToString("N"));
+        var dayDir = Path.Combine(tempDir, "2026-09", "2026-09-16");
+        Directory.CreateDirectory(dayDir);
+        var emptyHeuristicYearDir = Path.Combine(tempDir, "2024");
+        Directory.CreateDirectory(emptyHeuristicYearDir);
+
+        var shotPath = Path.Combine(dayDir, "Qapptia_20260916_153831.png");
+        File.WriteAllBytes(shotPath, s_minimalPng);
+
+        try
+        {
+            await Session.Dispatch(async () =>
+            {
+                var stateService = new EditorStateService(tempDir, "editor_state.json");
+                var state = stateService.Load();
+                state.Layout.SidebarViewMode = "Calendar";
+                state.Layout.ExpandedFolders = new List<string>();
+                state.Layout.ExpandedCalendarGroups = new List<string>
+                {
+                    "cal://2026",
+                    "cal://2026/09",
+                    "cal://2026/09/w38",
+                    "cal://2026/09/w38/2026-09-16"
+                };
+                state.Session.LastSelectedFile = shotPath;
+                stateService.Save(state);
+
+                using var navService = new NavigationService();
+                var editorVm = new EditorViewModel(stateService, tempDir, new Moq.Mock<Qapptia.Editor.Core.IFontProvider>().Object, navigationService: navService);
+
+                var window = new MainWindow { Width = 800, Height = 600 };
+                window.InitializeWithViewModel(editorVm);
+                window.Show();
+
+                try
+                {
+                    var listBox = window.GetVisualDescendants().OfType<ListBox>().FirstOrDefault();
+                    Assert.NotNull(listBox);
+
+                    // Esperar a que el indexador complete y pode los años vacíos heurísticos (2024)
+                    for (int i = 0; i < 15; i++)
+                    {
+                        await Task.Delay(100);
+                        Dispatcher.UIThread.RunJobs();
+                    }
+
+                    // Assert: El archivo debe mantenerse seleccionado tanto en el ViewModel como en el ListBox visual
+                    editorVm.SidebarViewMode.Should().Be(SidebarViewMode.Calendar);
+                    editorVm.SelectedNode.Should().NotBeNull("editorVm.SelectedNode debe conservarse tras la poda de años vacíos");
+                    ((FileItem)editorVm.SelectedNode!).FullPath.Should().Be(shotPath);
+
+                    listBox.SelectedItem.Should().NotBeNull("listBox.SelectedItem debe conservarse tras la poda de años vacíos");
+                    ((FileItem)listBox.SelectedItem!).FullPath.Should().Be(shotPath);
+
+                    // Validar que el año 2024 efectivamente fue podado
+                    editorVm.CalendarGroups.Any(g => g.FullPath == "cal://2024").Should().BeFalse("El año vacío 2024 debió ser podado por el indexador");
+                }
+                finally
+                {
+                    window.Close();
+                }
+            }, TestContext.Current.CancellationToken);
+        }
+        finally
+        {
+            try { Directory.Delete(tempDir, true); } catch { }
+        }
+    }
 }
+
 
 

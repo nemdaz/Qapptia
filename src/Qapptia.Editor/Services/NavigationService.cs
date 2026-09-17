@@ -174,7 +174,7 @@ public sealed class NavigationService : INavigationService
                 }
             }
                 
-            var orderedYears = targetYears.Distinct().OrderByDescending(y => y).ToList();
+            var orderedYears = targetYears.Where(y => y <= currentYear).Distinct().OrderByDescending(y => y).ToList();
             var years = new List<GroupItem>();
             _calendarDayIndex.Clear();
             
@@ -193,20 +193,7 @@ public sealed class NavigationService : INavigationService
                 };
                 yearGroup.IsExpanded = expandedGroups.Any(p => string.Equals(p, yearGroup.FullPath, StringComparison.OrdinalIgnoreCase));
 
-                int maxExpandedMonth = 0;
-                foreach (var group in expandedGroups)
-                {
-                    if (group.StartsWith($"cal://{year}/", StringComparison.OrdinalIgnoreCase))
-                    {
-                        var parts = group[($"cal://{year}/".Length)..].Split('/');
-                        if (parts.Length > 0 && int.TryParse(parts[0], out int expMonth))
-                        {
-                            maxExpandedMonth = Math.Max(maxExpandedMonth, expMonth);
-                        }
-                    }
-                }
-
-                int startMonth = (year > currentYear ? 12 : (year == currentYear ? Math.Max(today.Month, maxExpandedMonth) : 12));
+                int startMonth = (year == currentYear ? today.Month : 12);
                 for (int month = startMonth; month >= 1; month--)
                 {
                     string rawMonthName = culture.DateTimeFormat.GetMonthName(month);
@@ -238,6 +225,9 @@ public sealed class NavigationService : INavigationService
                         DateTime monday = sampleDay.AddDays(-diffToMonday);
                         DateTime sunday = monday.AddDays(6);
 
+                        // Si la semana inicia después de hoy, es una semana completamente futura: omitir
+                        if (monday > today) continue;
+
                         string startMmm = GetShortMonthName(culture, monday.Month);
                         string endMmm = GetShortMonthName(culture, sunday.Month);
                         string resolvedWeekLabel = !string.IsNullOrWhiteSpace(weekLabel) ? weekLabel : "Semana";
@@ -260,6 +250,9 @@ public sealed class NavigationService : INavigationService
                         for (int dayOffset = 6; dayOffset >= 0; dayOffset--)
                         {
                             DateTime day = monday.AddDays(dayOffset);
+                            // Omitir días futuros que sobrepasen la fecha actual
+                            if (day > today) continue;
+
                             string rawDayName = culture.DateTimeFormat.GetDayName(day.DayOfWeek);
                             string dayName = rawDayName.ToLower(culture);
                             string dayMmm = GetShortMonthName(culture, day.Month);
@@ -286,16 +279,25 @@ public sealed class NavigationService : INavigationService
                             weekGroup.ItemsSource.Add(dayGroup);
                         }
                         
-                        weekGroup.EffectiveDateUtc = weekGroup.ItemsSource.Items.Any() ? weekGroup.ItemsSource.Items.Max(i => i.EffectiveDateUtc) : DateTime.MinValue;
-                        monthGroup.ItemsSource.Add(weekGroup);
+                        if (weekGroup.ItemsSource.Items.Count > 0)
+                        {
+                            weekGroup.EffectiveDateUtc = weekGroup.ItemsSource.Items.Max(i => i.EffectiveDateUtc);
+                            monthGroup.ItemsSource.Add(weekGroup);
+                        }
                     }
                     
-                    monthGroup.EffectiveDateUtc = monthGroup.ItemsSource.Items.Any() ? monthGroup.ItemsSource.Items.Max(i => i.EffectiveDateUtc) : DateTime.MinValue;
-                    yearGroup.ItemsSource.Add(monthGroup);
+                    if (monthGroup.ItemsSource.Items.Count > 0)
+                    {
+                        monthGroup.EffectiveDateUtc = monthGroup.ItemsSource.Items.Max(i => i.EffectiveDateUtc);
+                        yearGroup.ItemsSource.Add(monthGroup);
+                    }
                 }
                 
-                yearGroup.EffectiveDateUtc = yearGroup.ItemsSource.Items.Any() ? yearGroup.ItemsSource.Items.Max(i => i.EffectiveDateUtc) : DateTime.MinValue;
-                years.Add(yearGroup);
+                if (yearGroup.ItemsSource.Items.Count > 0)
+                {
+                    yearGroup.EffectiveDateUtc = yearGroup.ItemsSource.Items.Max(i => i.EffectiveDateUtc);
+                    years.Add(yearGroup);
+                }
             }
 
             return years;
@@ -400,8 +402,20 @@ public sealed class NavigationService : INavigationService
 
     private static NavigationItem? FindNodeRecursive(IEnumerable<NavigationItem> nodes, string normalizedTarget)
     {
-        foreach (var node in nodes)
+        IReadOnlyList<NavigationItem> list = nodes as IReadOnlyList<NavigationItem> ?? nodes.ToList();
+        for (int i = 0; i < list.Count; i++)
         {
+            NavigationItem node;
+            try
+            {
+                if (i >= list.Count) break;
+                node = list[i];
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                break;
+            }
+
             // Los FileItem almacenan la ruta nativa del SO: se compara en forma normalizada
             if (string.Equals(NormalizePath(node.FullPath), normalizedTarget, StringComparison.OrdinalIgnoreCase))
                 return node;
@@ -476,67 +490,70 @@ public sealed class NavigationService : INavigationService
 
             if (!folderItem.IsScanCompleted)
             {
-                if (!_indexedFolders.TryAdd(normalized, 1))
+                lock (folderItem)
                 {
-                    // Si ya estaba en curso por otro hilo/worker, asegurar apagado de spinner y no duplicar trabajo
-                    dispatcher(() => folderItem.IsLoading = false);
-                    return;
-                }
-
-                dispatcher(() => folderItem.IsLoading = true);
-
-                try
-                {
-                    if (Directory.Exists(folderPath))
+                    if (folderItem.IsScanCompleted)
                     {
-                        var dirInfo = new DirectoryInfo(folderPath);
-                        var options = new EnumerationOptions { IgnoreInaccessible = true };
-                        var existingPaths = folderItem.ItemsSource.Items.Count > 0
-                            ? new HashSet<string>(folderItem.ItemsSource.Items.OfType<FileItem>().Select(f => f.FullPath), StringComparer.OrdinalIgnoreCase)
-                            : null;
-                        var allFiles = new List<FileItem>();
+                        dispatcher(() => folderItem.IsLoading = false);
+                        return;
+                    }
 
-                        foreach (var file in dirInfo.EnumerateFiles("*", options))
+                    dispatcher(() => folderItem.IsLoading = true);
+
+                    try
+                    {
+                        if (Directory.Exists(folderPath))
                         {
-                            if (IsNavigablePath(file.FullName) && (existingPaths == null || existingPaths.Add(file.FullName)))
+                            var dirInfo = new DirectoryInfo(folderPath);
+                            var options = new EnumerationOptions { IgnoreInaccessible = true };
+                            var existingPaths = folderItem.ItemsSource.Items.Count > 0
+                                ? new HashSet<string>(folderItem.ItemsSource.Items.OfType<FileItem>().Select(f => f.FullPath), StringComparer.OrdinalIgnoreCase)
+                                : null;
+                            var allFiles = new List<FileItem>();
+
+                            foreach (var file in dirInfo.EnumerateFiles("*", options))
                             {
-                                var effDate = GetEffectiveDate(file);
-                                var fileItem = new FileItem
+                                if (IsNavigablePath(file.FullName) && (existingPaths == null || existingPaths.Add(file.FullName)))
                                 {
-                                    Name = file.Name,
-                                    FullPath = file.FullName,
-                                    EffectiveDateUtc = effDate,
-                                    Parent = folderItem
-                                };
-                                allFiles.Add(fileItem);
-                                _enrichmentQueue.Writer.TryWrite(fileItem);
+                                    var effDate = GetPreliminaryEffectiveDate(file);
+                                    var fileItem = new FileItem
+                                    {
+                                        Name = file.Name,
+                                        FullPath = file.FullName,
+                                        EffectiveDateUtc = effDate,
+                                        Parent = folderItem
+                                    };
+                                    allFiles.Add(fileItem);
+                                    _enrichmentQueue.Writer.TryWrite(fileItem);
+                                }
+                            }
+
+                            if (allFiles.Count > 0)
+                            {
+                                dispatcher(() =>
+                                {
+                                    InsertFilesSorted(folderItem, allFiles);
+                                    foreach (var f in allFiles)
+                                    {
+                                        _onFileDispatched?.Invoke(f);
+                                    }
+                                });
                             }
                         }
-
-                        if (allFiles.Count > 0)
-                        {
-                            dispatcher(() =>
-                            {
-                                InsertFilesSorted(folderItem, allFiles);
-                                foreach (var f in allFiles)
-                                {
-                                    _onFileDispatched?.Invoke(f);
-                                }
-                            });
-                        }
                     }
-                }
-                catch (Exception ex)
-                {
-                    _logger?.Warning(ex, "Error al cargar carpeta prioritaria {Path}", folderPath);
-                }
-                finally
-                {
-                    dispatcher(() =>
+                    catch (Exception ex)
                     {
-                        folderItem.IsLoading = false;
-                        folderItem.IsScanCompleted = true;
-                    });
+                        _logger?.Warning(ex, "Error al cargar carpeta prioritaria {Path}", folderPath);
+                    }
+                    finally
+                    {
+                        _indexedFolders[normalized] = 1;
+                        dispatcher(() =>
+                        {
+                            folderItem.IsLoading = false;
+                            folderItem.IsScanCompleted = true;
+                        });
+                    }
                 }
                 return;
             }
@@ -623,7 +640,7 @@ public sealed class NavigationService : INavigationService
 
                     if (IsNavigablePath(file.FullName))
                     {
-                        var effDate = GetEffectiveDate(file);
+                        var effDate = GetPreliminaryEffectiveDate(file);
                         var fileItem = new FileItem
                         {
                             Name = file.Name,
@@ -741,8 +758,11 @@ public sealed class NavigationService : INavigationService
                     list = new List<FileItem>();
                     treeInjections[folderItem] = list;
                 }
-                file.Parent = folderItem;
-                list.Add(file);
+                var existingFile = folderItem.ItemsSource.Items.OfType<FileItem>()
+                    .FirstOrDefault(f => string.Equals(NormalizePath(f.FullPath), NormalizePath(file.FullPath), StringComparison.OrdinalIgnoreCase));
+                var itemToAdd = existingFile ?? file;
+                itemToAdd.Parent = folderItem;
+                list.Add(itemToAdd);
             }
         }
 
@@ -854,10 +874,21 @@ public sealed class NavigationService : INavigationService
         }
     }
 
-    private CalendarGroupItem? GetOrCreateCalendarDay(DateTime date)
+    public CalendarGroupItem? GetOrCreateCalendarDay(DateTime targetDate, IEnumerable<GroupItem>? roots = null)
     {
+        var collection = (roots as ObservableCollection<GroupItem>) ?? _calendarCollection;
+        if (collection != null)
+        {
+            _calendarCollection ??= collection;
+            _calendarCache ??= collection.ToList();
+        }
+        else if (roots != null)
+        {
+            _calendarCache ??= roots.ToList();
+        }
+
         if (_calendarCache == null) return null;
-        var dayDate = date.Date;
+        var dayDate = targetDate.Date;
         if (_calendarDayIndex.TryGetValue(dayDate, out var existingDay))
         {
             return existingDay;
@@ -891,7 +922,14 @@ public sealed class NavigationService : INavigationService
                 insertIdx++;
             }
             _calendarCache.Insert(insertIdx, yearGroup);
-            _calendarCollection?.Insert(insertIdx, yearGroup);
+            if (_calendarCollection != null && !_calendarCollection.Contains(yearGroup))
+            {
+                _calendarCollection.Insert(insertIdx, yearGroup);
+            }
+            else if (roots is IList<GroupItem> list && !list.Contains(yearGroup))
+            {
+                list.Insert(insertIdx, yearGroup);
+            }
         }
 
         // 2. Mes
@@ -969,6 +1007,17 @@ public sealed class NavigationService : INavigationService
             string dayMmm = GetShortMonthName(culture, dayDate.Month);
             bool isTodayDay = (dayDate == today);
 
+            if (isTodayDay)
+            {
+                foreach (var d in _calendarDayIndex.Values)
+                {
+                    if (d.Date.HasValue && d.Date.Value.Date != dayDate && d.IsToday)
+                    {
+                        d.IsToday = false;
+                    }
+                }
+            }
+
             dayGroup = new CalendarGroupItem(GroupKind.Day)
             {
                 Name = $"{dayDate:dd} {dayMmm}, {dayName}",
@@ -980,7 +1029,7 @@ public sealed class NavigationService : INavigationService
                 Parent = weekGroup,
                 IsToday = isTodayDay,
                 EffectiveDateUtc = dayDate.ToUniversalTime(),
-                IsScanCompleted = false,
+                IsScanCompleted = true,
                 IsLoading = false
             };
 
@@ -1024,7 +1073,10 @@ public sealed class NavigationService : INavigationService
                 // 1. En Calendario el archivo pertenezca a dayGroup (Depth = 4, sangría 64 px).
                 // 2. En Árbol el archivo mantenga su FolderItem (Depth = 1 o 2, sangría 16/32 px).
                 // 3. FlatTreeAdapter.CollapseSubtree pueda remover los archivos del árbol sin conflictos de ancestros.
-                var calendarFile = new FileItem
+                var existingFile = dayGroup.ItemsSource.Items.OfType<FileItem>()
+                    .FirstOrDefault(f => string.Equals(NormalizePath(f.FullPath), NormalizePath(file.FullPath), StringComparison.OrdinalIgnoreCase));
+
+                var calendarFile = existingFile ?? new FileItem
                 {
                     Name = file.Name,
                     FullPath = file.FullPath,
@@ -1134,6 +1186,18 @@ public sealed class NavigationService : INavigationService
         }
     }
 
+    private DateTime GetPreliminaryEffectiveDate(FileInfo file)
+    {
+        if (_effectiveDateCache.TryGetValue(file.FullName, out var cached) &&
+            cached.Length == file.Length &&
+            cached.LastWriteUtc == file.LastWriteTimeUtc)
+        {
+            return cached.EffectiveDate;
+        }
+
+        return Qapptia.Core.Services.ImageMetadataService.GetFileCreationTimeUtc(file);
+    }
+
     private DateTime GetEffectiveDate(FileInfo file)
     {
         if (_effectiveDateCache.TryGetValue(file.FullName, out var cached) &&
@@ -1168,21 +1232,30 @@ public sealed class NavigationService : INavigationService
     /// </summary>
     public static void InsertFileSorted(GroupItem parent, FileItem file)
     {
-        int insertIndex = 0;
-        // 1. Subgrupos (carpetas) siempre primero
-        while (insertIndex < parent.ItemsSource.Items.Count && parent.ItemsSource.Items[insertIndex] is GroupItem)
+        var norm = NormalizePath(file.FullPath);
+        lock (parent.ItemsSource)
         {
-            insertIndex++;
+            if (parent.ItemsSource.Items.OfType<FileItem>().Any(f => string.Equals(NormalizePath(f.FullPath), norm, StringComparison.OrdinalIgnoreCase)))
+            {
+                return;
+            }
+
+            int insertIndex = 0;
+            // 1. Subgrupos (carpetas) siempre primero
+            while (insertIndex < parent.ItemsSource.Items.Count && parent.ItemsSource.Items[insertIndex] is GroupItem)
+            {
+                insertIndex++;
+            }
+            // 2. Archivos ordenados de más reciente a más antiguo (EffectiveDateUtc descendente)
+            while (insertIndex < parent.ItemsSource.Items.Count &&
+                   parent.ItemsSource.Items[insertIndex] is FileItem existing &&
+                   (existing.EffectiveDateUtc > file.EffectiveDateUtc ||
+                    (existing.EffectiveDateUtc == file.EffectiveDateUtc && string.Compare(existing.Name, file.Name, StringComparison.OrdinalIgnoreCase) > 0)))
+            {
+                insertIndex++;
+            }
+            parent.ItemsSource.Insert(insertIndex, file);
         }
-        // 2. Archivos ordenados de más reciente a más antiguo (EffectiveDateUtc descendente)
-        while (insertIndex < parent.ItemsSource.Items.Count &&
-               parent.ItemsSource.Items[insertIndex] is FileItem existing &&
-               (existing.EffectiveDateUtc > file.EffectiveDateUtc ||
-                (existing.EffectiveDateUtc == file.EffectiveDateUtc && string.Compare(existing.Name, file.Name, StringComparison.OrdinalIgnoreCase) > 0)))
-        {
-            insertIndex++;
-        }
-        parent.ItemsSource.Insert(insertIndex, file);
     }
 
     /// <summary>
@@ -1191,29 +1264,104 @@ public sealed class NavigationService : INavigationService
     /// </summary>
     public static void InsertFilesSorted(GroupItem parent, IEnumerable<FileItem> files)
     {
-        var existingSubGroups = parent.ItemsSource.Items.OfType<GroupItem>().ToList();
-        var allFiles = parent.ItemsSource.Items.OfType<FileItem>().Concat(files)
-            .GroupBy(f => NormalizePath(f.FullPath), StringComparer.OrdinalIgnoreCase)
-            .Select(g => g.First())
-            .OrderByDescending(f => f.EffectiveDateUtc)
-            .ThenByDescending(f => f.Name, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        var combined = new List<NavigationItem>(existingSubGroups.Count + allFiles.Count);
-        combined.AddRange(existingSubGroups);
-        combined.AddRange(allFiles);
-
-        if (parent.ItemsSource.Items.Count == existingSubGroups.Count)
+        lock (parent.ItemsSource)
         {
-            parent.ItemsSource.AddRange(allFiles);
-        }
-        else
-        {
-            parent.ItemsSource.Edit(inner =>
+            var existingSubGroups = parent.ItemsSource.Items.OfType<GroupItem>().ToList();
+            var allFiles = parent.ItemsSource.Items.OfType<FileItem>().Concat(files)
+                .GroupBy(f => NormalizePath(f.FullPath), StringComparer.OrdinalIgnoreCase)
+                .Select(g => g.First())
+                .OrderByDescending(f => f.EffectiveDateUtc)
+                .ThenByDescending(f => f.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var combined = new List<NavigationItem>(existingSubGroups.Count + allFiles.Count);
+            combined.AddRange(existingSubGroups);
+            combined.AddRange(allFiles);
+
+            if (parent.ItemsSource.Items.Count == existingSubGroups.Count)
             {
-                inner.Clear();
-                inner.AddRange(combined);
-            });
+                parent.ItemsSource.AddRange(allFiles);
+            }
+            else
+            {
+                if (parent.ItemsSource.Items.Count == combined.Count)
+                {
+                    bool isSame = true;
+                    for (int i = 0; i < combined.Count; i++)
+                    {
+                        if (!ReferenceEquals(parent.ItemsSource.Items[i], combined[i]) &&
+                            !string.Equals(NormalizePath(parent.ItemsSource.Items[i].FullPath), NormalizePath(combined[i].FullPath), StringComparison.OrdinalIgnoreCase))
+                        {
+                            isSame = false;
+                            break;
+                        }
+                    }
+                    if (isSame) return;
+                }
+
+                parent.ItemsSource.Edit(inner =>
+                {
+                    SynchronizeNavigationList(inner, combined);
+                });
+            }
+        }
+    }
+
+    private static void SynchronizeNavigationList(IList<NavigationItem> current, List<NavigationItem> desired)
+    {
+        static bool AreEqual(NavigationItem a, NavigationItem b) =>
+            ReferenceEquals(a, b) || string.Equals(NormalizePath(a.FullPath), NormalizePath(b.FullPath), StringComparison.OrdinalIgnoreCase);
+
+        // 1. Remover elementos que ya no existan en desired o duplicados
+        var remainingDesired = new List<NavigationItem>(desired);
+        for (int i = current.Count - 1; i >= 0; i--)
+        {
+            var item = current[i];
+            int matchIdx = remainingDesired.FindIndex(d => AreEqual(item, d));
+            if (matchIdx >= 0)
+            {
+                remainingDesired.RemoveAt(matchIdx);
+            }
+            else
+            {
+                current.RemoveAt(i);
+            }
+        }
+
+        // 2. Insertar o mover para igualar desired
+        for (int i = 0; i < desired.Count; i++)
+        {
+            var target = desired[i];
+            if (i < current.Count && AreEqual(current[i], target))
+            {
+                continue;
+            }
+
+            int existingIndex = -1;
+            for (int j = i + 1; j < current.Count; j++)
+            {
+                if (AreEqual(current[j], target))
+                {
+                    existingIndex = j;
+                    break;
+                }
+            }
+
+            if (existingIndex >= 0)
+            {
+                var item = current[existingIndex];
+                current.RemoveAt(existingIndex);
+                current.Insert(i, item);
+            }
+            else
+            {
+                current.Insert(i, target);
+            }
+        }
+
+        while (current.Count > desired.Count)
+        {
+            current.RemoveAt(current.Count - 1);
         }
     }
 

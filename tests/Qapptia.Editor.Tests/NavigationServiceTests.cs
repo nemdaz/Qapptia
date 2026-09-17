@@ -348,4 +348,43 @@ public sealed class NavigationServiceTests : IDisposable
         parent.ItemsSource.Items[2].Should().Be(fileMid, "El archivo del 5 de sep debe ser el segundo");
         parent.ItemsSource.Items[3].Should().Be(fileOld, "El archivo del 1 de sep debe ser el último");
     }
+
+    [Fact]
+    public async Task BuildCalendarTreeAsyncShouldOnlyGenerateUpToTodayWithoutFutureWeeksAndFutureDaysInCurrentWeek()
+    {
+        // 16 de septiembre de 2026 (miércoles, día 3 de la semana 38 que va del 14 al 20)
+        var referenceToday = new DateTime(2026, 9, 16, 15, 0, 0, DateTimeKind.Local);
+
+        var calendar = await _sut.BuildCalendarTreeAsync(_testDir, Array.Empty<string>(), referenceToday: referenceToday, ct: TestContext.Current.CancellationToken);
+
+        calendar.Should().NotBeEmpty();
+        var year2026 = calendar.OfType<CalendarGroupItem>().FirstOrDefault(y => y.Year == 2026);
+        year2026.Should().NotBeNull();
+
+        // 1. No deben generarse meses futuros en el año actual (septiembre es el mes máximo)
+        year2026!.ItemsSource.Items.OfType<CalendarGroupItem>().Any(m => m.Month > 9).Should().BeFalse("No deben generarse meses futuros al mes actual");
+
+        var sepMonth = year2026.ItemsSource.Items.OfType<CalendarGroupItem>().FirstOrDefault(m => m.Month == 9);
+        sepMonth.Should().NotBeNull();
+
+        // 2. No deben generarse semanas futuras (la semana 38 es la máxima en septiembre)
+        sepMonth!.ItemsSource.Items.OfType<CalendarGroupItem>().Any(w => w.WeekNumber > 38).Should().BeFalse("No deben generarse semanas futuras");
+
+        // 3. La semana 38 debe generarse con su nombre y rango completo
+        var week38 = sepMonth.ItemsSource.Items.OfType<CalendarGroupItem>().FirstOrDefault(w => w.WeekNumber == 38);
+        week38.Should().NotBeNull();
+        week38!.Name.Should().Be("14 sep - 20 sep (Semana 38)", "El nodo de la semana debe mantener su texto descriptivo completo");
+
+        // 4. La semana 38 solo debe contener los días hasta la fecha actual (14, 15, 16)
+        var week38Days = week38.ItemsSource.Items.OfType<CalendarGroupItem>().ToList();
+        week38Days.Should().HaveCount(3, "La semana actual solo debe pintar los días hasta hoy (lunes, martes, miércoles)");
+        week38Days.Select(d => d.Date?.Day).Should().BeEquivalentTo(new int?[] { 16, 15, 14 });
+        week38Days.Any(d => d.Date?.Day > 16).Should().BeFalse("No deben mostrarse días posteriores a hoy (jueves 17, viernes 18, sábado 19, domingo 20)");
+
+        // 5. Las semanas anteriores (ej. semana 37: 7 al 13 de sep) deben contener sus 7 días completos
+        var week37 = sepMonth.ItemsSource.Items.OfType<CalendarGroupItem>().FirstOrDefault(w => w.WeekNumber == 37);
+        week37.Should().NotBeNull();
+        week37!.ItemsSource.Items.Should().HaveCount(7, "Las semanas pasadas deben generarse completas con sus 7 días");
+    }
 }
+

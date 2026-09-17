@@ -88,7 +88,7 @@ public partial class SidebarViewModel : ObservableObject, IDisposable
                 }
                 else
                 {
-                    Dispatcher.UIThread.Post(action, DispatcherPriority.Background);
+                    Dispatcher.UIThread.Post(action);
                 }
             }
             catch
@@ -149,6 +149,9 @@ public partial class SidebarViewModel : ObservableObject, IDisposable
 
         _treeFlatAdapter = new FlatTreeAdapter(TreeGroups, _uiDispatcher);
         _calendarFlatAdapter = new FlatTreeAdapter(CalendarGroups, _uiDispatcher);
+
+        ((INotifyCollectionChanged)_treeFlatAdapter.FlatItems).CollectionChanged += OnFlatItemsCollectionChanged;
+        ((INotifyCollectionChanged)_calendarFlatAdapter.FlatItems).CollectionChanged += OnFlatItemsCollectionChanged;
     }
 
     private FolderItem? _cachedTreeRoot;
@@ -161,9 +164,7 @@ public partial class SidebarViewModel : ObservableObject, IDisposable
 
         // Capturamos el archivo seleccionado antes de alternar
         var selectedFile = SelectedNode as FileItem;
-        var selectedPath = selectedFile?.FullPath ?? _stateService.Load().Session.LastSelectedFile;
-
-        ViewMode = mode;
+        var selectedPath = selectedFile?.FullPath ?? ActiveFilePath ?? _stateService.Load().Session.LastSelectedFile;
 
         var state = _stateService.Load();
         state.Layout.SidebarViewMode = mode.ToString();
@@ -171,41 +172,59 @@ public partial class SidebarViewModel : ObservableObject, IDisposable
 
         if (_cachedTreeRoot != null && _cachedCalendarYears != null)
         {
-            UpdateActiveSidebarGroups();
-
+            FileItem? targetFile = null;
             if (!string.IsNullOrEmpty(selectedPath))
             {
-                var targetFile = EnsureFileInActiveTopology(selectedPath);
-                if (targetFile != null)
-                {
-                    ExpandAncestorsForFile(targetFile);
-                    SelectedNode = targetFile;
+                ActiveFilePath = selectedPath;
+                targetFile = EnsureFileInActiveTopology(selectedPath, mode);
+            }
 
-                    var parentDir = Path.GetDirectoryName(selectedPath);
-                    if (!string.IsNullOrEmpty(parentDir))
-                    {
-                        _ = Task.Run(() => _navigationService.RequestPriorityFolder(parentDir));
-                    }
-                }
-                else if (selectedFile != null)
+            ViewMode = mode;
+            UpdateActiveSidebarGroups();
+
+            if (targetFile != null)
+            {
+                if (AreAncestorsExpanded(targetFile))
                 {
-                    ExpandAncestorsForFile(selectedFile);
-                    var activeCollection = mode == SidebarViewMode.Tree ? TreeGroups : CalendarGroups;
-                    var fallback = _navigationService.FindNodeByPath(activeCollection, selectedPath) ?? selectedFile;
+                    SelectedNode = targetFile;
+                }
+                else
+                {
+                    SelectedNode = null;
+                }
+
+                var parentDir = Path.GetDirectoryName(selectedPath);
+                if (!string.IsNullOrEmpty(parentDir))
+                {
+                    _ = Task.Run(() => _navigationService.RequestPriorityFolder(parentDir));
+                }
+            }
+            else if (!string.IsNullOrEmpty(selectedPath))
+            {
+                var activeCollection = mode == SidebarViewMode.Tree ? TreeGroups : CalendarGroups;
+                var fallback = _navigationService.FindNodeByPath(activeCollection, selectedPath) as FileItem ?? selectedFile;
+                if (fallback != null && AreAncestorsExpanded(fallback))
+                {
                     SelectedNode = fallback;
+                }
+                else
+                {
+                    SelectedNode = null;
                 }
             }
             return;
         }
 
-        await LoadSidebarImagesCoreAsync(expandAncestorsForSelected: true);
+        ViewMode = mode;
+        await LoadSidebarImagesCoreAsync(expandAncestorsForSelected: false);
     }
 
-    private FileItem? EnsureFileInActiveTopology(string filePath)
+    private FileItem? EnsureFileInActiveTopology(string filePath, SidebarViewMode? targetMode = null)
     {
         if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath)) return null;
 
-        var activeCollection = ViewMode == SidebarViewMode.Tree ? TreeGroups : CalendarGroups;
+        var mode = targetMode ?? ViewMode;
+        var activeCollection = mode == SidebarViewMode.Tree ? TreeGroups : CalendarGroups;
         var targetNode = _navigationService.FindNodeByPath(activeCollection, filePath) as FileItem;
         if (targetNode != null)
         {
@@ -213,39 +232,57 @@ public partial class SidebarViewModel : ObservableObject, IDisposable
         }
 
         var fileInfo = new FileInfo(filePath);
-        var singleFile = new FileItem
-        {
-            Name = fileInfo.Name,
-            FullPath = fileInfo.FullName,
-            EffectiveDateUtc = Qapptia.Core.Services.ImageMetadataService.GetEffectiveDate(fileInfo)
-        };
+        var normPath = NavigationService.NormalizePath(fileInfo.FullName);
 
-        if (ViewMode == SidebarViewMode.Tree)
+        if (mode == SidebarViewMode.Tree)
         {
             var parentPath = NavigationService.NormalizePath(Path.GetDirectoryName(filePath) ?? string.Empty);
             if (_navigationService.FindNodeByPath(TreeGroups, parentPath) is FolderItem parentFolder)
             {
-                singleFile.Parent = parentFolder;
-                if (!parentFolder.ItemsSource.Items.OfType<FileItem>().Any(f => string.Equals(f.FullPath, singleFile.FullPath, StringComparison.OrdinalIgnoreCase)))
+                var existing = parentFolder.ItemsSource.Items.OfType<FileItem>()
+                    .FirstOrDefault(f => string.Equals(NavigationService.NormalizePath(f.FullPath), normPath, StringComparison.OrdinalIgnoreCase));
+                if (existing != null)
                 {
-                    NavigationService.InsertFileSorted(parentFolder, singleFile);
+                    return existing;
                 }
+
+                var singleFile = new FileItem
+                {
+                    Name = fileInfo.Name,
+                    FullPath = fileInfo.FullName,
+                    EffectiveDateUtc = Qapptia.Core.Services.ImageMetadataService.GetEffectiveDate(fileInfo),
+                    Parent = parentFolder
+                };
+
+                NavigationService.InsertFileSorted(parentFolder, singleFile);
                 return singleFile;
             }
         }
         else
         {
-            var localDate = singleFile.EffectiveDateUtc.Kind == DateTimeKind.Utc
-                ? singleFile.EffectiveDateUtc.ToLocalTime()
-                : singleFile.EffectiveDateUtc;
-            var dayNode = _navigationService.FindCalendarDay(localDate.Date) ?? FindCalendarDayNode(localDate);
+            var effDate = Qapptia.Core.Services.ImageMetadataService.GetEffectiveDate(fileInfo);
+            var localDate = effDate.Kind == DateTimeKind.Utc ? effDate.ToLocalTime() : effDate;
+            var dayNode = _navigationService.FindCalendarDay(localDate.Date) 
+                ?? FindCalendarDayNode(localDate)
+                ?? _navigationService.GetOrCreateCalendarDay(localDate.Date, CalendarGroups);
             if (dayNode != null)
             {
-                singleFile.Parent = dayNode;
-                if (!dayNode.ItemsSource.Items.OfType<FileItem>().Any(f => string.Equals(f.FullPath, singleFile.FullPath, StringComparison.OrdinalIgnoreCase)))
+                var existing = dayNode.ItemsSource.Items.OfType<FileItem>()
+                    .FirstOrDefault(f => string.Equals(NavigationService.NormalizePath(f.FullPath), normPath, StringComparison.OrdinalIgnoreCase));
+                if (existing != null)
                 {
-                    NavigationService.InsertFileSorted(dayNode, singleFile);
+                    return existing;
                 }
+
+                var singleFile = new FileItem
+                {
+                    Name = fileInfo.Name,
+                    FullPath = fileInfo.FullName,
+                    EffectiveDateUtc = effDate,
+                    Parent = dayNode
+                };
+
+                NavigationService.InsertFileSorted(dayNode, singleFile);
                 return singleFile;
             }
         }
@@ -441,11 +478,15 @@ public partial class SidebarViewModel : ObservableObject, IDisposable
             }
         }
 
-        // 2. Inyección inmediata en Árbol de Calendario
+        // 2. Inyección inmediata en Árbol de Calendario (desacoplada de carpetas físicas en disco)
+        bool handledInCalendar = false;
         var localDate = effDate.Kind == DateTimeKind.Utc ? effDate.ToLocalTime() : effDate;
-        var dayNode = _navigationService.FindCalendarDay(localDate.Date) ?? FindCalendarDayNode(localDate);
+        var dayNode = _navigationService.FindCalendarDay(localDate.Date) 
+            ?? FindCalendarDayNode(localDate)
+            ?? _navigationService.GetOrCreateCalendarDay(localDate.Date, CalendarGroups);
         if (dayNode != null)
         {
+            handledInCalendar = true;
             var alreadyExists = dayNode.ItemsSource.Items.OfType<FileItem>()
                 .Any(f => string.Equals(NavigationService.NormalizePath(f.FullPath), NavigationService.NormalizePath(filePath), StringComparison.OrdinalIgnoreCase));
             if (!alreadyExists)
@@ -468,7 +509,7 @@ public partial class SidebarViewModel : ObservableObject, IDisposable
             SelectedNode = preservedSelection ?? (preservedPath != null ? _navigationService.FindNodeByPath(activeCollection, preservedPath) : null);
         }
 
-        return handledInTree;
+        return handledInTree || (ViewMode == SidebarViewMode.Calendar && handledInCalendar);
     }
 
     public void RemoveDeletedFile(string filePath)
@@ -508,6 +549,41 @@ public partial class SidebarViewModel : ObservableObject, IDisposable
             state.Session.LastSelectedFile = file.FullPath;
             _stateService.Save(state);
         }
+        else if (value is GroupItem)
+        {
+            // Un GroupItem no debe deseleccionar el archivo activo si este está visible
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (SelectedNode is GroupItem && !string.IsNullOrEmpty(ActiveFilePath))
+                {
+                    var match = ActiveFlatItems.OfType<FileItem>().FirstOrDefault(f => string.Equals(NavigationService.NormalizePath(f.FullPath), NavigationService.NormalizePath(ActiveFilePath), StringComparison.OrdinalIgnoreCase));
+                    if (match != null && AreAncestorsExpanded(match))
+                    {
+                        SelectedNode = match;
+                    }
+                    else
+                    {
+                        SelectedNode = null;
+                    }
+                }
+            }, DispatcherPriority.Background);
+        }
+        else if (value == null && !string.IsNullOrEmpty(ActiveFilePath))
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (SelectedNode == null && !string.IsNullOrEmpty(ActiveFilePath))
+                {
+                    var activeCollection = ViewMode == SidebarViewMode.Tree ? TreeGroups : CalendarGroups;
+                    var match = _navigationService.FindNodeByPath(activeCollection, ActiveFilePath) as FileItem
+                        ?? ActiveFlatItems.OfType<FileItem>().FirstOrDefault(f => string.Equals(NavigationService.NormalizePath(f.FullPath), NavigationService.NormalizePath(ActiveFilePath), StringComparison.OrdinalIgnoreCase));
+                    if (match != null && AreAncestorsExpanded(match))
+                    {
+                        SelectedNode = match;
+                    }
+                }
+            }, DispatcherPriority.Background);
+        }
 
         FileSelected?.Invoke(this, value as FileItem);
     }
@@ -543,28 +619,25 @@ public partial class SidebarViewModel : ObservableObject, IDisposable
             var effectiveExpandedFolders = new HashSet<string>(state.Layout.ExpandedFolders, StringComparer.OrdinalIgnoreCase);
             var effectiveExpandedCalendar = new HashSet<string>(state.Layout.ExpandedCalendarGroups, StringComparer.OrdinalIgnoreCase);
 
-            bool shouldExpandSelectedAncestors = expandAncestorsForSelected;
-            if (!shouldExpandSelectedAncestors && !string.IsNullOrEmpty(selectedPath) && File.Exists(selectedPath))
-            {
-                if (ViewMode == SidebarViewMode.Tree && effectiveExpandedFolders.Count == 0)
-                {
-                    shouldExpandSelectedAncestors = true;
-                }
-                else if (ViewMode == SidebarViewMode.Calendar && effectiveExpandedCalendar.Count == 0)
-                {
-                    shouldExpandSelectedAncestors = true;
-                }
-            }
+            bool shouldExpandTreeAncestors = expandAncestorsForSelected || effectiveExpandedFolders.Count == 0;
+            bool shouldExpandCalendarAncestors = expandAncestorsForSelected || effectiveExpandedCalendar.Count == 0;
 
-            if (shouldExpandSelectedAncestors && !string.IsNullOrEmpty(selectedPath) && File.Exists(selectedPath))
+            if (!string.IsNullOrEmpty(selectedPath) && File.Exists(selectedPath))
             {
-                foreach (var dir in GetAncestorDirectories(selectedPath, savePath))
+                if (shouldExpandTreeAncestors)
                 {
-                    effectiveExpandedFolders.Add(dir);
+                    foreach (var dir in GetAncestorDirectories(selectedPath, savePath))
+                    {
+                        effectiveExpandedFolders.Add(dir);
+                    }
                 }
-                foreach (var uri in GetCalendarAncestorUris(selectedPath))
+
+                if (shouldExpandCalendarAncestors)
                 {
-                    effectiveExpandedCalendar.Add(uri);
+                    foreach (var uri in GetCalendarAncestorUris(selectedPath))
+                    {
+                        effectiveExpandedCalendar.Add(uri);
+                    }
                 }
             }
 
@@ -589,32 +662,45 @@ public partial class SidebarViewModel : ObservableObject, IDisposable
                 }
             }
 
+            FileItem? startupTargetFile = null;
+            if (!string.IsNullOrEmpty(selectedPath))
+            {
+                ActiveFilePath = selectedPath;
+                startupTargetFile = EnsureFileInActiveTopology(selectedPath, ViewMode);
+                var otherMode = ViewMode == SidebarViewMode.Tree ? SidebarViewMode.Calendar : SidebarViewMode.Tree;
+                EnsureFileInActiveTopology(selectedPath, otherMode);
+
+                if (startupTargetFile != null)
+                {
+                    bool shouldExpand = ViewMode == SidebarViewMode.Tree ? shouldExpandTreeAncestors : shouldExpandCalendarAncestors;
+                    if (shouldExpand)
+                    {
+                        ExpandAncestorsForFile(startupTargetFile, ViewMode);
+                    }
+                }
+            }
+
             ApplyCachedView();
 
             if (!string.IsNullOrEmpty(selectedPath))
             {
-                ActiveFilePath = selectedPath;
-                var targetFile = EnsureFileInActiveTopology(selectedPath);
-
-                if (targetFile != null)
+                var activeCollection = ViewMode == SidebarViewMode.Tree ? TreeGroups : CalendarGroups;
+                var targetNode = startupTargetFile ?? _navigationService.FindNodeByPath(activeCollection, selectedPath) as FileItem;
+                if (targetNode != null)
                 {
-                    if (shouldExpandSelectedAncestors)
+                    bool shouldExpand = ViewMode == SidebarViewMode.Tree ? shouldExpandTreeAncestors : shouldExpandCalendarAncestors;
+                    if (shouldExpand)
                     {
-                        ExpandAncestorsForFile(targetFile);
+                        ExpandAncestorsForFile(targetNode, ViewMode);
                     }
-                    SelectedNode = targetFile;
-                }
-                else
-                {
-                    var activeCollection = ViewMode == SidebarViewMode.Tree ? TreeGroups : CalendarGroups;
-                    var nodeToSelect = _navigationService.FindNodeByPath(activeCollection, selectedPath);
-                    if (nodeToSelect != null)
+
+                    if (AreAncestorsExpanded(targetNode))
                     {
-                        if (shouldExpandSelectedAncestors && nodeToSelect is FileItem fileItem)
-                        {
-                            ExpandAncestorsForFile(fileItem);
-                        }
-                        SelectedNode = nodeToSelect;
+                        SelectedNode = targetNode;
+                    }
+                    else
+                    {
+                        SelectedNode = null;
                     }
                 }
             }
@@ -626,7 +712,7 @@ public partial class SidebarViewModel : ObservableObject, IDisposable
             Action<FileItem>? onFileDispatched = file =>
             {
                 var targetPath = ActiveFilePath ?? normSelected;
-                if (!selectedMatched && targetPath != null)
+                if ((SelectedNode == null || !selectedMatched) && targetPath != null)
                 {
                     bool isForActiveView = ViewMode == SidebarViewMode.Calendar
                         ? (file.Parent is CalendarGroupItem || file.Parent == null)
@@ -636,13 +722,15 @@ public partial class SidebarViewModel : ObservableObject, IDisposable
                     {
                         var activeCollection = ViewMode == SidebarViewMode.Tree ? TreeGroups : CalendarGroups;
                         var targetNode = _navigationService.FindNodeByPath(activeCollection, file.FullPath) ?? file;
-                        if (targetNode.Parent == null || targetNode.Parent.IsExpanded || shouldExpandSelectedAncestors)
+                        selectedMatched = true;
+                        bool shouldExpand = ViewMode == SidebarViewMode.Tree ? shouldExpandTreeAncestors : shouldExpandCalendarAncestors;
+                        if (shouldExpand)
                         {
-                            selectedMatched = true;
-                            if (shouldExpandSelectedAncestors)
-                            {
-                                ExpandAncestorsForFile(file);
-                            }
+                            ExpandAncestorsForFile(targetNode as FileItem ?? file);
+                            SelectedNode = targetNode;
+                        }
+                        else if (AreAncestorsExpanded(targetNode))
+                        {
                             SelectedNode = targetNode;
                         }
                     }
@@ -796,15 +884,48 @@ public partial class SidebarViewModel : ObservableObject, IDisposable
         }
     }
 
+    private void OnFlatItemsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (!string.IsNullOrEmpty(ActiveFilePath) && (SelectedNode == null || SelectedNode is GroupItem || (SelectedNode is FileItem f && !string.Equals(NavigationService.NormalizePath(f.FullPath), NavigationService.NormalizePath(ActiveFilePath), StringComparison.OrdinalIgnoreCase))))
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (!string.IsNullOrEmpty(ActiveFilePath) && (SelectedNode == null || SelectedNode is GroupItem || (SelectedNode is FileItem currentFile && !string.Equals(NavigationService.NormalizePath(currentFile.FullPath), NavigationService.NormalizePath(ActiveFilePath), StringComparison.OrdinalIgnoreCase))))
+                {
+                    var match = ActiveFlatItems.OfType<FileItem>().FirstOrDefault(item => string.Equals(NavigationService.NormalizePath(item.FullPath), NavigationService.NormalizePath(ActiveFilePath), StringComparison.OrdinalIgnoreCase));
+                    if (match != null && AreAncestorsExpanded(match))
+                    {
+                        SelectedNode = match;
+                    }
+                }
+            }, DispatcherPriority.Background);
+        }
+    }
+
     private void TrySelectActiveFileInGroup(GroupItem group)
     {
         if (string.IsNullOrEmpty(ActiveFilePath) || !File.Exists(ActiveFilePath)) return;
+
+        bool isForCurrentView = ViewMode == SidebarViewMode.Calendar
+            ? (group is CalendarGroupItem)
+            : (group is FolderItem);
+
+        if (!isForCurrentView) return;
 
         // 1. Si el archivo ya está en la colección de items del grupo o descendientes
         var found = FindFileRecursive(group, ActiveFilePath);
         if (found != null)
         {
-            SelectedNode = found;
+            if (AreAncestorsExpanded(found))
+            {
+                _uiDispatcher(() =>
+                {
+                    if (AreAncestorsExpanded(found))
+                    {
+                        SelectedNode = found;
+                    }
+                });
+            }
             return;
         }
 
@@ -812,9 +933,15 @@ public partial class SidebarViewModel : ObservableObject, IDisposable
         if (IsDirectParentOfActiveFile(group, ActiveFilePath))
         {
             var injected = EnsureFileInActiveTopology(ActiveFilePath);
-            if (injected != null)
+            if (injected != null && AreAncestorsExpanded(injected))
             {
-                SelectedNode = injected;
+                _uiDispatcher(() =>
+                {
+                    if (AreAncestorsExpanded(injected))
+                    {
+                        SelectedNode = injected;
+                    }
+                });
             }
         }
     }
@@ -822,13 +949,15 @@ public partial class SidebarViewModel : ObservableObject, IDisposable
     private static FileItem? FindFileRecursive(GroupItem group, string path)
     {
         var normTarget = NavigationService.NormalizePath(path);
-        foreach (var item in group.Items)
+        var children = group.ItemsSource.Items.Count > 0 ? (IReadOnlyList<NavigationItem>)group.ItemsSource.Items : group.Items;
+        for (int i = 0; i < children.Count; i++)
         {
+            var item = children[i];
             if (item is FileItem f && string.Equals(NavigationService.NormalizePath(f.FullPath), normTarget, StringComparison.OrdinalIgnoreCase))
             {
                 return f;
             }
-            if (item is GroupItem subGroup && subGroup.IsExpanded)
+            if (item is GroupItem subGroup)
             {
                 var found = FindFileRecursive(subGroup, normTarget);
                 if (found != null) return found;
@@ -855,6 +984,9 @@ public partial class SidebarViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
+        ((INotifyCollectionChanged)_treeFlatAdapter.FlatItems).CollectionChanged -= OnFlatItemsCollectionChanged;
+        ((INotifyCollectionChanged)_calendarFlatAdapter.FlatItems).CollectionChanged -= OnFlatItemsCollectionChanged;
+
         foreach (var group in _trackedGroups)
         {
             group.PropertyChanged -= OnGroupExpandedChanged;
@@ -868,11 +1000,22 @@ public partial class SidebarViewModel : ObservableObject, IDisposable
         GC.SuppressFinalize(this);
     }
 
-    private void ExpandAncestorsForFile(FileItem file)
+    private static bool AreAncestorsExpanded(NavigationItem? item)
     {
+        if (item == null) return false;
+        for (var current = item.Parent; current != null; current = current.Parent)
+        {
+            if (!current.IsExpanded) return false;
+        }
+        return true;
+    }
+
+    private void ExpandAncestorsForFile(FileItem file, SidebarViewMode? targetMode = null)
+    {
+        var mode = targetMode ?? ViewMode;
         GroupItem? parentNode = null;
 
-        if (ViewMode == SidebarViewMode.Tree)
+        if (mode == SidebarViewMode.Tree)
         {
             if (file.Parent is FolderItem folder)
             {
@@ -888,7 +1031,7 @@ public partial class SidebarViewModel : ObservableObject, IDisposable
                 }
             }
         }
-        else if (ViewMode == SidebarViewMode.Calendar)
+        else if (mode == SidebarViewMode.Calendar)
         {
             if (file.Parent is CalendarGroupItem calGroup && calGroup.Kind == GroupKind.Day)
             {
@@ -902,15 +1045,22 @@ public partial class SidebarViewModel : ObservableObject, IDisposable
                     rawDate = Qapptia.Core.Services.ImageMetadataService.GetEffectiveDate(file.FullPath);
                 }
                 var localDate = rawDate.Kind == DateTimeKind.Utc ? rawDate.ToLocalTime() : rawDate;
-                parentNode = _navigationService.FindCalendarDay(localDate.Date) ?? FindCalendarDayNode(localDate);
+                parentNode = _navigationService.FindCalendarDay(localDate.Date) 
+                    ?? FindCalendarDayNode(localDate)
+                    ?? _navigationService.GetOrCreateCalendarDay(localDate.Date, CalendarGroups);
             }
         }
 
         if (parentNode != null)
         {
+            var chain = new List<GroupItem>();
             for (var current = parentNode; current != null; current = current.Parent)
             {
-                current.IsExpanded = true;
+                chain.Add(current);
+            }
+            for (int i = chain.Count - 1; i >= 0; i--)
+            {
+                chain[i].IsExpanded = true;
             }
         }
     }
@@ -933,7 +1083,7 @@ public partial class SidebarViewModel : ObservableObject, IDisposable
         return list;
     }
 
-    private static List<string> GetCalendarAncestorUris(string filePath)
+    public static List<string> GetCalendarAncestorUris(string filePath)
     {
         var uris = new List<string>();
         if (!File.Exists(filePath)) return uris;

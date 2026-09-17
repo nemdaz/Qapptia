@@ -49,15 +49,14 @@ public sealed class FlatTreeAdapter : IDisposable
         {
             UntrackAll();
             var all = new List<NavigationItem>();
-            foreach (var root in _roots)
+            foreach (var root in _roots.ToList())
             {
                 AddNodeAndDescendants(root, all);
             }
 
             _sourceList.Edit(inner =>
             {
-                inner.Clear();
-                inner.AddRange(all);
+                SynchronizeSubtree(inner, 0, inner.Count, all);
             });
         });
     }
@@ -87,7 +86,7 @@ public sealed class FlatTreeAdapter : IDisposable
 
         if (group.IsExpanded)
         {
-            foreach (var child in group.Items)
+            foreach (var child in group.Items.ToList())
             {
                 if (child is GroupItem subGroup)
                 {
@@ -103,12 +102,15 @@ public sealed class FlatTreeAdapter : IDisposable
 
     private void TrackGroup(GroupItem group)
     {
-        if (!_trackedGroups.Add(group)) return;
+        lock (_trackedGroups)
+        {
+            if (!_trackedGroups.Add(group)) return;
+        }
 
         group.PropertyChanged += OnGroupPropertyChanged;
         ((INotifyCollectionChanged)group.Items).CollectionChanged += OnGroupItemsCollectionChanged;
 
-        foreach (var child in group.Items.OfType<GroupItem>())
+        foreach (var child in group.Items.OfType<GroupItem>().ToList())
         {
             TrackGroup(child);
         }
@@ -116,12 +118,15 @@ public sealed class FlatTreeAdapter : IDisposable
 
     private void UntrackGroup(GroupItem group)
     {
-        if (!_trackedGroups.Remove(group)) return;
+        lock (_trackedGroups)
+        {
+            if (!_trackedGroups.Remove(group)) return;
+        }
 
         group.PropertyChanged -= OnGroupPropertyChanged;
         ((INotifyCollectionChanged)group.Items).CollectionChanged -= OnGroupItemsCollectionChanged;
 
-        foreach (var child in group.Items.OfType<GroupItem>())
+        foreach (var child in group.Items.OfType<GroupItem>().ToList())
         {
             UntrackGroup(child);
         }
@@ -129,12 +134,18 @@ public sealed class FlatTreeAdapter : IDisposable
 
     private void UntrackAll()
     {
-        foreach (var group in _trackedGroups)
+        List<GroupItem> snapshot;
+        lock (_trackedGroups)
+        {
+            snapshot = _trackedGroups.ToList();
+            _trackedGroups.Clear();
+        }
+
+        foreach (var group in snapshot)
         {
             group.PropertyChanged -= OnGroupPropertyChanged;
             ((INotifyCollectionChanged)group.Items).CollectionChanged -= OnGroupItemsCollectionChanged;
         }
-        _trackedGroups.Clear();
     }
 
     private void OnGroupPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -257,13 +268,24 @@ public sealed class FlatTreeAdapter : IDisposable
             TrackGroup(item);
         }
 
+        _sourceList.Edit(inner =>
+        {
+            SynchronizeSubtree(inner, index + 1, removeCount, toInsert);
+        });
+    }
+
+    private static void SynchronizeSubtree(IList<NavigationItem> inner, int startIndex, int currentCount, List<NavigationItem> desired)
+    {
+        static bool AreEqual(NavigationItem a, NavigationItem b) =>
+            ReferenceEquals(a, b) || string.Equals(a.FullPath, b.FullPath, StringComparison.OrdinalIgnoreCase);
+
         // Si la lista ya es idéntica en longitud y elementos en el mismo orden, evitar ciclo de deselección
-        if (removeCount == toInsert.Count)
+        if (currentCount == desired.Count)
         {
             bool identical = true;
-            for (int i = 0; i < removeCount; i++)
+            for (int i = 0; i < currentCount; i++)
             {
-                if (!ReferenceEquals(_sourceList.Items[index + 1 + i], toInsert[i]))
+                if (!AreEqual(inner[startIndex + i], desired[i]))
                 {
                     identical = false;
                     break;
@@ -272,28 +294,64 @@ public sealed class FlatTreeAdapter : IDisposable
             if (identical) return;
         }
 
-        _sourceList.Edit(inner =>
+        // 1. Remover elementos que ya no existan en desired
+        int remainingCurrent = currentCount;
+        for (int i = currentCount - 1; i >= 0; i--)
         {
-            if (removeCount > 0)
+            var item = inner[startIndex + i];
+            if (!desired.Any(d => AreEqual(item, d)))
             {
-                inner.RemoveRange(index + 1, removeCount);
+                inner.RemoveAt(startIndex + i);
+                remainingCurrent--;
             }
-            if (toInsert.Count > 0)
+        }
+
+        // 2. Insertar o mover para igualar desired
+        for (int i = 0; i < desired.Count; i++)
+        {
+            var target = desired[i];
+            int currentPos = startIndex + i;
+            if (i < remainingCurrent && AreEqual(inner[currentPos], target))
             {
-                inner.InsertRange(toInsert, index + 1);
+                continue;
             }
-        });
+
+            int existingIndex = -1;
+            for (int j = i + 1; j < remainingCurrent; j++)
+            {
+                if (AreEqual(inner[startIndex + j], target))
+                {
+                    existingIndex = startIndex + j;
+                    break;
+                }
+            }
+
+            if (existingIndex >= 0)
+            {
+                var item = inner[existingIndex];
+                inner.RemoveAt(existingIndex);
+                inner.Insert(currentPos, item);
+            }
+            else
+            {
+                inner.Insert(currentPos, target);
+                remainingCurrent++;
+            }
+        }
     }
 
     private void OnGroupItemsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         GroupItem? group = null;
-        foreach (var g in _trackedGroups)
+        lock (_trackedGroups)
         {
-            if (ReferenceEquals(g.Items, sender))
+            foreach (var g in _trackedGroups)
             {
-                group = g;
-                break;
+                if (ReferenceEquals(g.Items, sender))
+                {
+                    group = g;
+                    break;
+                }
             }
         }
 

@@ -533,4 +533,219 @@ public sealed class SidebarViewModelTests : IDisposable
         vm.SelectedNode.Should().Be(existingFileNode, "El archivo seleccionado previamente debe mantenerse seleccionado");
         vm.ActiveFilePath.Should().Be(existingFile);
     }
+
+    [Fact]
+    public async Task InitialLoadInCalendarViewWithPersistedAncestorsShouldSelectFile()
+    {
+        var subDir = Path.Combine(_testDir, "Screenshots");
+        Directory.CreateDirectory(subDir);
+        var existingFile = Path.Combine(subDir, "existing.png");
+        await File.WriteAllBytesAsync(existingFile, new byte[] { 1, 2, 3 }, TestContext.Current.CancellationToken);
+
+        var effDate = Qapptia.Core.Services.ImageMetadataService.GetEffectiveDate(existingFile);
+        var localDate = effDate.Kind == DateTimeKind.Utc ? effDate.ToLocalTime() : effDate;
+
+        var state = _stateService.Load();
+        state.Layout.SidebarViewMode = "Calendar";
+        state.Session.LastSelectedFile = existingFile;
+        foreach (var uri in SidebarViewModel.GetCalendarAncestorUris(existingFile))
+        {
+            state.Layout.ExpandedCalendarGroups.Add(uri);
+        }
+        _stateService.Save(state);
+
+        using var vm = CreateViewModel();
+        await vm.LoadSidebarImagesAsync();
+
+        vm.SelectedNode.Should().NotBeNull("El archivo de sesión debe estar seleccionado en la vista Calendario cuando sus ancestros están expandidos");
+        vm.SelectedNode.Should().BeOfType<FileItem>();
+        ((FileItem)vm.SelectedNode!).FullPath.Should().Be(existingFile);
+        vm.ActiveFlatItems.Should().Contain(item => item is FileItem && ((FileItem)item).FullPath == existingFile);
+        vm.ActiveFlatItems.Any(item => ReferenceEquals(item, vm.SelectedNode)).Should().BeTrue("El nodo seleccionado debe ser exactamente el elemento proyectado en ActiveFlatItems");
+    }
+
+    [Fact]
+    public async Task TreeModeWhenFolderIsCollapsedAndSwappingViewsShouldNeverAutoExpandFolder()
+    {
+        var otherDir = Path.Combine(_testDir, "2025-10");
+        Directory.CreateDirectory(otherDir);
+        var subDir = Path.Combine(_testDir, "2026-09");
+        Directory.CreateDirectory(subDir);
+        var testFile = Path.Combine(subDir, "shot.png");
+        await File.WriteAllBytesAsync(testFile, new byte[] { 1, 2 }, TestContext.Current.CancellationToken);
+
+        var state = _stateService.Load();
+        state.Layout.SidebarViewMode = "Tree";
+        state.Layout.ExpandedFolders.Clear();
+        state.Layout.ExpandedFolders.Add(NavigationService.NormalizePath(otherDir));
+        state.Session.LastSelectedFile = NavigationService.NormalizePath(testFile);
+        _stateService.Save(state);
+
+        using var vm = CreateViewModel();
+        await vm.LoadSidebarImagesAsync();
+
+        var root = vm.SidebarGroups.FirstOrDefault();
+        var subFolder = root?.Items.OfType<GroupItem>().FirstOrDefault(f => f.Name == "2026-09");
+        subFolder.Should().NotBeNull();
+        subFolder!.IsExpanded.Should().BeFalse("El nodo colapsado debe iniciar colapsado");
+        vm.SelectedNode.Should().BeNull("No debe haber nodo seleccionado en el árbol si su carpeta está colapsada");
+
+        // Alternar a Calendario y regresar a Árbol
+        await vm.SetViewMode(SidebarViewMode.Calendar);
+        await vm.SetViewMode(SidebarViewMode.Tree);
+
+        subFolder.IsExpanded.Should().BeFalse("El nodo NO debe auto-expandirse tras alternar entre vistas");
+        vm.SelectedNode.Should().BeNull("No debe auto-seleccionarse si el nodo permanece colapsado");
+
+        // Al expandir manualmente, debe auto-seleccionarse
+        subFolder.IsExpanded = true;
+        vm.SelectedNode.Should().NotBeNull("Al expandir el nodo contenedor, el archivo activo debe seleccionarse automáticamente");
+        NavigationService.NormalizePath(((FileItem)vm.SelectedNode!).FullPath).Should().Be(NavigationService.NormalizePath(testFile));
+    }
+
+    [Fact]
+    public async Task CalendarModeWhenGroupIsCollapsedAndSwappingViewsShouldNeverAutoExpandGroup()
+    {
+        var subDir = Path.Combine(_testDir, "2026-09");
+        Directory.CreateDirectory(subDir);
+        var testFile = Path.Combine(subDir, "shot.png");
+        await File.WriteAllBytesAsync(testFile, new byte[] { 1, 2 }, TestContext.Current.CancellationToken);
+        var localDate = new FileInfo(testFile).LastWriteTime;
+
+        var state = _stateService.Load();
+        state.Layout.SidebarViewMode = "Calendar";
+        state.Layout.ExpandedCalendarGroups.Clear();
+        state.Layout.ExpandedCalendarGroups.Add("cal://2025");
+        state.Session.LastSelectedFile = NavigationService.NormalizePath(testFile);
+        _stateService.Save(state);
+
+        using var vm = CreateViewModel();
+        await vm.LoadSidebarImagesAsync();
+
+        var yearGroup2026 = vm.CalendarGroups.OfType<CalendarGroupItem>().FirstOrDefault(y => y.Year == localDate.Year);
+        yearGroup2026.Should().NotBeNull();
+        yearGroup2026!.IsExpanded.Should().BeFalse("El año que no estaba en ExpandedCalendarGroups debe iniciar colapsado");
+        vm.SelectedNode.Should().BeNull("No debe haber nodo seleccionado si el año está colapsado");
+
+        // Alternar a Árbol y regresar a Calendario
+        await vm.SetViewMode(SidebarViewMode.Tree);
+        await vm.SetViewMode(SidebarViewMode.Calendar);
+
+        yearGroup2026.IsExpanded.Should().BeFalse("El año NO debe auto-expandirse tras alternar entre vistas");
+        vm.SelectedNode.Should().BeNull("No debe auto-seleccionarse si el grupo permanece colapsado");
+
+        // Al expandir el año y mes manualmente, se debe auto-seleccionar
+        yearGroup2026.IsExpanded = true;
+        var monthGroup = yearGroup2026.ItemsSource.Items.OfType<CalendarGroupItem>().FirstOrDefault(m => m.Month == localDate.Month);
+        monthGroup.Should().NotBeNull();
+        monthGroup!.IsExpanded = true;
+
+        CalendarGroupItem? targetWeek = null;
+        CalendarGroupItem? targetDay = null;
+        foreach (var w in monthGroup.ItemsSource.Items.OfType<CalendarGroupItem>())
+        {
+            var d = w.ItemsSource.Items.OfType<CalendarGroupItem>().FirstOrDefault(x => x.Date.HasValue && x.Date.Value.Date == localDate.Date);
+            if (d != null)
+            {
+                targetWeek = w;
+                targetDay = d;
+                break;
+            }
+        }
+
+        targetWeek.Should().NotBeNull();
+        targetDay.Should().NotBeNull();
+        targetWeek!.IsExpanded = true;
+        targetDay!.IsExpanded = true;
+
+        vm.SelectedNode.Should().NotBeNull("Al expandir los grupos contenedores, el archivo activo debe seleccionarse automáticamente");
+        NavigationService.NormalizePath(((FileItem)vm.SelectedNode!).FullPath).Should().Be(NavigationService.NormalizePath(testFile));
+    }
+
+    [Fact]
+    public async Task InjectCreatedFileInCalendarViewWhenDayNodeDoesNotExistShouldDynamicallyCreateDayNodeAndInsertFile()
+    {
+        using var vm = CreateViewModel();
+        await vm.LoadSidebarImagesAsync();
+
+        vm.ViewMode.Should().Be(SidebarViewMode.Calendar);
+
+        // Crear un archivo en un subdirectorio físico nuevo (que el árbol no conoce)
+        var newSubDir = Path.Combine(_testDir, "UnscannedSubDir");
+        Directory.CreateDirectory(newSubDir);
+        var testFile = Path.Combine(newSubDir, "capture_new_day.png");
+        await File.WriteAllBytesAsync(testFile, new byte[] { 42, 43 }, TestContext.Current.CancellationToken);
+
+        var fileDate = DateTime.Today;
+        File.SetLastWriteTime(testFile, fileDate.AddHours(10));
+
+        // Inyectar el archivo como si el FileWatcher lo hubiera detectado
+        bool handled = vm.InjectCreatedFile(testFile);
+
+        handled.Should().BeTrue("En vista calendario, la inyección debe ser exitosa y crear dinámicamente el nodo día sin recargar");
+
+        // Buscar el nodo día creado
+        var dayNode = _navigationService.FindCalendarDay(fileDate.Date);
+        dayNode.Should().NotBeNull();
+        dayNode!.Kind.Should().Be(GroupKind.Day);
+
+        var containedFile = dayNode.ItemsSource.Items.OfType<FileItem>()
+            .FirstOrDefault(f => string.Equals(NavigationService.NormalizePath(f.FullPath), NavigationService.NormalizePath(testFile), StringComparison.OrdinalIgnoreCase));
+        containedFile.Should().NotBeNull();
+        containedFile!.Name.Should().Be("capture_new_day.png");
+    }
+
+    [Fact]
+    public async Task InjectCreatedFileOnNewDayShouldDynamicallyCreateDayNodeWithoutReloading()
+    {
+        using var vm = CreateViewModel();
+        await vm.LoadSidebarImagesAsync();
+
+        var targetDate = DateTime.Today.AddDays(-10); // Día que no existía si la carpeta estaba vacía
+        var newSubDir = Path.Combine(_testDir, "PastDayCapture");
+        Directory.CreateDirectory(newSubDir);
+        var testFile = Path.Combine(newSubDir, "past_capture.png");
+        await File.WriteAllBytesAsync(testFile, new byte[] { 1, 2, 3 }, TestContext.Current.CancellationToken);
+        File.SetCreationTime(testFile, targetDate);
+        File.SetLastWriteTime(testFile, targetDate);
+        Qapptia.Core.Services.ImageMetadataService.InvalidateEffectiveDateCache(testFile);
+
+        bool handled = vm.InjectCreatedFile(testFile);
+        handled.Should().BeTrue();
+
+        var dayNode = _navigationService.FindCalendarDay(targetDate.Date);
+        dayNode.Should().NotBeNull();
+        dayNode!.ItemsSource.Items.OfType<FileItem>().Should().ContainSingle(f => f.Name == "past_capture.png");
+    }
+
+    [Fact]
+    public async Task RequestPriorityFolderOnDenseFolderPopulatesImmediately()
+    {
+        var denseDir = Path.Combine(_testDir, "DenseFolderTest");
+        Directory.CreateDirectory(denseDir);
+        for (int i = 0; i < 50; i++)
+        {
+            var p = Path.Combine(denseDir, $"dense_img_{i:D3}.png");
+            File.WriteAllBytes(p, new byte[] { 1, 2, 3 });
+        }
+
+        var state = _stateService.Load();
+        state.Layout.SidebarViewMode = "Tree";
+        _stateService.Save(state);
+
+        using var vm = CreateViewModel();
+        await vm.LoadSidebarImagesAsync();
+
+        var folder = vm.FindNodeByPath(denseDir) as FolderItem;
+        folder.Should().NotBeNull();
+
+        folder!.IsExpanded = true;
+        _navigationService.RequestPriorityFolder(denseDir);
+
+        folder.IsScanCompleted.Should().BeTrue();
+        folder.IsLoading.Should().BeFalse();
+        folder.ItemsSource.Items.OfType<FileItem>().Should().HaveCount(50);
+    }
 }
+
+
