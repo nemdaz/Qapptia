@@ -14,14 +14,23 @@ public static class XmpMetadataHelper
     /// <summary>
     /// Construye el paquete estándar XMP en formato RDF/XML a partir de los metadatos de la imagen.
     /// </summary>
-    public static string BuildXmpPacket(string mediaId, string mediaType, DateTime createdAt)
+    public static string BuildXmpPacket(string mediaId, string mediaType, DateTime createdAt, DateTime? modifyDate = null)
     {
-        var localOffset = createdAt.Kind == DateTimeKind.Utc 
+        var localCreateOffset = createdAt.Kind == DateTimeKind.Utc 
             ? new DateTimeOffset(createdAt.ToLocalTime()) 
             : new DateTimeOffset(createdAt);
 
-        string dateStr = localOffset.ToString("yyyy-MM-ddTHH:mm:sszzz", CultureInfo.InvariantCulture);
+        string createDateStr = localCreateOffset.ToString("yyyy-MM-ddTHH:mm:sszzz", CultureInfo.InvariantCulture);
         string creatorTool = Constants.AppName.ToLowerInvariant();
+
+        DateTime effectiveModify = (modifyDate.HasValue && modifyDate.Value > DateTime.MinValue)
+            ? modifyDate.Value
+            : createdAt;
+
+        var localModOffset = effectiveModify.Kind == DateTimeKind.Utc
+            ? new DateTimeOffset(effectiveModify.ToLocalTime())
+            : new DateTimeOffset(effectiveModify);
+        string modDateStr = localModOffset.ToString("yyyy-MM-ddTHH:mm:sszzz", CultureInfo.InvariantCulture);
 
         return $"{XmpPacketHeader}" +
                $"<x:xmpmeta xmlns:x=\"adobe:ns:meta/\">\n" +
@@ -32,7 +41,8 @@ public static class XmpMetadataHelper
                $"    xmlns:xmp=\"{Constants.XmpNamespaceAdobeBasic}\">\n" +
                $"   <xmpMM:DocumentID>{mediaId}</xmpMM:DocumentID>\n" +
                $"   <dc:format>{mediaType}</dc:format>\n" +
-               $"   <xmp:CreateDate>{dateStr}</xmp:CreateDate>\n" +
+               $"   <xmp:CreateDate>{createDateStr}</xmp:CreateDate>\n" +
+               $"   <xmp:ModifyDate>{modDateStr}</xmp:ModifyDate>\n" +
                $"   <xmp:CreatorTool>{creatorTool}</xmp:CreatorTool>\n" +
                $"  </rdf:Description>\n" +
                $" </rdf:RDF>\n" +
@@ -45,8 +55,17 @@ public static class XmpMetadataHelper
     /// </summary>
     public static (string? MediaId, string? MediaType, DateTime? CreatedAt) ParseXmpPacket(string xmpContent)
     {
+        var (mediaId, mediaType, createdAt, _) = ParseXmpPacketDetailed(xmpContent);
+        return (mediaId, mediaType, createdAt);
+    }
+
+    /// <summary>
+    /// Extrae los metadatos detallados MediaId, MediaType, CreatedAt y ModifyDate desde una cadena de texto XMP.
+    /// </summary>
+    public static (string? MediaId, string? MediaType, DateTime? CreatedAt, DateTime? ModifyDate) ParseXmpPacketDetailed(string xmpContent)
+    {
         if (string.IsNullOrWhiteSpace(xmpContent))
-            return (null, null, null);
+            return (null, null, null, null);
 
         string? mediaId = ExtractElementOrAttribute(xmpContent, "xmpMM:DocumentID");
         if (string.IsNullOrEmpty(mediaId))
@@ -62,21 +81,28 @@ public static class XmpMetadataHelper
 
         string? mediaType = ExtractElementOrAttribute(xmpContent, "dc:format");
         string? createDateStr = ExtractElementOrAttribute(xmpContent, "xmp:CreateDate");
+        string? modifyDateStr = ExtractElementOrAttribute(xmpContent, "xmp:ModifyDate");
 
-        DateTime? createdAt = null;
-        if (!string.IsNullOrWhiteSpace(createDateStr))
+        DateTime? createdAt = ParseIsoDate(createDateStr);
+        DateTime? modifyDate = ParseIsoDate(modifyDateStr);
+
+        return (mediaId, mediaType, createdAt, modifyDate);
+    }
+
+    private static DateTime? ParseIsoDate(string? dateStr)
+    {
+        if (string.IsNullOrWhiteSpace(dateStr)) return null;
+
+        if (DateTimeOffset.TryParse(dateStr, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dto))
         {
-            if (DateTimeOffset.TryParse(createDateStr, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dto))
-            {
-                createdAt = dto.UtcDateTime;
-            }
-            else if (DateTime.TryParse(createDateStr, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var dt))
-            {
-                createdAt = dt.ToUniversalTime();
-            }
+            return dto.UtcDateTime;
+        }
+        if (DateTime.TryParse(dateStr, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var dt))
+        {
+            return dt.ToUniversalTime();
         }
 
-        return (mediaId, mediaType, createdAt);
+        return null;
     }
 
     private static string? ExtractElementOrAttribute(string xml, string tagName)

@@ -70,35 +70,44 @@ public static class ImageMetadataService
     /// </summary>
     public static (string? MediaId, string? MediaType, DateTime? CreatedAt) GetImageMetadata(string filePath)
     {
+        var (mediaId, mediaType, createdAt, _) = GetImageMetadataDetailed(filePath);
+        return (mediaId, mediaType, createdAt);
+    }
+
+    /// <summary>
+    /// Lee sincrónicamente los metadatos XMP detallados (incluyendo ModifyDate) de la imagen sin decodificar píxeles.
+    /// </summary>
+    public static (string? MediaId, string? MediaType, DateTime? CreatedAt, DateTime? ModifyDate) GetImageMetadataDetailed(string filePath)
+    {
         try
         {
-            if (!File.Exists(filePath)) return (null, null, null);
+            if (!File.Exists(filePath)) return (null, null, null, null);
 
             using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-            if (fs.Length < 4) return (null, null, null);
+            if (fs.Length < 4) return (null, null, null, null);
 
             Span<byte> header = stackalloc byte[8];
             int read = fs.Read(header);
             fs.Position = 0;
 
             var handler = ResolveHandler(header[..read]);
-            if (handler == null) return (null, null, null);
+            if (handler == null) return (null, null, null, null);
 
             string? xmpXml = handler.ReadXmp(fs);
             if (!string.IsNullOrEmpty(xmpXml))
             {
-                var (mediaId, mediaType, createdAt) = XmpMetadataHelper.ParseXmpPacket(xmpXml);
-                if (!string.IsNullOrEmpty(mediaId))
+                var (mediaId, mediaType, createdAt, modifyDate) = XmpMetadataHelper.ParseXmpPacketDetailed(xmpXml);
+                if (!string.IsNullOrEmpty(mediaId) || createdAt.HasValue)
                 {
-                    return (mediaId, mediaType ?? Constants.ResolveMediaType(filePath), createdAt);
+                    return (mediaId, mediaType ?? Constants.ResolveMediaType(filePath), createdAt, modifyDate);
                 }
             }
 
-            return (null, null, null);
+            return (null, null, null, null);
         }
         catch
         {
-            return (null, null, null);
+            return (null, null, null, null);
         }
     }
 
@@ -111,9 +120,17 @@ public static class ImageMetadataService
     }
 
     /// <summary>
+    /// Lee asincrónicamente los metadatos XMP detallados de la imagen sin decodificar píxeles.
+    /// </summary>
+    public static async Task<(string? MediaId, string? MediaType, DateTime? CreatedAt, DateTime? ModifyDate)> GetImageMetadataDetailedAsync(string filePath)
+    {
+        return await Task.Run(() => GetImageMetadataDetailed(filePath));
+    }
+
+    /// <summary>
     /// Inyecta sincrónicamente los metadatos XMP en la imagen de forma atómica mediante el handler de formato correspondiente.
     /// </summary>
-    public static void InjectMetadata(string filePath, string mediaId, string mediaType, DateTime? createdAt = null)
+    public static void InjectMetadata(string filePath, string mediaId, string mediaType, DateTime? createdAt = null, DateTime? modifyDate = null)
     {
         if (!File.Exists(filePath) || string.IsNullOrEmpty(mediaId) || string.IsNullOrEmpty(mediaType)) return;
 
@@ -123,7 +140,7 @@ public static class ImageMetadataService
             var originalWrite = File.GetLastWriteTimeUtc(filePath);
             DateTime resolvedDate = createdAt ?? originalCreation;
 
-            string xmpPayload = XmpMetadataHelper.BuildXmpPacket(mediaId, mediaType, resolvedDate);
+            string xmpPayload = XmpMetadataHelper.BuildXmpPacket(mediaId, mediaType, resolvedDate, modifyDate);
             string tempFilePath = $"{filePath}.tmp.{Guid.NewGuid():N}";
 
             bool injected = false;
@@ -164,15 +181,15 @@ public static class ImageMetadataService
     /// <summary>
     /// Inyecta asincrónicamente los metadatos XMP en la imagen de forma atómica mediante el handler de formato correspondiente.
     /// </summary>
-    public static async Task InjectMetadataAsync(string filePath, string mediaId, string mediaType, DateTime? createdAt = null)
+    public static async Task InjectMetadataAsync(string filePath, string mediaId, string mediaType, DateTime? createdAt = null, DateTime? modifyDate = null)
     {
-        await Task.Run(() => InjectMetadata(filePath, mediaId, mediaType, createdAt));
+        await Task.Run(() => InjectMetadata(filePath, mediaId, mediaType, createdAt, modifyDate));
     }
 
     /// <summary>
     /// Inyecta metadatos XMP directamente sobre un arreglo de bytes en memoria utilizando el handler adecuado.
     /// </summary>
-    public static byte[] InjectMetadata(byte[] imageBytes, string mediaId, string mediaType, DateTime? createdAt = null)
+    public static byte[] InjectMetadata(byte[] imageBytes, string mediaId, string mediaType, DateTime? createdAt = null, DateTime? modifyDate = null)
     {
         if (imageBytes == null || imageBytes.Length < 4) return imageBytes ?? Array.Empty<byte>();
 
@@ -181,7 +198,7 @@ public static class ImageMetadataService
             var handler = ResolveHandler(imageBytes.AsSpan(0, Math.Min(imageBytes.Length, 8)));
             if (handler != null)
             {
-                string xmpPayload = XmpMetadataHelper.BuildXmpPacket(mediaId, mediaType, createdAt ?? DateTime.UtcNow);
+                string xmpPayload = XmpMetadataHelper.BuildXmpPacket(mediaId, mediaType, createdAt ?? DateTime.UtcNow, modifyDate);
                 return handler.InjectXmp(imageBytes, xmpPayload);
             }
         }
