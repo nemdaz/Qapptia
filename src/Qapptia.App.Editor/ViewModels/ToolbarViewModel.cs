@@ -29,16 +29,18 @@ public partial class ToolbarViewModel : ObservableObject
         ShapeFactory.Crop
     };
 
+    public ObservableCollection<ToolGroup> Groups { get; }
+
     [ObservableProperty]
     private Tool _activeTool = ShapeFactory.Arrow;
 
-    public bool IsLineToolActive => ActiveTool is LineTool;
-    public bool IsArrowToolActive => ActiveTool is ArrowTool;
-    public bool IsEllipseToolActive => ActiveTool is EllipseTool;
-    public bool IsRectangleToolActive => ActiveTool is RectangleTool;
-    public bool IsHighlighterToolActive => ActiveTool is HighlighterTool;
-    public bool IsTextToolActive => ActiveTool is TextWidgetTool;
-    public bool IsCropToolActive => ActiveTool is CropTool;
+    public bool IsLineToolActive => string.Equals(ActiveTool.Id, ShapeFactory.Line.Id, StringComparison.OrdinalIgnoreCase);
+    public bool IsArrowToolActive => string.Equals(ActiveTool.Id, ShapeFactory.Arrow.Id, StringComparison.OrdinalIgnoreCase);
+    public bool IsEllipseToolActive => string.Equals(ActiveTool.Id, ShapeFactory.Ellipse.Id, StringComparison.OrdinalIgnoreCase);
+    public bool IsRectangleToolActive => string.Equals(ActiveTool.Id, ShapeFactory.Rectangle.Id, StringComparison.OrdinalIgnoreCase);
+    public bool IsHighlighterToolActive => string.Equals(ActiveTool.Id, ShapeFactory.Highlighter.Id, StringComparison.OrdinalIgnoreCase);
+    public bool IsTextToolActive => string.Equals(ActiveTool.Id, ShapeFactory.Text.Id, StringComparison.OrdinalIgnoreCase);
+    public bool IsCropToolActive => string.Equals(ActiveTool.Id, ShapeFactory.Crop.Id, StringComparison.OrdinalIgnoreCase);
 
     [ObservableProperty]
     private Color _activeColor;
@@ -55,11 +57,25 @@ public partial class ToolbarViewModel : ObservableObject
     {
         _stateService = stateService;
 
+        Groups = new ObservableCollection<ToolGroup>
+        {
+            new ToolGroup("Line", "Línea", new[] { ShapeFactory.Line }),
+            new ToolGroup("Arrow", "Flecha", new[] { ShapeFactory.Arrow }),
+            new ToolGroup("Ellipse", "Elipse", new[] { ShapeFactory.Ellipse }),
+            new ToolGroup("Rectangle", "Rectángulo", new[] { ShapeFactory.Rectangle }),
+            new ToolGroup("Highlighter", "Resaltador", new[] { ShapeFactory.Highlighter }),
+            new ToolGroup("Text", "Texto", new[] { ShapeFactory.Text })
+        };
+
         var state = _stateService.Load();
 
         // Cargar última herramienta seleccionada
         var foundTool = AvailableTools.FirstOrDefault(t => string.Equals(t.Id, state.Tools.ActiveTool, StringComparison.OrdinalIgnoreCase));
         _activeTool = foundTool ?? ShapeFactory.Arrow;
+
+        // Sincronizar herramienta activa en el grupo correspondiente
+        var activeGroup = Groups.FirstOrDefault(g => g.ContainsTool(_activeTool));
+        activeGroup?.SelectTool(_activeTool);
 
         // Cargar color activo: de la herramienta guardada, o global, o primer favorito
         if (state.Palette.ToolFavoriteColors.TryGetValue(_activeTool.Id.ToLowerInvariant(), out var toolColorHex) &&
@@ -103,18 +119,20 @@ public partial class ToolbarViewModel : ObservableObject
         // 1. Notificar inmediatamente para confirmar estado previo y limpiar selección del lienzo
         ToolChanged?.Invoke(this, value);
 
-        // 2. Persistir herramienta activa y restaurar su color favorito
-        var state = _stateService.Load();
-        state.Tools.ActiveTool = value.Id;
-
-        // 3. Cargar color específico de la herramienta seleccionada si existe
-        if (state.Palette.ToolFavoriteColors.TryGetValue(value.Id.ToLowerInvariant(), out var toolColorHex) &&
-            Color.TryParse(toolColorHex, out var parsedToolColor))
+        // 2. Persistir herramienta activa y restaurar su color favorito únicamente si altera geometría continua
+        if (value.AltersCanvasGeometry)
         {
-            ActiveColor = parsedToolColor;
-        }
+            var state = _stateService.Load();
+            state.Tools.ActiveTool = value.Id;
 
-        _stateService.Save(state);
+            if (state.Palette.ToolFavoriteColors.TryGetValue(value.Id.ToLowerInvariant(), out var toolColorHex) &&
+                Color.TryParse(toolColorHex, out var parsedToolColor))
+            {
+                ActiveColor = parsedToolColor;
+            }
+
+            _stateService.Save(state);
+        }
     }
 
     partial void OnActiveColorChanged(Color value)
@@ -152,24 +170,40 @@ public partial class ToolbarViewModel : ObservableObject
     {
         ArgumentNullException.ThrowIfNull(tool);
 
-        // Si se vuelve a pulsar la herramienta Crop estando activa, se desactiva (toggle off)
-        if (tool is CropTool && ActiveTool is CropTool)
+        // 1. Herramientas de acción inmediata (ActionTool): se ejecutan sin alterar ActiveTool permanente del lienzo
+        if (tool.IsAction)
+        {
+            if (tool is ActionTool actionTool)
+            {
+                _ = actionTool.ExecuteAsync();
+            }
+            var actionGroup = Groups.FirstOrDefault(g => g.ContainsTool(tool));
+            actionGroup?.SelectTool(tool);
+            return;
+        }
+
+        // 2. Herramientas alternables (toggle / Interactive): si ya está activa, se desactiva
+        if (tool.IsToggleable && string.Equals(ActiveTool.Id, tool.Id, StringComparison.OrdinalIgnoreCase))
         {
             DeactivateCropTool();
             return;
         }
 
-        if (ActiveTool is not CropTool)
+        if (!ActiveTool.IsToggleable)
         {
             _previousTool = ActiveTool;
         }
+
+        // 3. Sincronizar el grupo correspondiente
+        var targetGroup = Groups.FirstOrDefault(g => g.ContainsTool(tool));
+        targetGroup?.SelectTool(tool);
 
         ActiveTool = tool;
     }
 
     public void DeactivateCropTool()
     {
-        if (ActiveTool is CropTool)
+        if (ActiveTool.IsToggleable)
         {
             ActiveTool = _previousTool ?? ShapeFactory.Arrow;
         }
@@ -180,9 +214,12 @@ public partial class ToolbarViewModel : ObservableObject
     {
         ActiveColor = item.Color;
 
-        var state = _stateService.Load();
-        state.Palette.ActiveFavoriteColor = $"#{item.Color.A:X2}{item.Color.R:X2}{item.Color.G:X2}{item.Color.B:X2}";
-        state.Palette.ToolFavoriteColors[ActiveTool.Id.ToLowerInvariant()] = state.Palette.ActiveFavoriteColor;
-        _stateService.Save(state);
+        if (ActiveTool.AltersCanvasGeometry)
+        {
+            var state = _stateService.Load();
+            state.Palette.ActiveFavoriteColor = $"#{item.Color.A:X2}{item.Color.R:X2}{item.Color.G:X2}{item.Color.B:X2}";
+            state.Palette.ToolFavoriteColors[ActiveTool.Id.ToLowerInvariant()] = state.Palette.ActiveFavoriteColor;
+            _stateService.Save(state);
+        }
     }
 }

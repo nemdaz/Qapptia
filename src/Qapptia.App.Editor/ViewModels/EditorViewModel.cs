@@ -269,6 +269,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     public Color ActiveColor { get => Toolbar.ActiveColor; set => Toolbar.ActiveColor = value; }
     public SolidColorBrush ActiveBrush => Toolbar.ActiveBrush;
     public static IReadOnlyList<Tool> AvailableTools => ToolbarViewModel.AvailableTools;
+    public ObservableCollection<ToolGroup> ToolGroups => Toolbar.Groups;
     public ObservableCollection<PaletteColorItem> AvailableColors => Toolbar.AvailableColors;
     public bool IsLineToolActive => Toolbar.IsLineToolActive;
     public bool IsArrowToolActive => Toolbar.IsArrowToolActive;

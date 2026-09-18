@@ -111,4 +111,76 @@ public sealed class ToolbarViewModelTests : IDisposable
         savedState.Palette.ToolFavoriteColors[vm.ActiveTool.Id.ToLowerInvariant()]
             .Should().Be($"#{targetItem.Color.A:X2}{targetItem.Color.R:X2}{targetItem.Color.G:X2}{targetItem.Color.B:X2}");
     }
+
+    [Fact]
+    public void ToolbarViewModelInitializesGroupsWithSingleTools()
+    {
+        var vm = new ToolbarViewModel(_stateService);
+
+        vm.Groups.Should().HaveCount(6);
+        vm.Groups.All(g => !g.HasMultipleTools).Should().BeTrue();
+        vm.Groups.All(g => g.Tools.Count == 1).Should().BeTrue();
+
+        var arrowGroup = vm.Groups.FirstOrDefault(g => g.Id == "Arrow");
+        arrowGroup.Should().NotBeNull();
+        arrowGroup!.ActiveTool.Should().Be(ShapeFactory.Arrow);
+        arrowGroup.IconKey.Should().Be("IconArrow");
+    }
+
+    [Fact]
+    public void ToolbarViewModelSelectingToolUpdatesCorrespondingGroupActiveTool()
+    {
+        var vm = new ToolbarViewModel(_stateService);
+
+        vm.SelectTool(ShapeFactory.Rectangle);
+
+        var rectangleGroup = vm.Groups.First(g => g.Id == "Rectangle");
+        rectangleGroup.ActiveTool.Should().Be(ShapeFactory.Rectangle);
+        rectangleGroup.IconKey.Should().Be("IconRectangle");
+        vm.ActiveTool.Should().Be(ShapeFactory.Rectangle);
+    }
+
+    [Fact]
+    public void ToolbarViewModelActionToolExecutesWithoutAlteringCanvasActiveToolOrSession()
+    {
+        var vm = new ToolbarViewModel(_stateService);
+        vm.SelectTool(ShapeFactory.Line);
+        vm.ActiveTool.Should().Be(ShapeFactory.Line);
+
+        bool actionExecuted = false;
+        var customActionTool = new ActionTool("CustomAction", "Acción Personalizada", null, () => { actionExecuted = true; });
+
+        vm.SelectTool(customActionTool);
+
+        actionExecuted.Should().BeTrue();
+        vm.ActiveTool.Should().Be(ShapeFactory.Line, "Las herramientas de acción no deben cambiar la herramienta de dibujo permanente del lienzo");
+
+        var state = _stateService.Load();
+        state.Tools.ActiveTool.Should().Be("Line", "Las herramientas de acción no deben persistir en sesión como herramienta de dibujo");
+    }
+
+    [Fact]
+    public void ToolGroupMultipleToolsSelectionUpdatesSlotAndIconKey()
+    {
+        var group = new ToolGroup("TestGroup", "Grupo de Prueba", new Tool[] { ShapeFactory.Line, ShapeFactory.Arrow });
+
+        group.HasMultipleTools.Should().BeTrue();
+        group.ActiveTool.Should().Be(ShapeFactory.Line);
+        group.IconKey.Should().Be("IconLine");
+
+        bool eventRaised = false;
+        group.PropertyChanged += (s, e) =>
+        {
+            if (e.PropertyName == nameof(ToolGroup.IconKey) || e.PropertyName == nameof(ToolGroup.ActiveTool))
+            {
+                eventRaised = true;
+            }
+        };
+
+        var selected = group.SelectTool(ShapeFactory.Arrow);
+        selected.Should().BeTrue();
+        group.ActiveTool.Should().Be(ShapeFactory.Arrow);
+        group.IconKey.Should().Be("IconArrow");
+        eventRaised.Should().BeTrue();
+    }
 }

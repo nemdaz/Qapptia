@@ -27,6 +27,16 @@ public abstract class Tool
     /// </summary>
     public virtual bool AltersCanvasGeometry => Type == ToolType.Vector || Type == ToolType.Interactive || Type == ToolType.Widget;
 
+    /// <summary>
+    /// Indica si la herramienta tiene comportamiento de alternancia (toggle), desactivándose al volver a pulsarse.
+    /// </summary>
+    public virtual bool IsToggleable => Type == ToolType.Interactive;
+
+    /// <summary>
+    /// Indica si la herramienta es una acción inmediata que no altera el modo de dibujo permanente del lienzo.
+    /// </summary>
+    public virtual bool IsAction => Type == ToolType.Action;
+
     public string ToolTipText => string.IsNullOrEmpty(Shortcut)
         ? DisplayName
         : $"{DisplayName} ({Shortcut})";
