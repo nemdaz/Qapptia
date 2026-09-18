@@ -15,6 +15,8 @@
 
     <!-- Herramientas Vectoriales y Dibujo -->
     <StreamGeometry x:Key="IconLine">M18.59 4L20 5.41 5.41 20 4 18.59z</StreamGeometry>
+    <StreamGeometry x:Key="IconFreehandLine">M554-120q-54 0-91-37t-37-89q0-76 61.5-137.5T641-460q-3-36-18-54.5T582-533q-30 0-65 25t-83 82q-78 93-114.5 121T241-277q-51 0-86-38t-35-92q0-54 23.5-110.5T223-653q19-26 28-44t9-29q0-7-2.5-10.5T250-740q-10 0-25 12.5T190-689l-70-71q32-39 65-59.5t65-20.5q46 0 78 32t32 80q0 29-15 64t-50 84q-38 54-56.5 95T220-413q0 17 5.5 26.5T241-377q10 0 17.5-5.5T286-409q13-14 31-34.5t44-50.5q63-75 114-107t107-32q67 0 110 45t49 123h99v100h-99q-8 112-58.5 178.5T554-120Zm2-100q32 0 54-36.5T640-358q-46 11-80 43.5T526-250q0 14 8 22t22 8Z</StreamGeometry>
+    <StreamGeometry x:Key="IconArrowDropDown">M7 10l5 5 5-5z</StreamGeometry>
     <StreamGeometry x:Key="IconArrow">M19 5h-7v2h4.59L4.59 19 6 20.41 18 8.41V13h2V5z</StreamGeometry>
     <StreamGeometry x:Key="IconEllipse">M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z</StreamGeometry>
     <StreamGeometry x:Key="IconRectangle">M18 4H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H6V6h12v12z</StreamGeometry>

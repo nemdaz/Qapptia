@@ -100,24 +100,35 @@ public sealed class StateServicesTests : IDisposable
     [Fact]
     public void CanvasStateServiceConvertsShapesBidirectionally()
     {
+        var freehand = new EditorGeometry.FreehandLineGeometry { Color = Colors.Blue };
+        freehand.AddPoint(new Point(5, 5));
+        freehand.AddPoint(new Point(10, 15));
+        freehand.AddPoint(new Point(80, 80));
+
         var shapes = new List<EditorGeometry.VectorGeometry>
         {
             new EditorGeometry.RectangleGeometry { Start = new Point(10, 10), End = new Point(50, 50), Color = Colors.Red },
             new EditorGeometry.LineGeometry { Start = new Point(0, 0), End = new Point(100, 100), Color = Colors.Green },
+            freehand,
             new EditorGeometry.TextGeometry { Start = new Point(20, 20), End = new Point(200, 50), Text = "Hola", TextSize = 20 }
         };
 
         var dtos = _canvasStateService.CreateDtos(shapes);
-        dtos.Should().HaveCount(3);
+        dtos.Should().HaveCount(4);
         dtos[0].Type.Should().Be("rect");
         dtos[1].Type.Should().Be("line");
-        dtos[2].Type.Should().Be("text");
+        dtos[2].Type.Should().Be("freehand_line");
+        dtos[3].Type.Should().Be("text");
 
         var reconstructed = _canvasStateService.CreateShapes(dtos);
-        reconstructed.Should().HaveCount(3);
+        reconstructed.Should().HaveCount(4);
         reconstructed[0].Should().BeOfType<EditorGeometry.RectangleGeometry>();
         reconstructed[1].Should().BeOfType<EditorGeometry.LineGeometry>();
-        var textRecon = reconstructed[2].Should().BeOfType<EditorGeometry.TextGeometry>().Subject;
+        var freehandRecon = reconstructed[2].Should().BeOfType<EditorGeometry.FreehandLineGeometry>().Subject;
+        freehandRecon.Points.Should().HaveCount(3);
+        freehandRecon.Points[0].Should().Be(new Point(5, 5));
+        freehandRecon.Points[2].Should().Be(new Point(80, 80));
+        var textRecon = reconstructed[3].Should().BeOfType<EditorGeometry.TextGeometry>().Subject;
         textRecon.Text.Should().Be("Hola");
         textRecon.TextSize.Should().Be(20);
     }
@@ -284,5 +295,44 @@ public sealed class StateServicesTests : IDisposable
 
         ShapeFactory.Crop.TargetShapeType.Should().BeNull();
         ShapeFactory.Crop.AltersCanvasGeometry.Should().BeTrue();
+    }
+
+    [Fact]
+    public void FreehandLineGeometryMovesAndScalesProportionally()
+    {
+        var freehand = new EditorGeometry.FreehandLineGeometry();
+        freehand.AddPoint(new Point(10, 10));
+        freehand.AddPoint(new Point(30, 20));
+        freehand.AddPoint(new Point(50, 50));
+
+        // 1. Validar BoundingBox
+        var bbox = freehand.BoundingBox;
+        bbox.Left.Should().Be(10);
+        bbox.Top.Should().Be(10);
+        bbox.Width.Should().Be(40);
+        bbox.Height.Should().Be(40);
+
+        // 2. Validar Move(dx, dy)
+        freehand.Move(10, -5);
+        freehand.Points[0].Should().Be(new Point(20, 5));
+        freehand.Points[1].Should().Be(new Point(40, 15));
+        freehand.Points[2].Should().Be(new Point(60, 45));
+
+        // 3. Validar DragHandle con BoundingBox (escala proporcional)
+        var activeHandle = Qapptia.Editor.Models.HandleType.BottomRight;
+        freehand.DragHandle(Qapptia.Editor.Models.HandleType.BottomRight, 40, 40, ref activeHandle);
+
+        freehand.Points[0].Should().Be(new Point(20, 5));
+        freehand.Points[2].Should().Be(new Point(100, 85));
+        freehand.Points[1].X.Should().BeApproximately(60, 0.01);
+        freehand.Points[1].Y.Should().BeApproximately(25, 0.01);
+
+        // 4. Validar HitTest de manetas en esquinas al estar seleccionado
+        freehand.IsSelected = true;
+        var hitTopLeft = freehand.HitTest(new Point(20, 5));
+        hitTopLeft.Should().Be(Qapptia.Editor.Models.HandleType.TopLeft);
+
+        var hitBody = freehand.HitTest(new Point(50, 40));
+        hitBody.Should().Be(Qapptia.Editor.Models.HandleType.Body);
     }
 }

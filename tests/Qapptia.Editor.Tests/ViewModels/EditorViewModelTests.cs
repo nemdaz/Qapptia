@@ -8,6 +8,7 @@ using Qapptia.App.Editor.ViewModels;
 using Qapptia.App.Editor.ViewModels.Shapes;
 using Qapptia.Editor.Core;
 using Qapptia.Editor.Models;
+using Qapptia.Editor.Models.Navigation;
 using Qapptia.Editor.Services;
 using Qapptia.Editor.Tools;
 using Qapptia.UI.Components.Controls;
@@ -133,5 +134,47 @@ public sealed class EditorViewModelTests : IDisposable
         clipboardMock.Verify(c => c.SetRawImageAsync(rawPixels, 1, 1, pngBytes, System.Threading.CancellationToken.None), Times.Once);
         vm.ToastMessage.Should().Be(Qapptia.App.Editor.Common.Constants.ToastImageCopied);
         vm.ToastType.Should().Be(ToastNotificationType.Success);
+    }
+
+    [Fact]
+    public void EditorViewModelCurrentFilePathReflectsSelectedNodeFullPathAndRaisesPropertyChanged()
+    {
+        var vm = new EditorViewModel(_stateService, _testDir, _fontProviderMock.Object, canvasStateService: _canvasStateService);
+        var expectedPath = Path.Combine(_testDir, "test_screenshot.png");
+        var fileItem = new FileItem
+        {
+            Name = "test_screenshot.png",
+            FullPath = expectedPath
+        };
+
+        bool propertyChangedRaised = false;
+        vm.PropertyChanged += (s, e) =>
+        {
+            if (e.PropertyName == nameof(EditorViewModel.CurrentFilePath))
+            {
+                propertyChangedRaised = true;
+            }
+        };
+
+        vm.SelectedNode = fileItem;
+
+        vm.CurrentFilePath.Should().Be(expectedPath);
+        propertyChangedRaised.Should().BeTrue();
+    }
+
+    [Fact]
+    public void EditorViewModelIsFreehandLineToolActiveSwitchesIndependently()
+    {
+        var vm = new EditorViewModel(_stateService, _testDir, _fontProviderMock.Object, canvasStateService: _canvasStateService);
+
+        vm.SelectTool("FreehandLine");
+
+        vm.IsFreehandLineToolActive.Should().BeTrue();
+        vm.IsLineToolActive.Should().BeFalse();
+
+        vm.SelectTool("Line");
+
+        vm.IsFreehandLineToolActive.Should().BeFalse();
+        vm.IsLineToolActive.Should().BeTrue();
     }
 }

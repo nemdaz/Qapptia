@@ -113,11 +113,26 @@ public sealed class ToolbarViewModelTests : IDisposable
     }
 
     [Fact]
-    public void ToolbarViewModelInitializesGroupsWithSingleTools()
+    public void ToolbarViewModelInitializesGroupsCorrectly()
     {
         var vm = new ToolbarViewModel(_stateService);
 
-        vm.Groups.Should().HaveCount(6);
+        vm.Groups.Should().HaveCount(7);
+        
+        // Cada grupo tiene su herramienta configurada sin glifo por defecto (HasMultipleTools == false)
+        var lineGroup = vm.Groups.First(g => g.Id == "Line");
+        lineGroup.HasMultipleTools.Should().BeFalse();
+        lineGroup.Tools.Should().HaveCount(1);
+        lineGroup.ActiveTool.Should().Be(ShapeFactory.Line);
+        lineGroup.IconKey.Should().Be("IconLine");
+
+        var freehandGroup = vm.Groups.First(g => g.Id == "FreehandLine");
+        freehandGroup.HasMultipleTools.Should().BeFalse();
+        freehandGroup.Tools.Should().HaveCount(1);
+        freehandGroup.ActiveTool.Should().Be(ShapeFactory.FreehandLine);
+        freehandGroup.IconKey.Should().Be("IconFreehandLine");
+
+        // Todos los grupos actuales tienen 1 herramienta y HasMultipleTools en false
         vm.Groups.All(g => !g.HasMultipleTools).Should().BeTrue();
         vm.Groups.All(g => g.Tools.Count == 1).Should().BeTrue();
 
@@ -125,6 +140,36 @@ public sealed class ToolbarViewModelTests : IDisposable
         arrowGroup.Should().NotBeNull();
         arrowGroup!.ActiveTool.Should().Be(ShapeFactory.Arrow);
         arrowGroup.IconKey.Should().Be("IconArrow");
+    }
+
+    [Fact]
+    public void ToolbarViewModelSelectingFreehandLineActivatesFreehandToolIndependently()
+    {
+        var vm = new ToolbarViewModel(_stateService);
+
+        vm.SelectTool(ShapeFactory.FreehandLine);
+
+        vm.ActiveTool.Should().Be(ShapeFactory.FreehandLine);
+        vm.IsFreehandLineToolActive.Should().BeTrue();
+        vm.IsLineToolActive.Should().BeFalse();
+        vm.FreehandLineGroup.ActiveTool.Should().Be(ShapeFactory.FreehandLine);
+        vm.FreehandLineGroup.IconKey.Should().Be("IconFreehandLine");
+
+        var savedState = _stateService.Load();
+        savedState.Tools.ActiveTool.Should().Be("FreehandLine");
+    }
+
+    [Fact]
+    public void ToolbarViewModelSelectToolByNameFreehandLineSelectsIndependently()
+    {
+        var vm = new ToolbarViewModel(_stateService);
+
+        vm.SelectTool("FreehandLine");
+
+        vm.ActiveTool.Should().Be(ShapeFactory.FreehandLine);
+        vm.IsFreehandLineToolActive.Should().BeTrue();
+        vm.IsLineToolActive.Should().BeFalse();
+        vm.FreehandLineGroup.ActiveTool.Should().Be(ShapeFactory.FreehandLine);
     }
 
     [Fact]
@@ -182,5 +227,20 @@ public sealed class ToolbarViewModelTests : IDisposable
         group.ActiveTool.Should().Be(ShapeFactory.Arrow);
         group.IconKey.Should().Be("IconArrow");
         eventRaised.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ToolGroupOtherToolsExcludesActiveToolAndUpdatesWhenActiveToolChanges()
+    {
+        var group = new ToolGroup("Line", "Línea", new Tool[] { ShapeFactory.Line, ShapeFactory.FreehandLine });
+
+        // Inicialmente Line es activa -> OtherTools solo contiene FreehandLine
+        group.ActiveTool.Should().Be(ShapeFactory.Line);
+        group.OtherTools.Should().ContainSingle().Which.Should().Be(ShapeFactory.FreehandLine);
+
+        // Al seleccionar FreehandLine -> OtherTools solo contiene Line
+        group.SelectTool(ShapeFactory.FreehandLine);
+        group.ActiveTool.Should().Be(ShapeFactory.FreehandLine);
+        group.OtherTools.Should().ContainSingle().Which.Should().Be(ShapeFactory.Line);
     }
 }

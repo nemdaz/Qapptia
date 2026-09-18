@@ -13,6 +13,7 @@ public static class ShapeViewFactory
     {
         return geometry switch
         {
+            FreehandLineGeometry g => new FreehandLineShape(g),
             LineGeometry g => new LineShape(g),
             ArrowGeometry g => new ArrowShape(g),
             RectangleGeometry g => new RectangleShape(g),

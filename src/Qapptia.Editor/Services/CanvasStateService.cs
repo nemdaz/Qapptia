@@ -241,6 +241,25 @@ public sealed class CanvasStateService : ICanvasStateService
         var shapes = new List<VectorGeometry>();
         foreach (var dto in dtos)
         {
+            if (dto.Type is "freehand_line" or "freehand" && dto.Coords.Count >= 2)
+            {
+                var freehand = new FreehandLineGeometry
+                {
+                    Color = Qapptia.Editor.Core.Constants.ParseColorName(dto.Color)
+                };
+                for (int i = 0; i + 1 < dto.Coords.Count; i += 2)
+                {
+                    freehand.Points.Add(new Point(dto.Coords[i], dto.Coords[i + 1]));
+                }
+                if (freehand.Points.Count > 0)
+                {
+                    freehand.Start = freehand.Points[0];
+                    freehand.End = freehand.Points[^1];
+                }
+                shapes.Add(freehand);
+                continue;
+            }
+
             VectorGeometry? shape = dto.Type switch
             {
                 "rect" => new RectangleGeometry(),
@@ -310,13 +329,16 @@ public sealed class CanvasStateService : ICanvasStateService
                 RectangleGeometry => "rect",
                 ArrowGeometry => "arrow",
                 EllipseGeometry => "ellipse",
+                FreehandLineGeometry => "freehand_line",
                 LineGeometry => "line",
                 HighlighterGeometry => "highlighter",
                 TextGeometry => "text",
                 _ => "unknown"
             },
             Id = s.Id.ToString(),
-            Coords = new List<double> { s.Start.X, s.Start.Y, s.End.X, s.End.Y },
+            Coords = s is FreehandLineGeometry fg
+                ? fg.Points.SelectMany(p => new[] { p.X, p.Y }).ToList()
+                : new List<double> { s.Start.X, s.Start.Y, s.End.X, s.End.Y },
             Color = Qapptia.Editor.Core.Constants.GetColorName(s.Color),
             Payload = s is TextGeometry ts ? new Dictionary<string, object>
             {

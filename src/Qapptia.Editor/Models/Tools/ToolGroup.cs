@@ -16,6 +16,7 @@ public partial class ToolGroup : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IconKey))]
+    [NotifyPropertyChangedFor(nameof(OtherTools))]
     private Tool _activeTool;
 
     /// <summary>
@@ -27,6 +28,11 @@ public partial class ToolGroup : ObservableObject
     /// Clave del icono vectorial de la herramienta activa del grupo para proyección en la vista.
     /// </summary>
     public string IconKey => ActiveTool.IconKey;
+
+    /// <summary>
+    /// Herramientas alternativas del grupo excluyendo la herramienta actualmente activa en el slot principal.
+    /// </summary>
+    public IEnumerable<Tool> OtherTools => Tools.Where(t => !string.Equals(t.Id, ActiveTool.Id, StringComparison.OrdinalIgnoreCase));
 
     public ToolGroup(string id, string displayName, IEnumerable<Tool> tools, Tool? initialTool = null)
     {

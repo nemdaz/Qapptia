@@ -20,6 +20,7 @@ public partial class ToolbarViewModel : ObservableObject
     public static IReadOnlyList<Tool> AvailableTools { get; } = new Tool[]
     {
         ShapeFactory.Line,
+        ShapeFactory.FreehandLine,
         ShapeFactory.Arrow,
         ShapeFactory.Ellipse,
         ShapeFactory.Rectangle,
@@ -31,10 +32,14 @@ public partial class ToolbarViewModel : ObservableObject
 
     public ObservableCollection<ToolGroup> Groups { get; }
 
+    public ToolGroup LineGroup => Groups.First(g => g.Id == "Line");
+    public ToolGroup FreehandLineGroup => Groups.First(g => g.Id == "FreehandLine");
+
     [ObservableProperty]
     private Tool _activeTool = ShapeFactory.Arrow;
 
-    public bool IsLineToolActive => string.Equals(ActiveTool.Id, ShapeFactory.Line.Id, StringComparison.OrdinalIgnoreCase);
+    public bool IsLineToolActive => LineGroup.ContainsTool(ActiveTool);
+    public bool IsFreehandLineToolActive => FreehandLineGroup.ContainsTool(ActiveTool);
     public bool IsArrowToolActive => string.Equals(ActiveTool.Id, ShapeFactory.Arrow.Id, StringComparison.OrdinalIgnoreCase);
     public bool IsEllipseToolActive => string.Equals(ActiveTool.Id, ShapeFactory.Ellipse.Id, StringComparison.OrdinalIgnoreCase);
     public bool IsRectangleToolActive => string.Equals(ActiveTool.Id, ShapeFactory.Rectangle.Id, StringComparison.OrdinalIgnoreCase);
@@ -59,7 +64,8 @@ public partial class ToolbarViewModel : ObservableObject
 
         Groups = new ObservableCollection<ToolGroup>
         {
-            new ToolGroup("Line", "Línea", new[] { ShapeFactory.Line }),
+            new ToolGroup("Line", "Línea", new Tool[] { ShapeFactory.Line }),
+            new ToolGroup("FreehandLine", "Línea a mano alzada", new Tool[] { ShapeFactory.FreehandLine }),
             new ToolGroup("Arrow", "Flecha", new[] { ShapeFactory.Arrow }),
             new ToolGroup("Ellipse", "Elipse", new[] { ShapeFactory.Ellipse }),
             new ToolGroup("Rectangle", "Rectángulo", new[] { ShapeFactory.Rectangle }),
@@ -109,6 +115,7 @@ public partial class ToolbarViewModel : ObservableObject
     partial void OnActiveToolChanged(Tool value)
     {
         OnPropertyChanged(nameof(IsLineToolActive));
+        OnPropertyChanged(nameof(IsFreehandLineToolActive));
         OnPropertyChanged(nameof(IsArrowToolActive));
         OnPropertyChanged(nameof(IsEllipseToolActive));
         OnPropertyChanged(nameof(IsRectangleToolActive));

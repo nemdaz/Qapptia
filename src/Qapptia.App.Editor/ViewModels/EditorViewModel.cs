@@ -212,6 +212,10 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             if (!string.IsNullOrEmpty(e.PropertyName))
             {
                 OnPropertyChanged(e.PropertyName);
+                if (e.PropertyName == nameof(CanvasBoardViewModel.CurrentImagePath))
+                {
+                    OnPropertyChanged(nameof(CurrentFilePath));
+                }
             }
         };
 
@@ -220,6 +224,10 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             if (!string.IsNullOrEmpty(e.PropertyName))
             {
                 OnPropertyChanged(e.PropertyName);
+                if (e.PropertyName == nameof(SidebarViewModel.SelectedNode) || e.PropertyName == nameof(SidebarViewModel.ActiveFilePath))
+                {
+                    OnPropertyChanged(nameof(CurrentFilePath));
+                }
             }
         };
 
@@ -270,8 +278,10 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     public SolidColorBrush ActiveBrush => Toolbar.ActiveBrush;
     public static IReadOnlyList<Tool> AvailableTools => ToolbarViewModel.AvailableTools;
     public ObservableCollection<ToolGroup> ToolGroups => Toolbar.Groups;
+    public ToolGroup LineGroup => Toolbar.LineGroup;
     public ObservableCollection<PaletteColorItem> AvailableColors => Toolbar.AvailableColors;
     public bool IsLineToolActive => Toolbar.IsLineToolActive;
+    public bool IsFreehandLineToolActive => Toolbar.IsFreehandLineToolActive;
     public bool IsArrowToolActive => Toolbar.IsArrowToolActive;
     public bool IsEllipseToolActive => Toolbar.IsEllipseToolActive;
     public bool IsRectangleToolActive => Toolbar.IsRectangleToolActive;
@@ -292,7 +302,16 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     public SidebarViewMode SidebarViewMode => Sidebar.ViewMode;
     public bool IsTreeViewActive => Sidebar.IsTreeViewActive;
     public bool IsCalendarViewActive => Sidebar.IsCalendarViewActive;
-    public NavigationItem? SelectedNode { get => Sidebar.SelectedNode; set => Sidebar.SelectedNode = value; }
+    public NavigationItem? SelectedNode 
+    { 
+        get => Sidebar.SelectedNode; 
+        set 
+        { 
+            Sidebar.SelectedNode = value; 
+            OnPropertyChanged(nameof(CurrentFilePath)); 
+        } 
+    }
+    public string? CurrentFilePath => (SelectedNode as FileItem)?.FullPath ?? Sidebar.ActiveFilePath ?? CurrentImagePath;
     public IRelayCommand<FileItem?> OpenFileCommand => Sidebar.OpenFileCommand;
     public IRelayCommand<FileItem?> ShowInFolderCommand => Sidebar.ShowInFolderCommand;
     public IAsyncRelayCommand<SidebarViewMode> SetSidebarViewModeCommand => Sidebar.SetViewModeCommand;
@@ -318,9 +337,17 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     public void CommitCurrentState() => Board.CommitCurrentState();
 
     [RelayCommand]
-    public void SelectTool(string toolName) => Toolbar.SelectTool(toolName);
-
-    public void SelectTool(Tool tool) => Toolbar.SelectTool(tool);
+    public void SelectTool(object? param)
+    {
+        if (param is Tool tool)
+        {
+            Toolbar.SelectTool(tool);
+        }
+        else if (param is string toolName)
+        {
+            Toolbar.SelectTool(toolName);
+        }
+    }
 
     [RelayCommand]
     public void SelectColor(PaletteColorItem item) => Toolbar.SelectColor(item);

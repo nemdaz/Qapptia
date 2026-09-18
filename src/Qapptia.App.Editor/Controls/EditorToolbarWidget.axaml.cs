@@ -5,6 +5,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using Qapptia.App.Editor.ViewModels;
+using Qapptia.Editor.Tools;
 
 namespace Qapptia.App.Editor.Controls;
 
@@ -14,6 +15,17 @@ public partial class EditorToolbarWidget : UserControl
     {
         InitializeComponent();
         InitializeZoomComboBoxHandlers();
+    }
+
+    private void OnFlyoutToolButtonClicked(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.DataContext is Tool tool && DataContext is EditorViewModel vm)
+        {
+            vm.SelectTool(tool);
+        }
+
+        var flyout = this.FindControl<Button>("LineGroupFlyoutButton")?.Flyout;
+        flyout?.Hide();
     }
 
     private void InitializeZoomComboBoxHandlers()

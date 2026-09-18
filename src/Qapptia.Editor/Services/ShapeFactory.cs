@@ -13,6 +13,7 @@ namespace Qapptia.Editor.Services;
 public static class ShapeFactory
 {
     public static readonly LineTool Line = new();
+    public static readonly FreehandLineTool FreehandLine = new();
     public static readonly ArrowTool Arrow = new();
     public static readonly RectangleTool Rectangle = new();
     public static readonly EllipseTool Ellipse = new();
@@ -43,6 +44,7 @@ public static class ShapeFactory
         return toolId?.ToLowerInvariant() switch
         {
             "line" => Line.CreateShape(startPoint, color),
+            "freehandline" or "freehand_line" or "freehand" => FreehandLine.CreateShape(startPoint, color),
             "arrow" => Arrow.CreateShape(startPoint, color),
             "rectangle" => Rectangle.CreateShape(startPoint, color),
             "ellipse" => Ellipse.CreateShape(startPoint, color),

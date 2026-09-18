@@ -4,9 +4,26 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:Qapptia.App.Editor.ViewModels"
              xmlns:models="clr-namespace:Qapptia.Editor.Models;assembly=Qapptia.Editor"
+             xmlns:tools="clr-namespace:Qapptia.Editor.Tools;assembly=Qapptia.Editor"
+             xmlns:converters="clr-namespace:Qapptia.App.Editor.Converters"
              mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="60"
              x:Class="Qapptia.App.Editor.Controls.EditorToolbarWidget"
              x:DataType="vm:EditorViewModel">
+    <UserControl.Resources>
+        <converters:ResourceKeyToGeometryConverter x:Key="KeyToGeometryConverter" />
+    </UserControl.Resources>
+    <UserControl.Styles>
+        <Style Selector="FlyoutPresenter.tool-flyout">
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled" />
+        </Style>
+    </UserControl.Styles>
     <Border Background="{DynamicResource M3SurfaceContainerBrush}" BorderBrush="{DynamicResource M3OutlineVariantBrush}" BorderThickness="0,0,0,1" Padding="8">
         <Grid ColumnDefinitions="*, Auto">
             <!-- Left aligned groups -->
@@ -14,6 +31,11 @@
             <!-- Grupo 1: Archivo y Portapapeles -->
             <Border Background="{DynamicResource M3SurfaceVariantBrush}" CornerRadius="6" Padding="2">
                 <StackPanel Orientation="Horizontal" Spacing="2">
+                    <StackPanel.Styles>
+                        <Style Selector="Button">
+                            <Setter Property="VerticalAlignment" Value="Top" />
+                        </Style>
+                    </StackPanel.Styles>
                     <!-- Guardar -->
                     <Button Command="{Binding SaveCommand}" ToolTip.Tip="Guardar" Background="Transparent" Padding="4">
                         <PathIcon Data="{StaticResource IconSave}" Width="16" Height="16"/>
@@ -32,6 +54,11 @@
             <!-- Grupo 2: Zoom y Vista -->
             <Border Background="{DynamicResource M3SurfaceVariantBrush}" CornerRadius="6" Padding="2">
                 <StackPanel Orientation="Horizontal" Spacing="2">
+                    <StackPanel.Styles>
+                        <Style Selector="Button">
+                            <Setter Property="VerticalAlignment" Value="Top" />
+                        </Style>
+                    </StackPanel.Styles>
                     <!-- Zoom -->
                     <ComboBox x:Name="ZoomComboBox" Width="95" IsEditable="True" ItemsSource="{Binding ZoomOptions}" SelectedItem="{Binding SelectedZoomString}" Background="{DynamicResource M3ControlBgBrush}" Foreground="{DynamicResource M3OnSurfaceBrush}" VerticalAlignment="Center" VerticalContentAlignment="Center">
                         <ComboBox.Styles>
@@ -55,6 +82,14 @@
             <!-- Grupo 3: Acciones Adicionales (Rotar) -->
             <Border Background="{DynamicResource M3SurfaceVariantBrush}" CornerRadius="6" Padding="2">
                 <StackPanel Orientation="Horizontal" Spacing="2">
+                    <StackPanel.Styles>
+                        <Style Selector="Button">
+                            <Setter Property="VerticalAlignment" Value="Top" />
+                        </Style>
+                        <Style Selector="RadioButton">
+                            <Setter Property="VerticalAlignment" Value="Top" />
+                        </Style>
+                    </StackPanel.Styles>
                     <!-- Rotar -->
                     <Button Command="{Binding RotateCommand}" ToolTip.Tip="Rotar" Background="Transparent" Padding="4">
                         <PathIcon Data="{StaticResource IconRotate}" Width="16" Height="16"/>
@@ -69,9 +104,127 @@
             <!-- Grupo 4: Vectores y Dibujo -->
             <Border Background="{DynamicResource M3SurfaceVariantBrush}" CornerRadius="6" Padding="2">
                 <StackPanel Orientation="Horizontal" Spacing="2">
-                    <!-- Línea -->
-                    <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" IsChecked="{Binding IsLineToolActive, Mode=OneWay}" Command="{Binding SelectToolCommand}" CommandParameter="Line" GroupName="Tools" Background="Transparent" ToolTip.Tip="Línea" Padding="4">
-                        <PathIcon Data="{StaticResource IconLine}" Width="16" Height="16"/>
+                    <StackPanel.Styles>
+                        <Style Selector="RadioButton">
+                            <Setter Property="VerticalAlignment" Value="Top" />
+                        </Style>
+                    </StackPanel.Styles>
+                    <!-- Opción Unificada Línea (Cuerpo Icono + Glifo Desplegable Abajo con Separación) -->
+                    <Grid RowDefinitions="Auto, Auto" Width="26" VerticalAlignment="Top">
+                        <!-- Sección 1: Icono Principal de la Herramienta Activa del Grupo -->
+                        <RadioButton Grid.Row="0"
+                                     Theme="{StaticResource {x:Type ToggleButton}}"
+                                     IsChecked="{Binding IsLineToolActive, Mode=OneWay}"
+                                     Command="{Binding SelectToolCommand}"
+                                     CommandParameter="{Binding LineGroup.ActiveTool.Id}"
+                                     GroupName="Tools"
+                                     Background="Transparent"
+                                     ToolTip.Tip="{Binding LineGroup.ActiveTool.ToolTipText}"
+                                     Padding="4"
+                                     CornerRadius="4"
+                                     HorizontalAlignment="Stretch"
+                                     HorizontalContentAlignment="Center">
+                            <PathIcon Data="{Binding LineGroup.IconKey, Converter={StaticResource KeyToGeometryConverter}}" Width="16" Height="16"/>
+                        </RadioButton>
+
+                        <!-- Sección 2: Glifo sutil añadido abajo con separación clara del borde del icono -->
+                        <Button Grid.Row="1"
+                                x:Name="LineGroupFlyoutButton"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                CornerRadius="3"
+                                Height="10"
+                                Padding="0"
+                                Margin="0,2,0,1"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center"
+                                VerticalAlignment="Center"
+                                VerticalContentAlignment="Center"
+                                ToolTip.Tip="Opciones de Línea"
+                                IsVisible="{Binding LineGroup.HasMultipleTools}">
+                            <Button.Styles>
+                                <Style Selector="Button#LineGroupFlyoutButton:pointerover /template/ ContentPresenter">
+                                    <Setter Property="Background" Value="{DynamicResource M3GrayContainerBrush}" />
+                                </Style>
+                                <Style Selector="Button#LineGroupFlyoutButton:pressed /template/ ContentPresenter">
+                                    <Setter Property="Background" Value="{DynamicResource M3GrayContainerBrush}" />
+                                </Style>
+                                <Style Selector="Button#LineGroupFlyoutButton PathIcon.flyout-glyph">
+                                    <Setter Property="Foreground" Value="{DynamicResource M3OnSurfaceVariantBrush}" />
+                                    <Setter Property="Opacity" Value="0.55" />
+                                </Style>
+                                <Style Selector="Button#LineGroupFlyoutButton:pointerover PathIcon.flyout-glyph">
+                                    <Setter Property="Foreground" Value="{DynamicResource M3OnSurfaceVariantBrush}" />
+                                    <Setter Property="Opacity" Value="0.85" />
+                                </Style>
+                                <Style Selector="Button#LineGroupFlyoutButton:pressed PathIcon.flyout-glyph">
+                                    <Setter Property="Foreground" Value="{DynamicResource M3OnSurfaceVariantBrush}" />
+                                    <Setter Property="Opacity" Value="1.0" />
+                                </Style>
+                            </Button.Styles>
+                            <PathIcon Classes="flyout-glyph"
+                                      Data="{StaticResource IconArrowDropDown}" 
+                                      Width="6" 
+                                      Height="3" 
+                                      Foreground="{DynamicResource M3OnSurfaceVariantBrush}" 
+                                      Opacity="0.55"
+                                      Margin="0" />
+                            <Button.Flyout>
+                                <Flyout Placement="Bottom" FlyoutPresenterClasses="tool-flyout">
+                                    <Border Background="{DynamicResource M3SurfaceContainerHighBrush}"
+                                            BorderBrush="{DynamicResource M3OutlineVariantBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="8"
+                                            Padding="4"
+                                            HorizontalAlignment="Center">
+                                        <ItemsControl ItemsSource="{Binding LineGroup.OtherTools}" HorizontalAlignment="Center">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center" />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type tools:Tool}">
+                                                    <Button Command="{Binding $parent[ItemsControl].((vm:EditorViewModel)DataContext).SelectToolCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            Click="OnFlyoutToolButtonClicked"
+                                                            Background="Transparent"
+                                                            ToolTip.Tip="{Binding ToolTipText}"
+                                                            Padding="4"
+                                                            CornerRadius="4">
+                                                        <Button.Styles>
+                                                            <Style Selector="Button:pointerover /template/ ContentPresenter">
+                                                                <Setter Property="Background" Value="{DynamicResource M3HoverBrush}" />
+                                                            </Style>
+                                                            <Style Selector="Button PathIcon">
+                                                                <Setter Property="Foreground" Value="{DynamicResource M3OnSurfaceBrush}" />
+                                                                <Setter Property="Opacity" Value="1.0" />
+                                                            </Style>
+                                                        </Button.Styles>
+                                                        <PathIcon Data="{Binding IconKey, Converter={StaticResource KeyToGeometryConverter}}" 
+                                                                  Width="16" 
+                                                                  Height="16"
+                                                                  Foreground="{DynamicResource M3OnSurfaceBrush}"
+                                                                  Opacity="1.0"/>
+                                                    </Button>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Border>
+                                </Flyout>
+                            </Button.Flyout>
+                        </Button>
+                    </Grid>
+                    <!-- Mano Alzada (Independiente) -->
+                    <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" 
+                                 IsChecked="{Binding IsFreehandLineToolActive, Mode=OneWay}" 
+                                 Command="{Binding SelectToolCommand}" 
+                                 CommandParameter="FreehandLine" 
+                                 GroupName="Tools" 
+                                 Background="Transparent" 
+                                 ToolTip.Tip="Línea a mano alzada" 
+                                 Padding="4">
+                        <PathIcon Data="{StaticResource IconFreehandLine}" Width="16" Height="16"/>
                     </RadioButton>
                     <!-- Flecha -->
                     <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" IsChecked="{Binding IsArrowToolActive, Mode=OneWay}" Command="{Binding SelectToolCommand}" CommandParameter="Arrow" GroupName="Tools" Background="Transparent" ToolTip.Tip="Flecha" Padding="4">
