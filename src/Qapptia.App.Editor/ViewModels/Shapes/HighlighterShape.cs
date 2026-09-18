@@ -19,7 +19,8 @@ public class HighlighterShape : VectorShape
         {
             Color = Color.ToSKColor().WithAlpha(Constants.HighlighterAlpha),
             IsAntialias = true,
-            Style = SKPaintStyle.Fill
+            Style = SKPaintStyle.Fill,
+            BlendMode = SKBlendMode.Multiply
         };
 
         var rect = BoundingBox;

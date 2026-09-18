@@ -11,7 +11,7 @@ public static class Constants
     public const double ArrowWingLen = 25.0;
     public const double GripSize = 6.0;
     public const double DrawMinDistance = 8.0;
-    public const byte HighlighterAlpha = 102; // 40% opacity
+    public const byte HighlighterAlpha = 191; // 75% de opacidad para resaltado óptico sustractivo
 
     // Navegación y sistema de archivos (filtros internos y ocultos)
     public const char HiddenPrefixChar = '.';
