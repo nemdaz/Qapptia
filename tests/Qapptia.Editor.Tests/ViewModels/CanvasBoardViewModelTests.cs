@@ -1,12 +1,16 @@
 using System;
 using System.IO;
+using System.Threading.Tasks;
 using Avalonia;
+using Avalonia.Headless;
 using Avalonia.Media;
 using FluentAssertions;
 using Qapptia.App.Editor.ViewModels;
 using Qapptia.App.Editor.ViewModels.Shapes;
 using Qapptia.Editor.Models;
+using Qapptia.Editor.Models.Navigation;
 using Qapptia.Editor.Services;
+using SkiaSharp;
 using Xunit;
 
 namespace Qapptia.Editor.Tests.ViewModels;
@@ -110,5 +114,40 @@ public sealed class CanvasBoardViewModelTests : IDisposable
         vm.Shapes.Should().BeEmpty();
         vm.ActiveCropRect.Should().BeNull();
         vm.BackgroundImage.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task CanvasBoardViewModelLoadImageAsyncLoadsImageAndUpdatesProperties()
+    {
+        await SidebarVisualTests.Session.Dispatch(async () =>
+        {
+            var vm = new CanvasBoardViewModel(_canvasStateService, _stateService, a => a());
+            var testFilePath = Path.Combine(_testDir, "test_async.png");
+
+            using (var bmp = new SKBitmap(200, 100))
+            using (var canvas = new SKCanvas(bmp))
+            {
+                canvas.Clear(SKColors.Blue);
+                using var img = SKImage.FromBitmap(bmp);
+                using var data = img.Encode(SKEncodedImageFormat.Png, 100);
+                await File.WriteAllBytesAsync(testFilePath, data.ToArray(), TestContext.Current.CancellationToken);
+            }
+
+            var fileItem = new FileItem
+            {
+                Name = "test_async.png",
+                FullPath = testFilePath,
+                EffectiveDateUtc = DateTime.UtcNow
+            };
+
+            await vm.LoadImageAsync(fileItem, TestContext.Current.CancellationToken);
+
+            vm.HasImage.Should().BeTrue();
+            vm.HasNoImage.Should().BeFalse();
+            vm.ImageWidth.Should().Be(200);
+            vm.ImageHeight.Should().Be(100);
+            vm.BackgroundImage.Should().NotBeNull();
+            vm.CurrentImagePath.Should().Be(testFilePath);
+        }, TestContext.Current.CancellationToken);
     }
 }

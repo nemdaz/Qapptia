@@ -105,7 +105,10 @@ public partial class MainWindow : Window
         SubscribeToViewModelEvents(vm);
         InitializeKeyBindings(vm);
 
-        vm.LoadSidebarImagesCommand.Execute(null);
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            vm.LoadSidebarImagesCommand.Execute(null);
+        }, Avalonia.Threading.DispatcherPriority.Loaded);
     }
 
     private void SubscribeToViewModelEvents(EditorViewModel vm)

@@ -13,6 +13,8 @@ using Qapptia.Editor.Models;
 using Qapptia.Editor.Models.Navigation;
 using Qapptia.Editor.Services;
 using Qapptia.Editor.Tools;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Qapptia.App.Editor.ViewModels;
 
@@ -65,12 +67,33 @@ public partial class CanvasBoardViewModel : ObservableObject, IDisposable
     public event EventHandler? RequestRedraw;
     public event EventHandler? TextInputFocusRequested;
 
+    private readonly Action<Action> _uiDispatcher;
+
     public CanvasBoardViewModel(
         ICanvasStateService canvasStateService,
-        IEditorStateService stateService)
+        IEditorStateService stateService,
+        Action<Action>? uiDispatcher = null)
     {
         _canvasStateService = canvasStateService;
         _stateService = stateService;
+        _uiDispatcher = uiDispatcher ?? (action =>
+        {
+            try
+            {
+                if (Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
+                {
+                    action();
+                }
+                else
+                {
+                    Avalonia.Threading.Dispatcher.UIThread.Post(action);
+                }
+            }
+            catch
+            {
+                action();
+            }
+        });
 
         var state = _stateService.Load();
         ActiveTextSize = state.Tools.TextToolSize;
@@ -97,58 +120,99 @@ public partial class CanvasBoardViewModel : ObservableObject, IDisposable
             var baseBitmap = new Bitmap(ms);
 
             var (mediaId, _, _) = ImageMetadataService.GetImageMetadata(file.FullPath);
-            CurrentImageId = mediaId;
-
             var canvasState = _canvasStateService.Load(file.FullPath, mediaId);
-            _currentRotation = canvasState.Rotation;
-            _currentCrop = canvasState.Crop;
 
-            Bitmap processedBitmap = baseBitmap;
-
-            // 1. Restaurar rotación persistida si existe
-            if (_currentRotation % 360 != 0)
-            {
-                processedBitmap = RotateBitmap(baseBitmap, _currentRotation);
-                baseBitmap.Dispose();
-            }
-
-            // 2. Restaurar recorte persistido no destructivo si existe
-            if (_currentCrop != null && _currentCrop.Count >= 4)
-            {
-                ActiveCropRect = new Rect(_currentCrop[0], _currentCrop[1], _currentCrop[2], _currentCrop[3]);
-            }
-            else
-            {
-                ActiveCropRect = null;
-            }
-
-            BackgroundImage?.Dispose();
-            BackgroundImage = processedBitmap;
-
-            Shapes.Clear();
-            var loadedShapes = _canvasStateService.CreateShapes(canvasState.Shapes);
-            foreach (var geometry in loadedShapes)
-            {
-                Shapes.Add(ShapeViewFactory.Wrap(geometry));
-            }
-
-            _currentImagePath = file.FullPath;
-
-            ImageWidth = processedBitmap.Size.Width;
-            ImageHeight = processedBitmap.Size.Height;
-            HasImage = true;
-
-            var state = _stateService.Load();
-            state.Session.LastSelectedFile = NormalizePath(file.FullPath);
-            _stateService.Save(state);
-
-            ImageLoaded?.Invoke(this, EventArgs.Empty);
+            ApplyLoadedImageState(file, baseBitmap, mediaId, canvasState);
         }
         catch
         {
             ClearImage();
             ImageLoadFailed?.Invoke(this, file.FullPath);
         }
+    }
+
+    public async Task LoadImageAsync(FileItem file, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(file);
+
+        if (!string.IsNullOrEmpty(_currentImagePath))
+        {
+            SaveCurrentAnnotations();
+            _currentImagePath = null;
+        }
+
+        ActiveCropRect = null;
+
+        try
+        {
+            byte[] fileBytes = await File.ReadAllBytesAsync(file.FullPath, ct).ConfigureAwait(false);
+            var ms = new MemoryStream(fileBytes);
+            var baseBitmap = new Bitmap(ms);
+
+            var (mediaId, _, _) = ImageMetadataService.GetImageMetadata(file.FullPath);
+            var canvasState = _canvasStateService.Load(file.FullPath, mediaId);
+
+            _uiDispatcher(() =>
+            {
+                ApplyLoadedImageState(file, baseBitmap, mediaId, canvasState);
+            });
+        }
+        catch
+        {
+            _uiDispatcher(() =>
+            {
+                ClearImage();
+                ImageLoadFailed?.Invoke(this, file.FullPath);
+            });
+        }
+    }
+
+    private void ApplyLoadedImageState(FileItem file, Bitmap baseBitmap, string? mediaId, CanvasState canvasState)
+    {
+        CurrentImageId = mediaId;
+        _currentRotation = canvasState.Rotation;
+        _currentCrop = canvasState.Crop;
+
+        Bitmap processedBitmap = baseBitmap;
+
+        // 1. Restaurar rotación persistida si existe
+        if (_currentRotation % 360 != 0)
+        {
+            processedBitmap = RotateBitmap(baseBitmap, _currentRotation);
+            baseBitmap.Dispose();
+        }
+
+        // 2. Restaurar recorte persistido no destructivo si existe
+        if (_currentCrop != null && _currentCrop.Count >= 4)
+        {
+            ActiveCropRect = new Rect(_currentCrop[0], _currentCrop[1], _currentCrop[2], _currentCrop[3]);
+        }
+        else
+        {
+            ActiveCropRect = null;
+        }
+
+        BackgroundImage?.Dispose();
+        BackgroundImage = processedBitmap;
+
+        Shapes.Clear();
+        var loadedShapes = _canvasStateService.CreateShapes(canvasState.Shapes);
+        foreach (var geometry in loadedShapes)
+        {
+            Shapes.Add(ShapeViewFactory.Wrap(geometry));
+        }
+
+        _currentImagePath = file.FullPath;
+
+        ImageWidth = processedBitmap.Size.Width;
+        ImageHeight = processedBitmap.Size.Height;
+        HasImage = true;
+
+        var state = _stateService.Load();
+        state.Session.LastSelectedFile = NormalizePath(file.FullPath);
+        _stateService.Save(state);
+
+        ImageLoaded?.Invoke(this, EventArgs.Empty);
     }
 
     public void ClearImage()

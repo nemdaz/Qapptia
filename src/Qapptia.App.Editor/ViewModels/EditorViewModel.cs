@@ -122,17 +122,31 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         Sidebar = new SidebarViewModel(navService, stateService, savePath, shell);
         Toolbar = new ToolbarViewModel(stateService);
         Viewport = new CanvasViewportViewModel();
-        Board = new CanvasBoardViewModel(canvasService, stateService);
+        Board = new CanvasBoardViewModel(canvasService, stateService, _dispatcher);
 
         var initialState = stateService.Load();
         if (!string.IsNullOrEmpty(initialState.Session.LastSelectedFile) && File.Exists(initialState.Session.LastSelectedFile))
         {
-            var initialFile = new FileInfo(initialState.Session.LastSelectedFile);
-            Board.LoadImage(new FileItem
+            var lastSelected = initialState.Session.LastSelectedFile;
+            _ = Task.Run(async () =>
             {
-                Name = initialFile.Name,
-                FullPath = initialFile.FullName,
-                EffectiveDateUtc = Qapptia.Core.Services.ImageMetadataService.GetEffectiveDate(initialFile)
+                try
+                {
+                    var initialFile = new FileInfo(lastSelected);
+                    var effectiveDate = Qapptia.Core.Services.ImageMetadataService.GetEffectiveDate(initialFile);
+                    var fileItem = new FileItem
+                    {
+                        Name = initialFile.Name,
+                        FullPath = initialFile.FullName,
+                        EffectiveDateUtc = effectiveDate
+                    };
+
+                    await Board.LoadImageAsync(fileItem).ConfigureAwait(false);
+                }
+                catch
+                {
+                    // Fallback silencioso si el archivo es inaccesible o fue eliminado
+                }
             });
         }
 
