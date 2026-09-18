@@ -525,6 +525,7 @@ public partial class SidebarViewModel : ObservableObject, IDisposable
             if (itemToRemove != null)
             {
                 parentFolder.ItemsSource.Remove(itemToRemove);
+                parentFolder.ApplyFileCountDelta(-1);
             }
         }
 
@@ -535,6 +536,7 @@ public partial class SidebarViewModel : ObservableObject, IDisposable
             if (itemToRemove != null && itemToRemove.Parent is CalendarGroupItem calGroup)
             {
                 calGroup.ItemsSource.Remove(itemToRemove);
+                calGroup.ApplyFileCountDelta(-1);
                 break;
             }
         }

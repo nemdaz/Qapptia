@@ -386,5 +386,201 @@ public sealed class NavigationServiceTests : IDisposable
         week37.Should().NotBeNull();
         week37!.ItemsSource.Items.Should().HaveCount(7, "Las semanas pasadas deben generarse completas con sus 7 días");
     }
+
+    [Fact]
+    public void TreeNavigationPropagatesRecursiveFileCountsToParentNodes()
+    {
+        var rootFolder = new FolderItem { Name = "Capturas" };
+        var subFolder1 = new FolderItem { Name = "2026-08", Parent = rootFolder };
+        var subFolder2 = new FolderItem { Name = "2026-09", Parent = rootFolder };
+        rootFolder.ItemsSource.Add(subFolder1);
+        rootFolder.ItemsSource.Add(subFolder2);
+
+        rootFolder.RecursiveFileCount.Should().Be(0);
+        rootFolder.FileCountDisplay.Should().Be("(0)");
+
+        var file1 = new FileItem { Name = "a.png", FullPath = "/path/a.png", Parent = subFolder1 };
+        var file2 = new FileItem { Name = "b.png", FullPath = "/path/b.png", Parent = subFolder1 };
+        NavigationService.InsertFilesSorted(subFolder1, new[] { file1, file2 });
+
+        subFolder1.RecursiveFileCount.Should().Be(2);
+        subFolder1.FileCountDisplay.Should().Be("(2)");
+        rootFolder.RecursiveFileCount.Should().Be(2);
+        rootFolder.FileCountDisplay.Should().Be("(2)");
+
+        var file3 = new FileItem { Name = "c.png", FullPath = "/path/c.png", Parent = subFolder2 };
+        var file4 = new FileItem { Name = "d.png", FullPath = "/path/d.png", Parent = subFolder2 };
+        var file5 = new FileItem { Name = "e.png", FullPath = "/path/e.png", Parent = subFolder2 };
+        NavigationService.InsertFilesSorted(subFolder2, new[] { file3, file4, file5 });
+
+        subFolder2.RecursiveFileCount.Should().Be(3);
+        subFolder2.FileCountDisplay.Should().Be("(3)");
+        rootFolder.RecursiveFileCount.Should().Be(5);
+        rootFolder.FileCountDisplay.Should().Be("(5)");
+    }
+
+    [Fact]
+    public async Task CalendarNavigationPropagatesRecursiveFileCountsToWeekMonthAndYear()
+    {
+        var calendar = await _sut.BuildCalendarTreeAsync(_testDir, Array.Empty<string>(), referenceToday: new DateTime(2026, 9, 16), ct: TestContext.Current.CancellationToken);
+        var year2026 = calendar.OfType<CalendarGroupItem>().FirstOrDefault(y => y.Year == 2026);
+        year2026.Should().NotBeNull();
+
+        var sepMonth = year2026!.ItemsSource.Items.OfType<CalendarGroupItem>().FirstOrDefault(m => m.Month == 9);
+        sepMonth.Should().NotBeNull();
+
+        var week38 = sepMonth!.ItemsSource.Items.OfType<CalendarGroupItem>().FirstOrDefault(w => w.WeekNumber == 38);
+        week38.Should().NotBeNull();
+
+        var day16 = week38!.ItemsSource.Items.OfType<CalendarGroupItem>().FirstOrDefault(d => d.Date?.Day == 16);
+        day16.Should().NotBeNull();
+
+        day16!.RecursiveFileCount.Should().Be(0);
+        day16.FileCountDisplay.Should().Be("(0)");
+
+        var file1 = new FileItem { Name = "shot1.png", FullPath = "/path/shot1.png", Parent = day16, EffectiveDateUtc = new DateTime(2026, 9, 16, 10, 0, 0, DateTimeKind.Utc) };
+        var file2 = new FileItem { Name = "shot2.png", FullPath = "/path/shot2.png", Parent = day16, EffectiveDateUtc = new DateTime(2026, 9, 16, 11, 0, 0, DateTimeKind.Utc) };
+
+        NavigationService.InsertFilesSorted(day16, new[] { file1, file2 });
+
+        day16.RecursiveFileCount.Should().Be(2);
+        day16.FileCountDisplay.Should().Be("(2)");
+        week38.RecursiveFileCount.Should().Be(2);
+        week38.FileCountDisplay.Should().Be("(2)");
+        sepMonth.RecursiveFileCount.Should().Be(2);
+        sepMonth.FileCountDisplay.Should().Be("(2)");
+        year2026.RecursiveFileCount.Should().Be(2);
+        year2026.FileCountDisplay.Should().Be("(2)");
+    }
+
+    [Fact]
+    public void GroupItemApplyFileCountDeltaDecrementsCorrectlyAndNeverDropsBelowZero()
+    {
+        var parent = new FolderItem { Name = "Parent" };
+        var child = new FolderItem { Name = "Child", Parent = parent };
+
+        child.ApplyFileCountDelta(10);
+        child.RecursiveFileCount.Should().Be(10);
+        parent.RecursiveFileCount.Should().Be(10);
+
+        child.ApplyFileCountDelta(-4);
+        child.RecursiveFileCount.Should().Be(6);
+        parent.RecursiveFileCount.Should().Be(6);
+
+        child.ApplyFileCountDelta(-20);
+        child.RecursiveFileCount.Should().Be(0);
+        parent.RecursiveFileCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task BuildTreeAsyncPhase1CalculatesRecursiveCountsImmediatelyWithoutDoubleCounting()
+    {
+        // 1. Estructura de carpetas en disco:
+        // root/
+        //   sub1/ (2 archivos)
+        //     nested/ (1 archivo)
+        //   sub2/ (0 archivos, vacía)
+        //   root_file.png (1 archivo en raíz)
+        var sub1 = Path.Combine(_testDir, "sub1");
+        var nested = Path.Combine(sub1, "nested");
+        var sub2 = Path.Combine(_testDir, "sub2");
+        Directory.CreateDirectory(nested);
+        Directory.CreateDirectory(sub2);
+
+        await File.WriteAllBytesAsync(Path.Combine(_testDir, "root_file.png"), s_minimalPng, TestContext.Current.CancellationToken);
+        await File.WriteAllBytesAsync(Path.Combine(sub1, "file1.png"), s_minimalPng, TestContext.Current.CancellationToken);
+        await File.WriteAllBytesAsync(Path.Combine(sub1, "file2.png"), s_minimalPng, TestContext.Current.CancellationToken);
+        await File.WriteAllBytesAsync(Path.Combine(nested, "nested1.png"), s_minimalPng, TestContext.Current.CancellationToken);
+
+        // Fase 1: BuildTreeAsync
+        var tree = await _sut.BuildTreeAsync(_testDir, Array.Empty<string>(), TestContext.Current.CancellationToken);
+
+        tree.Should().NotBeNull();
+        // Total en disco: 1 en raíz + 2 en sub1 + 1 en nested = 4 archivos
+        tree!.RecursiveFileCount.Should().Be(4);
+        tree.FileCountDisplay.Should().Be("(4)");
+
+        var sub1Node = tree.ItemsSource.Items.OfType<FolderItem>().FirstOrDefault(f => f.Name == "sub1");
+        sub1Node.Should().NotBeNull();
+        // sub1: 2 directos + 1 nested = 3
+        sub1Node!.RecursiveFileCount.Should().Be(3);
+        sub1Node.FileCountDisplay.Should().Be("(3)");
+
+        var nestedNode = sub1Node.ItemsSource.Items.OfType<FolderItem>().FirstOrDefault(f => f.Name == "nested");
+        nestedNode.Should().NotBeNull();
+        nestedNode!.RecursiveFileCount.Should().Be(1);
+        nestedNode.FileCountDisplay.Should().Be("(1)");
+
+        var sub2Node = tree.ItemsSource.Items.OfType<FolderItem>().FirstOrDefault(f => f.Name == "sub2");
+        sub2Node.Should().NotBeNull();
+        sub2Node!.RecursiveFileCount.Should().Be(0);
+        sub2Node.FileCountDisplay.Should().Be("(0)");
+        sub2Node.IsEmptyConfirmed.Should().BeTrue();
+
+        // 2. Simulación de carga posterior de archivos en ItemsSource (Lazy-loading o Background Worker)
+        var loadedFiles = new[]
+        {
+            new FileItem { Name = "file1.png", FullPath = Path.Combine(sub1, "file1.png"), Parent = sub1Node },
+            new FileItem { Name = "file2.png", FullPath = Path.Combine(sub1, "file2.png"), Parent = sub1Node }
+        };
+        NavigationService.InsertFilesSorted(sub1Node, loadedFiles);
+
+        // Debe mantenerse exactamente en 3 y 4 (cero duplicación de conteos pre-existentes)
+        sub1Node.RecursiveFileCount.Should().Be(3);
+        sub1Node.FileCountDisplay.Should().Be("(3)");
+        tree.RecursiveFileCount.Should().Be(4);
+        tree.FileCountDisplay.Should().Be("(4)");
+    }
+
+    [Fact]
+    public async Task StartIndexerDispatchesFilesToCalendarEvenWhenParentFolderWasPriorityLoaded()
+    {
+        // Escenario del usuario:
+        // root/
+        //   2026-09/
+        //     2026-09-16/ (captura de ayer)
+        var monthDir = Path.Combine(_testDir, "2026-09");
+        var dayDir = Path.Combine(monthDir, "2026-09-16");
+        Directory.CreateDirectory(dayDir);
+
+        var fileDate = new DateTime(2026, 9, 16, 13, 11, 6, DateTimeKind.Local);
+        var filePath = Path.Combine(dayDir, "Qapptia_20260916_131106.png");
+        await File.WriteAllBytesAsync(filePath, s_minimalPng, TestContext.Current.CancellationToken);
+        File.SetCreationTimeUtc(filePath, fileDate.ToUniversalTime());
+        File.SetLastWriteTimeUtc(filePath, fileDate.ToUniversalTime());
+
+        var referenceToday = new DateTime(2026, 9, 17, 16, 0, 0, DateTimeKind.Local);
+
+        var treeRoot = await _sut.BuildTreeAsync(_testDir, new[] { monthDir }, TestContext.Current.CancellationToken);
+        var calendar = await _sut.BuildCalendarTreeAsync(_testDir, Array.Empty<string>(), referenceToday: referenceToday, ct: TestContext.Current.CancellationToken);
+
+        // Simulamos que el estado expandido previo gatilló RequestPriorityFolder en la carpeta padre '2026-09'
+        _sut.RequestPriorityFolder(monthDir);
+
+        // Se arranca el indexador global
+        _sut.StartIndexer(_testDir, calendar, treeRoot, a => a());
+
+        // Esperar a que los workers procesen
+        var calDay = calendar.OfType<CalendarGroupItem>()
+            .SelectMany(y => y.Items).Cast<CalendarGroupItem>()
+            .SelectMany(m => m.Items).Cast<CalendarGroupItem>()
+            .SelectMany(w => w.Items).Cast<CalendarGroupItem>()
+            .FirstOrDefault(d => d.Date?.Day == 16);
+
+        calDay.Should().NotBeNull();
+
+        var retries = 50;
+        while ((calDay!.Items.Count == 0 || !calDay.IsScanCompleted) && retries-- > 0)
+        {
+            await Task.Delay(50, TestContext.Current.CancellationToken);
+        }
+
+        calDay.Items.Should().HaveCount(1, "El archivo en la subcarpeta '2026-09-16' debió inyectarse en el día 16");
+        calDay.RecursiveFileCount.Should().Be(1);
+        calDay.FileCountDisplay.Should().Be("(1)");
+        calDay.IsEmptyConfirmed.Should().BeFalse("El día 16 contiene archivos y debe conservar su chevron y opacidad");
+    }
 }
+
+
 

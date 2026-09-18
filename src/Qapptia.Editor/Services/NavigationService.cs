@@ -101,6 +101,7 @@ public sealed class NavigationService : INavigationService
     private void PopulateTopologicalFolders(FolderItem parentFolder, DirectoryInfo dirInfo, IReadOnlyList<string> expandedFolders)
     {
         var subFolders = new List<FolderItem>();
+        int directFileCount = 0;
         try
         {
             var options = new EnumerationOptions { IgnoreInaccessible = true };
@@ -131,14 +132,35 @@ public sealed class NavigationService : INavigationService
             
             foreach (var folder in subFolders.OrderByDescending(f => f.Name, StringComparer.OrdinalIgnoreCase))
             {
-                // Soporte O(1) puro para Lazy-Loading Chevron: Asumimos existencia hasta que el Worker pasivo/activo lo valide.
                 // Soporte O(1) puro para Lazy-Loading Chevron sin Dummys.
                 parentFolder.ItemsSource.Add(folder);
+            }
+
+            foreach (var file in dirInfo.EnumerateFiles("*", options))
+            {
+                if ((file.Attributes & FileAttributes.Hidden) != 0 || 
+                    (file.Attributes & FileAttributes.System) != 0 || 
+                    file.Name.StartsWith(Constants.HiddenPrefixChar))
+                {
+                    continue;
+                }
+
+                if (IsNavigablePath(file.FullName))
+                {
+                    directFileCount++;
+                }
             }
         }
         catch (Exception ex)
         {
-            _logger?.Warning(ex, "Fase 1 (Topología): No se pudieron listar directorios de {Path}", dirInfo.FullName);
+            _logger?.Warning(ex, "Fase 1 (Topología): No se pudieron listar directorios o archivos de {Path}", dirInfo.FullName);
+        }
+
+        int totalRecursiveCount = directFileCount + subFolders.Sum(s => s.RecursiveFileCount);
+        parentFolder.SetRecursiveFileCount(totalRecursiveCount);
+        if (totalRecursiveCount == 0 && subFolders.Count == 0)
+        {
+            parentFolder.IsScanCompleted = true;
         }
     }
 
@@ -470,12 +492,31 @@ public sealed class NavigationService : INavigationService
 
         _indexerCts = new CancellationTokenSource();
         _indexedFolders.Clear();
+
+        while (_standardQueue.Reader.TryRead(out _)) { }
+        while (_priorityLifoStack.Reader.TryRead(out _)) { }
+        while (_enrichmentQueue.Reader.TryRead(out _)) { }
+
         _passiveTask = Task.Run(() => PassiveWorkerLoop(_indexerCts.Token));
         _priorityTask = Task.Run(() => PriorityWorkerLoop(_indexerCts.Token));
         _enrichmentTask = Task.Run(() => EnrichmentWorkerLoop(_indexerCts.Token));
         
-        // Empujar la raíz a la cola lenta (Background)
-        _standardQueue.Writer.TryWrite(rootPath);
+        // Empujar todas las carpetas conocidas descubiertas en Fase 1 (hojas primero para inyección inmediata de días recientes)
+        if (!_topologicalCache.IsEmpty)
+        {
+            var orderedFolders = _topologicalCache.Keys
+                .OrderByDescending(p => p.Length)
+                .ThenByDescending(p => p, StringComparer.OrdinalIgnoreCase);
+
+            foreach (var folder in orderedFolders)
+            {
+                _standardQueue.Writer.TryWrite(folder);
+            }
+        }
+        else
+        {
+            _standardQueue.Writer.TryWrite(rootPath);
+        }
     }
 
     public void RequestPriorityFolder(string folderPath)
@@ -610,7 +651,8 @@ public sealed class NavigationService : INavigationService
             if (string.IsNullOrWhiteSpace(dirPath) || !Directory.Exists(dirPath)) return;
 
             var normalized = NormalizePath(dirPath);
-            if (!_indexedFolders.TryAdd(normalized, 1))
+            bool alreadyIndexed = !_indexedFolders.TryAdd(normalized, 1);
+            if (alreadyIndexed && isPriority)
             {
                 _uiDispatcher?.Invoke(() => FinalizeFolderProcessing(dirPath));
                 return;
@@ -631,6 +673,12 @@ public sealed class NavigationService : INavigationService
                         if ((subDir.Attributes & FileAttributes.Hidden) == 0 && (subDir.Attributes & FileAttributes.System) == 0)
                             _standardQueue.Writer.TryWrite(subDir.FullName);
                     }
+                }
+
+                if (alreadyIndexed)
+                {
+                    _uiDispatcher?.Invoke(() => FinalizeFolderProcessing(dirPath));
+                    return;
                 }
 
                 // ETAPA 1: Topología Ciega (Lectura ultra-rápida sin extraer fechas)
@@ -1254,7 +1302,16 @@ public sealed class NavigationService : INavigationService
             {
                 insertIndex++;
             }
+            int previousCount = parent.ItemsSource.Items.OfType<FileItem>().Count();
             parent.ItemsSource.Insert(insertIndex, file);
+
+            int directPreCounted = Math.Max(0, parent.RecursiveFileCount - parent.ItemsSource.Items.OfType<GroupItem>().Sum(g => g.RecursiveFileCount));
+            int directAlreadyAccountedFor = Math.Max(previousCount, directPreCounted);
+            int delta = (previousCount + 1) - directAlreadyAccountedFor;
+            if (delta > 0)
+            {
+                parent.ApplyFileCountDelta(delta);
+            }
         }
     }
 
@@ -1266,6 +1323,7 @@ public sealed class NavigationService : INavigationService
     {
         lock (parent.ItemsSource)
         {
+            int previousCount = parent.ItemsSource.Items.OfType<FileItem>().Count();
             var existingSubGroups = parent.ItemsSource.Items.OfType<GroupItem>().ToList();
             var allFiles = parent.ItemsSource.Items.OfType<FileItem>().Concat(files)
                 .GroupBy(f => NormalizePath(f.FullPath), StringComparer.OrdinalIgnoreCase)
@@ -1303,6 +1361,14 @@ public sealed class NavigationService : INavigationService
                 {
                     SynchronizeNavigationList(inner, combined);
                 });
+            }
+
+            int directPreCounted = Math.Max(0, parent.RecursiveFileCount - parent.ItemsSource.Items.OfType<GroupItem>().Sum(g => g.RecursiveFileCount));
+            int directAlreadyAccountedFor = Math.Max(previousCount, directPreCounted);
+            int delta = allFiles.Count - directAlreadyAccountedFor;
+            if (delta > 0)
+            {
+                parent.ApplyFileCountDelta(delta);
             }
         }
     }

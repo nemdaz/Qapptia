@@ -63,6 +63,39 @@ public class GroupItem : NavigationItem, IDisposable
     // Todo nodo nace con chevron explorable; solo se confirma vacío tras la inspección del indexador
     public override bool IsEmptyConfirmed => IsScanCompleted && Items.Count == 0;
 
+    private int _recursiveFileCount;
+    public int RecursiveFileCount
+    {
+        get => _recursiveFileCount;
+        private set
+        {
+            if (SetProperty(ref _recursiveFileCount, value))
+            {
+                OnPropertyChanged(nameof(FileCountDisplay));
+            }
+        }
+    }
+
+    public string FileCountDisplay => $"({RecursiveFileCount})";
+
+    /// <summary>
+    /// Asigna directamente el conteo recursivo del nodo (usado durante la construcción inicial del árbol).
+    /// </summary>
+    public void SetRecursiveFileCount(int count)
+    {
+        RecursiveFileCount = Math.Max(0, count);
+    }
+
+    /// <summary>
+    /// Aplica un delta al conteo recursivo de archivos del nodo y lo propaga en cascada ascendente hacia sus ancestros.
+    /// </summary>
+    public void ApplyFileCountDelta(int delta)
+    {
+        if (delta == 0) return;
+        RecursiveFileCount = Math.Max(0, RecursiveFileCount + delta);
+        Parent?.ApplyFileCountDelta(delta);
+    }
+
     private bool _isLoading;
     public bool IsLoading 
     {
@@ -79,7 +112,14 @@ public class GroupItem : NavigationItem, IDisposable
             {
                 foreach (var item in _items)
                 {
-                    item.Parent ??= this;
+                    if (item.Parent == null)
+                    {
+                        item.Parent = this;
+                        if (item is GroupItem childGroup && childGroup.RecursiveFileCount > 0)
+                        {
+                            ApplyFileCountDelta(childGroup.RecursiveFileCount);
+                        }
+                    }
                 }
                 HasFiles = _items.Any(i => i is FileItem || (i is GroupItem g && g.HasFiles));
                 

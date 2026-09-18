@@ -184,6 +184,7 @@
                                 <PathIcon Data="{Binding IconKey, Converter={StaticResource KeyToGeometryConverter}}"
                                           Width="14" Height="14" />
                                 <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="13" Padding="0,2" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding FileCountDisplay}" Classes="node-count" />
                                 <!-- Spinner Asíncrono Real Vectorial -->
                                 <PathIcon Classes="spinner" Classes.spinning="{Binding IsLoading}" IsVisible="{Binding IsLoading}" Margin="4,0,0,0" ToolTip.Tip="Cargando..." />
                                 <!-- Indicador visual al final del texto para la fecha actual (hoy) -->
