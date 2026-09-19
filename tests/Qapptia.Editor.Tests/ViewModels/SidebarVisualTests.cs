@@ -87,6 +87,42 @@ public class SidebarVisualTests
     }
 
     [Fact]
+    public async Task ToolbarZoomComboBoxHeightShouldMatchIconButtons()
+    {
+        await Session.Dispatch(() =>
+        {
+            var window = new MainWindow { Width = 1200, Height = 600 };
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+
+            var zoomCombo = window.GetVisualDescendants().OfType<ComboBox>().FirstOrDefault(c => c.Name == "ZoomComboBox");
+            var buttons = window.GetVisualDescendants().OfType<Button>().ToList();
+            var fitBtn = buttons.FirstOrDefault(b => ToolTip.GetTip(b)?.ToString() == "Ajustar imagen");
+
+            Assert.NotNull(zoomCombo);
+            Assert.NotNull(fitBtn);
+
+            var saveBtn = buttons.FirstOrDefault(b => ToolTip.GetTip(b)?.ToString() == "Guardar");
+            Assert.NotNull(saveBtn);
+
+            var zoomPos = zoomCombo!.TranslatePoint(new Point(0, 0), window);
+            var fitPos = fitBtn!.TranslatePoint(new Point(0, 0), window);
+            var savePos = saveBtn!.TranslatePoint(new Point(0, 0), window);
+
+            zoomCombo.Bounds.Height.Should().Be(fitBtn.Bounds.Height);
+            zoomPos!.Value.Y.Should().Be(fitPos!.Value.Y, "El ZoomComboBox debe tener la misma coordenada Y que los botones de su grupo");
+            zoomPos.Value.Y.Should().Be(savePos!.Value.Y, "El ZoomComboBox debe tener la misma coordenada Y que los botones de otros grupos");
+
+            var tb = zoomCombo.GetVisualDescendants().OfType<TextBox>().FirstOrDefault();
+            Assert.NotNull(tb);
+            tb!.Bounds.Height.Should().BeLessThanOrEqualTo(26);
+
+            window.Close();
+        }, TestContext.Current.CancellationToken);
+    }
+
+
+    [Fact]
     public async Task FlatTreeMassiveExpansionWithOneThousandFilesMustRemainInstantaneousDueToVirtualization()
     {
         var output = TestContext.Current.TestOutputHelper;

@@ -60,9 +60,21 @@
                         </Style>
                     </StackPanel.Styles>
                     <!-- Zoom -->
-                    <ComboBox x:Name="ZoomComboBox" Width="95" IsEditable="True" ItemsSource="{Binding ZoomOptions}" SelectedItem="{Binding SelectedZoomString}" Background="{DynamicResource M3ControlBgBrush}" Foreground="{DynamicResource M3OnSurfaceBrush}" VerticalAlignment="Center" VerticalContentAlignment="Center">
+                    <ComboBox x:Name="ZoomComboBox" 
+                              Width="90" 
+                              Height="26"
+                              MinHeight="26"
+                              IsEditable="True" 
+                              ItemsSource="{Binding ZoomOptions}" 
+                              SelectedItem="{Binding SelectedZoomString}" 
+                              Background="{DynamicResource M3ControlBgBrush}" 
+                              Foreground="{DynamicResource M3OnSurfaceBrush}" 
+                              VerticalAlignment="Top" 
+                              VerticalContentAlignment="Center"
+                              CornerRadius="4">
                         <ComboBox.Styles>
                             <Style Selector="TextBox">
+                                <Setter Property="MinHeight" Value="0" />
                                 <Setter Property="MaxLength" Value="5" />
                                 <Setter Property="VerticalContentAlignment" Value="Center" />
                             </Style>
