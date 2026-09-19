@@ -287,6 +287,7 @@ public sealed class StateServicesTests : IDisposable
     public void ToolsDeclareCorrectTargetShapeTypes()
     {
         ShapeFactory.Line.TargetShapeType.Should().Be<EditorGeometry.LineGeometry>();
+        ShapeFactory.FreehandLine.TargetShapeType.Should().Be<EditorGeometry.FreehandLineGeometry>();
         ShapeFactory.Arrow.TargetShapeType.Should().Be<EditorGeometry.ArrowGeometry>();
         ShapeFactory.Rectangle.TargetShapeType.Should().Be<EditorGeometry.RectangleGeometry>();
         ShapeFactory.Ellipse.TargetShapeType.Should().Be<EditorGeometry.EllipseGeometry>();
@@ -295,44 +296,5 @@ public sealed class StateServicesTests : IDisposable
 
         ShapeFactory.Crop.TargetShapeType.Should().BeNull();
         ShapeFactory.Crop.AltersCanvasGeometry.Should().BeTrue();
-    }
-
-    [Fact]
-    public void FreehandLineGeometryMovesAndScalesProportionally()
-    {
-        var freehand = new EditorGeometry.FreehandLineGeometry();
-        freehand.AddPoint(new Point(10, 10));
-        freehand.AddPoint(new Point(30, 20));
-        freehand.AddPoint(new Point(50, 50));
-
-        // 1. Validar BoundingBox
-        var bbox = freehand.BoundingBox;
-        bbox.Left.Should().Be(10);
-        bbox.Top.Should().Be(10);
-        bbox.Width.Should().Be(40);
-        bbox.Height.Should().Be(40);
-
-        // 2. Validar Move(dx, dy)
-        freehand.Move(10, -5);
-        freehand.Points[0].Should().Be(new Point(20, 5));
-        freehand.Points[1].Should().Be(new Point(40, 15));
-        freehand.Points[2].Should().Be(new Point(60, 45));
-
-        // 3. Validar DragHandle con BoundingBox (escala proporcional)
-        var activeHandle = Qapptia.Editor.Models.HandleType.BottomRight;
-        freehand.DragHandle(Qapptia.Editor.Models.HandleType.BottomRight, 40, 40, ref activeHandle);
-
-        freehand.Points[0].Should().Be(new Point(20, 5));
-        freehand.Points[2].Should().Be(new Point(100, 85));
-        freehand.Points[1].X.Should().BeApproximately(60, 0.01);
-        freehand.Points[1].Y.Should().BeApproximately(25, 0.01);
-
-        // 4. Validar HitTest de manetas en esquinas al estar seleccionado
-        freehand.IsSelected = true;
-        var hitTopLeft = freehand.HitTest(new Point(20, 5));
-        hitTopLeft.Should().Be(Qapptia.Editor.Models.HandleType.TopLeft);
-
-        var hitBody = freehand.HitTest(new Point(50, 40));
-        hitBody.Should().Be(Qapptia.Editor.Models.HandleType.Body);
     }
 }

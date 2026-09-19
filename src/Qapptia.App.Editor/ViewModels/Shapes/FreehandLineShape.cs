@@ -1,5 +1,6 @@
 using Avalonia;
 using Qapptia.Editor.Core;
+using Qapptia.Editor.Models;
 using Qapptia.Editor.Models.Geometry;
 using Qapptia.Editor.Services;
 using SkiaSharp;
@@ -9,12 +10,16 @@ namespace Qapptia.App.Editor.ViewModels.Shapes;
 /// <summary>
 /// Renderizado de línea a mano alzada (front).
 /// </summary>
-public class FreehandLineShape : VectorShape
+public class FreehandLineShape : VectorShape, IContinuableShape
 {
     public FreehandLineGeometry FreehandGeometry => (FreehandLineGeometry)Geometry;
 
     public FreehandLineShape() : base(new FreehandLineGeometry()) { }
     public FreehandLineShape(FreehandLineGeometry geometry) : base(geometry) { }
+
+    public bool TryStartContinuation(HandleType handle) => FreehandGeometry.TryStartContinuation(handle);
+    public void ContinueDrawing(Point point) => FreehandGeometry.ContinueDrawing(point);
+    public bool ShouldCommitContinuation() => FreehandGeometry.ShouldCommitContinuation();
 
     public override void RenderSkia(SKCanvas canvas, float zoom = 1.0f)
     {
@@ -59,20 +64,7 @@ public class FreehandLineShape : VectorShape
 
         if (IsSelected)
         {
-            var bbox = BoundingBox;
-            float safeZoom = Math.Max(0.01f, zoom);
-            using var dashPaint = new SKPaint
-            {
-                Color = SKColors.Black.WithAlpha(90),
-                StrokeWidth = 1f / safeZoom,
-                Style = SKPaintStyle.Stroke,
-                IsAntialias = true,
-                PathEffect = SKPathEffect.CreateDash(new float[] { 3f / safeZoom, 3f / safeZoom }, 0)
-            };
-            var skBbox = new SKRect((float)bbox.Left, (float)bbox.Top, (float)bbox.Right, (float)bbox.Bottom);
-            canvas.DrawRect(skBbox, dashPaint);
-
-            ShapeRenderHelper.DrawHandlesSkiaCorners(canvas, bbox, zoom);
+            ShapeRenderHelper.DrawHandlesSkiaEnds(canvas, Start, End, zoom);
         }
     }
 }

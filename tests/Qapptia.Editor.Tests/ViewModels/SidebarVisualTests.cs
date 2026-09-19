@@ -122,6 +122,8 @@ public class SidebarVisualTests
     }
 
 
+
+
     [Fact]
     public async Task FlatTreeMassiveExpansionWithOneThousandFilesMustRemainInstantaneousDueToVirtualization()
     {

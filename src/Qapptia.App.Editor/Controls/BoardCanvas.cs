@@ -11,6 +11,7 @@ using Qapptia.App.Editor.ViewModels;
 using Qapptia.App.Editor.ViewModels.Shapes;
 using Qapptia.Editor.Core;
 using Qapptia.Editor.Models;
+using Qapptia.Editor.Models.Geometry;
 using Qapptia.Editor.Services;
 using Qapptia.Editor.Tools;
 
@@ -193,6 +194,7 @@ public class BoardCanvas : Control
             // Renderizar todos los vectores guardados
             foreach (var shape in _shapes)
             {
+                if (shape == _currentShape) continue;
                 shape.RenderSkia(canvas, _zoom);
             }
 
@@ -318,6 +320,16 @@ public class BoardCanvas : Control
 
         if (_selectedShape != null)
         {
+            if (_selectedShape is IContinuableShape continuable && continuable.TryStartContinuation(_activeHandle))
+            {
+                _currentDrawingShape = _selectedShape;
+                _interaction = CanvasInteraction.DrawingShape;
+                _selectedShape.IsSelected = false;
+                InvalidateVisual();
+                e.Handled = true;
+                return;
+            }
+
             _selectedShape.IsSelected = true;
             // Si la figura admite ingreso de texto:
             if (_selectedShape.SupportsTextInput && _selectedShape is ITextInputShape inputShape)
@@ -430,7 +442,11 @@ public class BoardCanvas : Control
 
         if (_interaction == CanvasInteraction.DrawingShape && _currentDrawingShape != null)
         {
-            if (ViewModel?.ActiveTool is VectorTool vectorTool)
+            if (_currentDrawingShape is IContinuableShape continuable)
+            {
+                continuable.ContinueDrawing(point);
+            }
+            else if (ViewModel?.ActiveTool is VectorTool vectorTool)
             {
                 vectorTool.UpdateDrawing(_currentDrawingShape.Geometry, point, e.KeyModifiers);
             }
@@ -491,13 +507,18 @@ public class BoardCanvas : Control
             case CanvasInteraction.DrawingShape:
                 if (_currentDrawingShape != null)
                 {
-                    bool shouldCommit = (ViewModel?.ActiveTool is VectorTool vectorTool)
-                        ? vectorTool.ShouldCommitOnRelease(_currentDrawingShape.Geometry)
-                        : true;
+                    bool shouldCommit = (_currentDrawingShape is IContinuableShape continuable)
+                        ? continuable.ShouldCommitContinuation()
+                        : (ViewModel?.ActiveTool is VectorTool vectorTool)
+                            ? vectorTool.ShouldCommitOnRelease(_currentDrawingShape.Geometry)
+                            : true;
 
                     if (shouldCommit)
                     {
-                        ViewModel?.Shapes.Add(_currentDrawingShape);
+                        if (ViewModel?.Shapes.Contains(_currentDrawingShape) != true)
+                        {
+                            ViewModel?.Shapes.Add(_currentDrawingShape);
+                        }
 
                         // Seleccionamos la figura automáticamente para que pueda cambiar de color/editarse de inmediato
                         ViewModel?.ClearSelection();

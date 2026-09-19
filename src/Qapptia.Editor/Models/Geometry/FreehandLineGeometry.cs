@@ -9,7 +9,7 @@ namespace Qapptia.Editor.Models.Geometry;
 /// <summary>
 /// Geometría vectorial para trazo continuo a mano alzada compuesto por una secuencia de puntos.
 /// </summary>
-public class FreehandLineGeometry : VectorGeometry
+public class FreehandLineGeometry : VectorGeometry, IContinuableShape
 {
     public List<Point> Points { get; set; } = new();
 
@@ -31,6 +31,27 @@ public class FreehandLineGeometry : VectorGeometry
         {
             Points.Add(point);
             End = point;
+        }
+    }
+
+    public void PrependPoint(Point point)
+    {
+        if (Points.Count == 0)
+        {
+            Start = point;
+            End = point;
+            Points.Add(point);
+            return;
+        }
+
+        var first = Points[0];
+        double dx = point.X - first.X;
+        double dy = point.Y - first.Y;
+        // Filtrar puntos redundantes a menos de 2px de distancia
+        if (dx * dx + dy * dy >= 4)
+        {
+            Points.Insert(0, point);
+            Start = point;
         }
     }
 
@@ -57,11 +78,9 @@ public class FreehandLineGeometry : VectorGeometry
     {
         if (Points.Count < 2) return HandleType.None;
 
-        var bbox = BoundingBox;
-
         if (IsSelected)
         {
-            var handle = HitTestEngine.HitTestHandlesCorners(point, bbox, zoom);
+            var handle = HitTestEngine.HitTestHandlesEnds(point, Start, End, zoom);
             if (handle != HandleType.None) return handle;
         }
 
@@ -72,11 +91,6 @@ public class FreehandLineGeometry : VectorGeometry
             {
                 return HandleType.Body;
             }
-        }
-
-        if (IsSelected && bbox.Inflate(4.0).Contains(point))
-        {
-            return HandleType.Body;
         }
 
         return HandleType.None;
@@ -91,92 +105,39 @@ public class FreehandLineGeometry : VectorGeometry
         }
     }
 
+    public bool TryStartContinuation(HandleType handle)
+    {
+        if (handle == HandleType.Start)
+        {
+            Points.Reverse();
+            if (Points.Count > 0)
+            {
+                Start = Points[0];
+                End = Points[^1];
+            }
+            return true;
+        }
+
+        if (handle == HandleType.End)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    public void ContinueDrawing(Point point)
+    {
+        AddPoint(point);
+    }
+
+    public bool ShouldCommitContinuation() => Points.Count >= 2;
+
     public override void DragHandle(HandleType handle, double dx, double dy, ref HandleType activeHandle)
     {
         if (handle == HandleType.Body)
         {
             Move(dx, dy);
-            return;
-        }
-
-        if (Points.Count < 2) return;
-
-        var oldBbox = BoundingBox;
-        if (oldBbox.Width < 0.001 || oldBbox.Height < 0.001) return;
-
-        double minX = oldBbox.Left;
-        double maxX = oldBbox.Right;
-        double minY = oldBbox.Top;
-        double maxY = oldBbox.Bottom;
-
-        bool flipX = false;
-        bool flipY = false;
-
-        if (handle == HandleType.TopLeft)
-        {
-            minX += dx; minY += dy;
-            if (minX > maxX) flipX = true;
-            if (minY > maxY) flipY = true;
-        }
-        else if (handle == HandleType.TopRight)
-        {
-            maxX += dx; minY += dy;
-            if (maxX < minX) flipX = true;
-            if (minY > maxY) flipY = true;
-        }
-        else if (handle == HandleType.BottomLeft)
-        {
-            minX += dx; maxY += dy;
-            if (minX > maxX) flipX = true;
-            if (maxY < minY) flipY = true;
-        }
-        else if (handle == HandleType.BottomRight)
-        {
-            maxX += dx; maxY += dy;
-            if (maxX < minX) flipX = true;
-            if (maxY < minY) flipY = true;
-        }
-
-        double newMinX = Math.Min(minX, maxX);
-        double newMaxX = Math.Max(minX, maxX);
-        double newMinY = Math.Min(minY, maxY);
-        double newMaxY = Math.Max(minY, maxY);
-
-        double newWidth = Math.Max(1.0, newMaxX - newMinX);
-        double newHeight = Math.Max(1.0, newMaxY - newMinY);
-
-        for (int i = 0; i < Points.Count; i++)
-        {
-            var p = Points[i];
-            double u = (p.X - oldBbox.Left) / oldBbox.Width;
-            double v = (p.Y - oldBbox.Top) / oldBbox.Height;
-
-            if (flipX) u = 1.0 - u;
-            if (flipY) v = 1.0 - v;
-
-            Points[i] = new Point(newMinX + u * newWidth, newMinY + v * newHeight);
-        }
-
-        if (Points.Count > 0)
-        {
-            Start = Points[0];
-            End = Points[^1];
-        }
-
-        if (flipX)
-        {
-            if (activeHandle == HandleType.TopLeft) activeHandle = HandleType.TopRight;
-            else if (activeHandle == HandleType.TopRight) activeHandle = HandleType.TopLeft;
-            else if (activeHandle == HandleType.BottomLeft) activeHandle = HandleType.BottomRight;
-            else if (activeHandle == HandleType.BottomRight) activeHandle = HandleType.BottomLeft;
-        }
-
-        if (flipY)
-        {
-            if (activeHandle == HandleType.TopLeft) activeHandle = HandleType.BottomLeft;
-            else if (activeHandle == HandleType.BottomLeft) activeHandle = HandleType.TopLeft;
-            else if (activeHandle == HandleType.TopRight) activeHandle = HandleType.BottomRight;
-            else if (activeHandle == HandleType.BottomRight) activeHandle = HandleType.TopRight;
         }
     }
 }
