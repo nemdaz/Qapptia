@@ -38,6 +38,9 @@ public abstract class VectorShape
     public bool SupportsTextInput => Geometry.SupportsTextInput;
     public bool AutoStartsTextInputOnCreation => Geometry.AutoStartsTextInputOnCreation;
     public Rect BoundingBox => Geometry.BoundingBox;
+    public bool ShowsHoverOutline => Geometry.ShowsHoverOutline;
+    public bool HasSolidBackground => Geometry.HasSolidBackground;
+    public bool IsHovered { get => Geometry.IsHovered; set => Geometry.IsHovered = value; }
 
     public virtual void Move(double dx, double dy) => Geometry.Move(dx, dy);
     public virtual void DragHandle(HandleType handle, double dx, double dy, ref HandleType activeHandle) => Geometry.DragHandle(handle, dx, dy, ref activeHandle);

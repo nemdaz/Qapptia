@@ -15,6 +15,14 @@ public abstract class VectorTool : Tool
     public override StandardCursorType DefaultCursor => StandardCursorType.Cross;
 
     /// <summary>
+    /// Resuelve el color inicial para la nueva figura a dibujar (usando la paleta activa o muestreando el lienzo).
+    /// </summary>
+    public virtual Color ResolveInitialColor(Color activePaletteColor, Point startPoint, Func<Point, Color>? sampleCanvasColor = null)
+    {
+        return activePaletteColor;
+    }
+
+    /// <summary>
     /// Crea una nueva instancia de la geometría vectorial correspondiente.
     /// </summary>
     public abstract VectorGeometry CreateShape(Point startPoint, Color color);

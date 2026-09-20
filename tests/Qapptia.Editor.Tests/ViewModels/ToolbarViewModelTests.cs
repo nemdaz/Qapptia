@@ -117,7 +117,7 @@ public sealed class ToolbarViewModelTests : IDisposable
     {
         var vm = new ToolbarViewModel(_stateService);
 
-        vm.Groups.Should().HaveCount(7);
+        vm.Groups.Should().HaveCount(8);
         
         // Cada grupo tiene su herramienta configurada sin glifo por defecto (HasMultipleTools == false)
         var lineGroup = vm.Groups.First(g => g.Id == "Line");
@@ -140,6 +140,11 @@ public sealed class ToolbarViewModelTests : IDisposable
         arrowGroup.Should().NotBeNull();
         arrowGroup!.ActiveTool.Should().Be(ShapeFactory.Arrow);
         arrowGroup.IconKey.Should().Be("IconArrow");
+
+        var smartEraserGroup = vm.Groups.FirstOrDefault(g => g.Id == "SmartEraser");
+        smartEraserGroup.Should().NotBeNull();
+        smartEraserGroup!.ActiveTool.Should().Be(ShapeFactory.SmartEraser);
+        smartEraserGroup.IconKey.Should().Be("IconSmartEraser");
     }
 
     [Fact]

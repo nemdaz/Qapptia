@@ -9,6 +9,7 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using Qapptia.App.Editor.ViewModels;
 using Qapptia.App.Editor.ViewModels.Shapes;
+using Qapptia.App.Editor.Services;
 using Qapptia.Editor.Core;
 using Qapptia.Editor.Models;
 using Qapptia.Editor.Models.Geometry;
@@ -97,6 +98,8 @@ public class BoardCanvas : Control
         }
         _cropPreviewRect = null;
         _cropActiveHandle = HandleType.None;
+        _manipulatedShape = null;
+        ClearHoverStates();
         UpdateCursor(_lastMousePos);
         InvalidateVisual();
     }
@@ -114,7 +117,8 @@ public class BoardCanvas : Control
     private CanvasInteraction _interaction = CanvasInteraction.None;
     private HandleType _activeHandle = HandleType.None;
     private VectorShape? _currentDrawingShape;
-    private VectorShape? _selectedShape;
+    private VectorShape? _manipulatedShape;
+    private VectorShape? SelectedShape => ViewModel?.Shapes.FirstOrDefault(s => s.IsSelected);
     private Rect? _cropPreviewRect;
     private HandleType _cropActiveHandle = HandleType.None;
 
@@ -222,6 +226,7 @@ public class BoardCanvas : Control
         _pointerPressedPoint = point;
         _hasDragged = false;
         Focus();
+        ClearHoverStates();
 
         // 0. Modo Recorte Activo:
         if (ViewModel.IsCropToolActive)
@@ -254,7 +259,7 @@ public class BoardCanvas : Control
                 if (handle == HandleType.LeftCenter || handle == HandleType.RightCenter)
                 {
                     // Arrastre en caliente de la maneta de ancho sin salir de la edición
-                    _selectedShape = activeShape;
+                    _manipulatedShape = activeShape;
                     _activeHandle = handle;
                     _interaction = CanvasInteraction.ManipulatingShape;
                     InvalidateVisual();
@@ -267,7 +272,7 @@ public class BoardCanvas : Control
                 {
                     ViewModel.CommitCurrentState();
                     activeShape.IsSelected = true;
-                    _selectedShape = activeShape;
+                    _manipulatedShape = activeShape;
                     _activeHandle = HandleType.Body;
                     _interaction = CanvasInteraction.ManipulatingShape;
                     InvalidateVisual();
@@ -315,24 +320,25 @@ public class BoardCanvas : Control
         }
 
         ViewModel.ClearSelection();
-        _selectedShape = hitShape;
         _activeHandle = hitHandle;
 
-        if (_selectedShape != null)
+        if (hitShape != null)
         {
-            if (_selectedShape is IContinuableShape continuable && continuable.TryStartContinuation(_activeHandle))
+            if (hitShape is IContinuableShape continuable && continuable.TryStartContinuation(_activeHandle))
             {
-                _currentDrawingShape = _selectedShape;
+                _currentDrawingShape = hitShape;
                 _interaction = CanvasInteraction.DrawingShape;
-                _selectedShape.IsSelected = false;
+                hitShape.IsSelected = false;
                 InvalidateVisual();
                 e.Handled = true;
                 return;
             }
 
-            _selectedShape.IsSelected = true;
+            hitShape.IsSelected = true;
+            _manipulatedShape = hitShape;
+
             // Si la figura admite ingreso de texto:
-            if (_selectedShape.SupportsTextInput && _selectedShape is ITextInputShape inputShape)
+            if (hitShape.SupportsTextInput && hitShape is ITextInputShape inputShape)
             {
                 if (_activeHandle == HandleType.LeftCenter || _activeHandle == HandleType.RightCenter)
                 {
@@ -348,6 +354,7 @@ public class BoardCanvas : Control
                     // Clic en el interior del texto: entrar a modo edición de texto
                     ViewModel.StartTextInput(inputShape);
                     _interaction = CanvasInteraction.None;
+                    _manipulatedShape = null;
                     inputShape.OnPointerPressedInTextInput(point, e.KeyModifiers, e.ClickCount, out _isSelectingText);
                 }
                 InvalidateVisual();
@@ -361,7 +368,12 @@ public class BoardCanvas : Control
         {
             if (ViewModel.ActiveTool is VectorTool vectorTool)
             {
-                var geometry = vectorTool.CreateShape(point, ViewModel.ActiveColor);
+                var color = vectorTool.ResolveInitialColor(
+                    ViewModel.ActiveColor,
+                    point,
+                    p => ImageColorSampler.SampleColor(ViewModel.BackgroundImage, ViewModel.Shapes, p, ViewModel.ImageWidth, ViewModel.ImageHeight));
+
+                var geometry = vectorTool.CreateShape(point, color);
                 if (geometry != null)
                 {
                     _interaction = CanvasInteraction.DrawingShape;
@@ -379,9 +391,9 @@ public class BoardCanvas : Control
                         return;
                     }
                     _interaction = CanvasInteraction.None;
+                    _manipulatedShape = null;
                     ViewModel.Shapes.Add(newShape);
                     newShape.IsSelected = true;
-                    _selectedShape = newShape;
                     ViewModel.StartTextInput(newShape);
                     InvalidateVisual();
                     e.Handled = true;
@@ -456,14 +468,14 @@ public class BoardCanvas : Control
             }
             InvalidateVisual();
         }
-        else if (_interaction == CanvasInteraction.ManipulatingShape && _selectedShape != null && e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        else if (_interaction == CanvasInteraction.ManipulatingShape && _manipulatedShape != null && e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
         {
             double dx = point.X - _lastMousePos.X;
             double dy = point.Y - _lastMousePos.Y;
 
-            _selectedShape.DragHandle(_activeHandle, dx, dy, ref _activeHandle);
+            _manipulatedShape.DragHandle(_activeHandle, dx, dy, ref _activeHandle);
 
-            if (_selectedShape is ITextInputShape inputShape && ViewModel != null && ViewModel.IsEditingText)
+            if (_manipulatedShape is ITextInputShape inputShape && ViewModel != null && ViewModel.IsEditingText)
             {
                 ViewModel.CurrentTextBounds = inputShape.TextBounds;
             }
@@ -474,6 +486,7 @@ public class BoardCanvas : Control
         else if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
         {
             UpdateCursor(point);
+            UpdateHoverStates(point);
         }
     }
 
@@ -523,7 +536,6 @@ public class BoardCanvas : Control
                         // Seleccionamos la figura automáticamente para que pueda cambiar de color/editarse de inmediato
                         ViewModel?.ClearSelection();
                         _currentDrawingShape.IsSelected = true;
-                        _selectedShape = _currentDrawingShape;
 
                         shouldSave = true;
                     }
@@ -539,9 +551,11 @@ public class BoardCanvas : Control
                 break;
         }
 
+        _manipulatedShape = null;
         _interaction = CanvasInteraction.None;
         _activeHandle = HandleType.None;
         _isSelectingText = false;
+        UpdateCursor(e.GetPosition(this));
         InvalidateVisual();
 
         if (shouldSave)
@@ -631,7 +645,6 @@ public class BoardCanvas : Control
                         // Escape: confirma el texto y transiciona a modo contenedor (IsSelected = true, IsEditing = false)
                         ViewModel.CommitCurrentState();
                         vs.IsSelected = true;
-                        _selectedShape = vs;
                         InvalidateVisual();
                     }
                     else
@@ -649,14 +662,16 @@ public class BoardCanvas : Control
         else if (e.Key == Key.Escape && ViewModel != null)
         {
             ViewModel.ClearSelection();
-            _selectedShape = null;
+            _manipulatedShape = null;
             InvalidateVisual();
             e.Handled = true;
         }
         else if (e.Key == Key.Delete && ViewModel != null)
         {
-            _selectedShape = null;
+            _manipulatedShape = null;
             ViewModel.DeleteSelectedCommand.Execute(null);
+            ClearHoverStates();
+            UpdateCursor(_lastMousePos);
             InvalidateVisual();
             e.Handled = true;
         }
@@ -677,9 +692,10 @@ public class BoardCanvas : Control
         }
 
         // 1. Si hay una figura seleccionada (o en edición), delegar en su propio método polimórfico
-        if (_selectedShape != null)
+        var selectedShape = SelectedShape;
+        if (selectedShape != null)
         {
-            var cursorType = _selectedShape.GetCursorType(point, zoom);
+            var cursorType = selectedShape.GetCursorType(point, zoom);
             if (cursorType != null)
             {
                 Cursor = new Cursor(cursorType.Value);
@@ -707,5 +723,60 @@ public class BoardCanvas : Control
     {
         if (ViewModel == null) return Cursor.Default;
         return new Cursor(ViewModel.ActiveTool.DefaultCursor);
+    }
+
+    protected override void OnPointerExited(PointerEventArgs e)
+    {
+        base.OnPointerExited(e);
+        ClearHoverStates();
+    }
+
+    private void UpdateHoverStates(Point point)
+    {
+        if (ViewModel == null) return;
+        var zoom = ViewModel.ZoomLevel;
+        bool changed = false;
+        bool foundTopHover = false;
+
+        for (int i = ViewModel.Shapes.Count - 1; i >= 0; i--)
+        {
+            var shape = ViewModel.Shapes[i];
+            if (shape.ShowsHoverOutline)
+            {
+                bool isHover = !shape.IsSelected && !foundTopHover && shape.HitTest(point, zoom) != HandleType.None;
+                if (isHover)
+                {
+                    foundTopHover = true;
+                }
+
+                if (shape.IsHovered != isHover)
+                {
+                    shape.IsHovered = isHover;
+                    changed = true;
+                }
+            }
+        }
+        if (changed)
+        {
+            InvalidateVisual();
+        }
+    }
+
+    private void ClearHoverStates()
+    {
+        if (ViewModel == null) return;
+        bool changed = false;
+        foreach (var shape in ViewModel.Shapes)
+        {
+            if (shape.IsHovered)
+            {
+                shape.IsHovered = false;
+                changed = true;
+            }
+        }
+        if (changed)
+        {
+            InvalidateVisual();
+        }
     }
 }

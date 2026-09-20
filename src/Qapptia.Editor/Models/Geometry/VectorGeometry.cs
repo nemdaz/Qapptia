@@ -27,6 +27,21 @@ public abstract class VectorGeometry
     public bool IsBurning { get; set; }
 
     /// <summary>
+    /// Indica si la figura debe mostrar un contorno punteado sutil al pasar el puntero por encima cuando no está seleccionada.
+    /// </summary>
+    public virtual bool ShowsHoverOutline => false;
+
+    /// <summary>
+    /// Indica si la figura es una cobertura sólida y opaca que sustituye el fondo del lienzo (ej. borrador inteligente).
+    /// </summary>
+    public virtual bool HasSolidBackground => false;
+
+    /// <summary>
+    /// Indica si el puntero del ratón se encuentra actualmente posicionado sobre la figura en el lienzo.
+    /// </summary>
+    public bool IsHovered { get; set; }
+
+    /// <summary>
     /// Indica si la figura admite ingreso y edición de texto por teclado.
     /// </summary>
     public virtual bool SupportsTextInput => false;

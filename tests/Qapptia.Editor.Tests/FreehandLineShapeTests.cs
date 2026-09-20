@@ -10,8 +10,10 @@ using Qapptia.App.Editor;
 using Qapptia.App.Editor.Controls;
 using Qapptia.App.Editor.ViewModels;
 using Qapptia.App.Editor.ViewModels.Shapes;
+using Qapptia.Editor.Core;
 using Qapptia.Editor.Models;
 using Qapptia.Editor.Models.Geometry;
+using Qapptia.Editor.Services;
 using Xunit;
 
 namespace Qapptia.Editor.Tests;
@@ -90,55 +92,66 @@ public class FreehandLineShapeTests
     {
         await Session.Dispatch(() =>
         {
-            var services = Program.ConfigureServices();
-            var vm = services.GetRequiredService<EditorViewModel>();
-            var canvas = new BoardCanvas { Width = 800, Height = 600, ViewModel = vm };
-            var window = new Window { Width = 800, Height = 600, Content = canvas };
-            window.Show();
-            Dispatcher.UIThread.RunJobs();
+            var tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "Qapptia_FreehandTest_" + System.Guid.NewGuid().ToString("N"));
+            System.IO.Directory.CreateDirectory(tempDir);
+            try
+            {
+                var stateService = new EditorStateService(tempDir, "editor_state.json");
+                var canvasStateService = new CanvasStateService();
+                var fontProviderMock = new Moq.Mock<IFontProvider>();
+                var vm = new EditorViewModel(stateService, tempDir, fontProviderMock.Object, canvasStateService: canvasStateService);
+                var canvas = new BoardCanvas { Width = 800, Height = 600, ViewModel = vm };
+                var window = new Window { Width = 800, Height = 600, Content = canvas };
+                window.Show();
+                Dispatcher.UIThread.RunJobs();
 
-            var geo = new FreehandLineGeometry();
-            geo.AddPoint(new Point(100, 100));
-            geo.AddPoint(new Point(150, 120));
-            geo.AddPoint(new Point(200, 180));
+                var geo = new FreehandLineGeometry();
+                geo.AddPoint(new Point(100, 100));
+                geo.AddPoint(new Point(150, 120));
+                geo.AddPoint(new Point(200, 180));
 
-            var shape = new FreehandLineShape(geo);
-            vm.Shapes.Add(shape);
-            shape.IsSelected = true;
+                var shape = new FreehandLineShape(geo);
+                vm.Shapes.Add(shape);
+                shape.IsSelected = true;
 
-            int initialCount = geo.Points.Count;
-            int shapeCountBefore = vm.Shapes.Count;
+                int initialCount = geo.Points.Count;
+                int shapeCountBefore = vm.Shapes.Count;
 
-            var pointer = new Pointer(0, PointerType.Mouse, true);
+                var pointer = new Pointer(0, PointerType.Mouse, true);
 
-            // Clic en nodo final
-            canvas.RaiseEvent(new PointerPressedEventArgs(
-                canvas, pointer, canvas, new Point(200, 180), 0,
-                new PointerPointProperties(RawInputModifiers.None, PointerUpdateKind.LeftButtonPressed),
-                KeyModifiers.None));
-            Dispatcher.UIThread.RunJobs();
+                // Clic en nodo final
+                canvas.RaiseEvent(new PointerPressedEventArgs(
+                    canvas, pointer, canvas, new Point(200, 180), 0,
+                    new PointerPointProperties(RawInputModifiers.None, PointerUpdateKind.LeftButtonPressed),
+                    KeyModifiers.None));
+                Dispatcher.UIThread.RunJobs();
 
-            // Arrastre continuando el trazo
-            canvas.RaiseEvent(new PointerEventArgs(
-                InputElement.PointerMovedEvent, canvas, pointer, canvas, new Point(250, 230), 0,
-                new PointerPointProperties(RawInputModifiers.LeftMouseButton, PointerUpdateKind.Other),
-                KeyModifiers.None));
-            Dispatcher.UIThread.RunJobs();
+                // Arrastre continuando el trazo
+                canvas.RaiseEvent(new PointerEventArgs(
+                    InputElement.PointerMovedEvent, canvas, pointer, canvas, new Point(250, 230), 0,
+                    new PointerPointProperties(RawInputModifiers.LeftMouseButton, PointerUpdateKind.Other),
+                    KeyModifiers.None));
+                Dispatcher.UIThread.RunJobs();
 
-            // Liberación
-            canvas.RaiseEvent(new PointerReleasedEventArgs(
-                canvas, pointer, canvas, new Point(250, 230), 0,
-                new PointerPointProperties(RawInputModifiers.None, PointerUpdateKind.LeftButtonReleased),
-                KeyModifiers.None, MouseButton.Left));
-            Dispatcher.UIThread.RunJobs();
+                // Liberación
+                canvas.RaiseEvent(new PointerReleasedEventArgs(
+                    canvas, pointer, canvas, new Point(250, 230), 0,
+                    new PointerPointProperties(RawInputModifiers.None, PointerUpdateKind.LeftButtonReleased),
+                    KeyModifiers.None, MouseButton.Left));
+                Dispatcher.UIThread.RunJobs();
 
-            // Verificaciones: el trazo se prolongó, la figura no se duplicó y permanece seleccionada
-            geo.Points.Count.Should().BeGreaterThan(initialCount);
-            geo.End.Should().Be(new Point(250, 230));
-            vm.Shapes.Count.Should().Be(shapeCountBefore);
-            shape.IsSelected.Should().BeTrue();
+                // Verificaciones: el trazo se prolongó, la figura no se duplicó y permanece seleccionada
+                geo.Points.Count.Should().BeGreaterThan(initialCount);
+                geo.End.Should().Be(new Point(250, 230));
+                vm.Shapes.Count.Should().Be(shapeCountBefore);
+                shape.IsSelected.Should().BeTrue();
 
-            window.Close();
+                window.Close();
+            }
+            finally
+            {
+                try { System.IO.Directory.Delete(tempDir, true); } catch { }
+            }
         }, TestContext.Current.CancellationToken);
     }
 }

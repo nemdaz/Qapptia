@@ -19,6 +19,7 @@ public static class ShapeFactory
     public static readonly EllipseTool Ellipse = new();
     public static readonly HighlighterTool Highlighter = new();
     public static readonly TextWidgetTool Text = new();
+    public static readonly SmartEraserTool SmartEraser = new();
     public static readonly CropTool Crop = new();
     public static readonly RotateTool Rotate = new(() => { });
 
@@ -50,6 +51,7 @@ public static class ShapeFactory
             "ellipse" => Ellipse.CreateShape(startPoint, color),
             "highlighter" => Highlighter.CreateShape(startPoint, color),
             "text" => Text.CreateTextShape(startPoint, color, textSize, typeface),
+            "smarteraser" or "smart_eraser" or "eraser" => SmartEraser.CreateShape(startPoint, color),
             _ => null
         };
     }

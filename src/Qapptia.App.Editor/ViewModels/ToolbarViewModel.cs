@@ -26,6 +26,7 @@ public partial class ToolbarViewModel : ObservableObject
         ShapeFactory.Rectangle,
         ShapeFactory.Highlighter,
         ShapeFactory.Text,
+        ShapeFactory.SmartEraser,
         ShapeFactory.Rotate,
         ShapeFactory.Crop
     };
@@ -45,6 +46,7 @@ public partial class ToolbarViewModel : ObservableObject
     public bool IsRectangleToolActive => string.Equals(ActiveTool.Id, ShapeFactory.Rectangle.Id, StringComparison.OrdinalIgnoreCase);
     public bool IsHighlighterToolActive => string.Equals(ActiveTool.Id, ShapeFactory.Highlighter.Id, StringComparison.OrdinalIgnoreCase);
     public bool IsTextToolActive => string.Equals(ActiveTool.Id, ShapeFactory.Text.Id, StringComparison.OrdinalIgnoreCase);
+    public bool IsSmartEraserToolActive => string.Equals(ActiveTool.Id, ShapeFactory.SmartEraser.Id, StringComparison.OrdinalIgnoreCase);
     public bool IsCropToolActive => string.Equals(ActiveTool.Id, ShapeFactory.Crop.Id, StringComparison.OrdinalIgnoreCase);
 
     [ObservableProperty]
@@ -70,7 +72,8 @@ public partial class ToolbarViewModel : ObservableObject
             new ToolGroup("Ellipse", "Elipse", new[] { ShapeFactory.Ellipse }),
             new ToolGroup("Rectangle", "Rectángulo", new[] { ShapeFactory.Rectangle }),
             new ToolGroup("Highlighter", "Resaltador", new[] { ShapeFactory.Highlighter }),
-            new ToolGroup("Text", "Texto", new[] { ShapeFactory.Text })
+            new ToolGroup("Text", "Texto", new[] { ShapeFactory.Text }),
+            new ToolGroup("SmartEraser", "Borrador inteligente", new[] { ShapeFactory.SmartEraser })
         };
 
         var state = _stateService.Load();
@@ -121,6 +124,7 @@ public partial class ToolbarViewModel : ObservableObject
         OnPropertyChanged(nameof(IsRectangleToolActive));
         OnPropertyChanged(nameof(IsHighlighterToolActive));
         OnPropertyChanged(nameof(IsTextToolActive));
+        OnPropertyChanged(nameof(IsSmartEraserToolActive));
         OnPropertyChanged(nameof(IsCropToolActive));
 
         // 1. Notificar inmediatamente para confirmar estado previo y limpiar selección del lienzo

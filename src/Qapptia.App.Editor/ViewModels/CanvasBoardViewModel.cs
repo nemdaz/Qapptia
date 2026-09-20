@@ -346,6 +346,8 @@ public partial class CanvasBoardViewModel : ObservableObject, IDisposable
         {
             foreach (var shape in selected)
             {
+                shape.IsSelected = false;
+                shape.IsHovered = false;
                 Shapes.Remove(shape);
             }
             SaveCurrentAnnotations();

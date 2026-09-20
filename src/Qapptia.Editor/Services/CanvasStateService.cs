@@ -268,6 +268,7 @@ public sealed class CanvasStateService : ICanvasStateService
                 "line" => new LineGeometry(),
                 "highlighter" => new HighlighterGeometry(),
                 "text" => new TextGeometry(),
+                "smart_eraser" or "smarteraser" => new SmartEraserGeometry(),
                 _ => null
             };
 
@@ -333,6 +334,7 @@ public sealed class CanvasStateService : ICanvasStateService
                 LineGeometry => "line",
                 HighlighterGeometry => "highlighter",
                 TextGeometry => "text",
+                SmartEraserGeometry => "smart_eraser",
                 _ => "unknown"
             },
             Id = s.Id.ToString(),

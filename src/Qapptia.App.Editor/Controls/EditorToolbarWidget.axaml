@@ -258,6 +258,10 @@
                     <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" IsChecked="{Binding IsTextToolActive, Mode=OneWay}" Command="{Binding SelectToolCommand}" CommandParameter="Text" GroupName="Tools" Background="Transparent" ToolTip.Tip="Texto" Padding="4">
                         <PathIcon Data="{StaticResource IconText}" Width="16" Height="16"/>
                     </RadioButton>
+                    <!-- Borrador Inteligente -->
+                    <RadioButton Theme="{StaticResource {x:Type ToggleButton}}" IsChecked="{Binding IsSmartEraserToolActive, Mode=OneWay}" Command="{Binding SelectToolCommand}" CommandParameter="SmartEraser" GroupName="Tools" Background="Transparent" ToolTip.Tip="Borrador inteligente" Padding="4">
+                        <PathIcon Data="{StaticResource IconSmartEraser}" Width="16" Height="16"/>
+                    </RadioButton>
                 </StackPanel>
             </Border>
             

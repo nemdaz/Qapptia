@@ -20,6 +20,7 @@ public static class ShapeViewFactory
             EllipseGeometry g => new EllipseShape(g),
             HighlighterGeometry g => new HighlighterShape(g),
             TextGeometry g => new TextShape(g),
+            SmartEraserGeometry g => new SmartEraserShape(g),
             _ => throw new System.NotSupportedException($"No hay vista de render para la geometría '{geometry.GetType().Name}'.")
         };
     }

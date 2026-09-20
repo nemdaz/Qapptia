@@ -67,6 +67,42 @@ public static class ShapeRenderHelper
         DrawHandle(canvas, new Point(boundingBox.Right, boundingBox.Center.Y), zoom);
     }
 
+    /// <summary>
+    /// Dibuja un contorno punteado bicolor de alto contraste (alternando segmentos negros y blancos) de línea fina (1px).
+    /// Garantiza máxima notoriedad y visibilidad sobre cualquier fondo (claro, oscuro, saturado o texturado).
+    /// </summary>
+    public static void DrawHighContrastDashedRect(SKCanvas canvas, Rect rect, float zoom = 1.0f)
+    {
+        if (rect.Width <= 0 || rect.Height <= 0) return;
+
+        float safeZoom = Math.Max(0.01f, zoom);
+        float strokeWidth = 1.0f / safeZoom;
+        float dashLength = 4.0f / safeZoom;
+        float[] dashIntervals = [dashLength, dashLength];
+        var skRect = new SKRect((float)rect.Left, (float)rect.Top, (float)rect.Right, (float)rect.Bottom);
+
+        // 1. Línea base continua blanca fina (1px)
+        using var whitePaint = new SKPaint
+        {
+            Color = SKColors.White,
+            Style = SKPaintStyle.Stroke,
+            StrokeWidth = strokeWidth,
+            IsAntialias = true
+        };
+        canvas.DrawRect(skRect, whitePaint);
+
+        // 2. Línea punteada negra superpuesta fina (1px), generando alternancia blanco/negro perfecta
+        using var blackPaint = new SKPaint
+        {
+            Color = SKColors.Black,
+            Style = SKPaintStyle.Stroke,
+            StrokeWidth = strokeWidth,
+            PathEffect = SKPathEffect.CreateDash(dashIntervals, 0),
+            IsAntialias = true
+        };
+        canvas.DrawRect(skRect, blackPaint);
+    }
+
     public static void DrawCropSquareHandle(SKCanvas canvas, Point center, float zoom = 1.0f, float baseSize = 10f)
     {
         float safeZoom = Math.Max(0.01f, zoom);

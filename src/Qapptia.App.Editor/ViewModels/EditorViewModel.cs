@@ -287,6 +287,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     public bool IsRectangleToolActive => Toolbar.IsRectangleToolActive;
     public bool IsHighlighterToolActive => Toolbar.IsHighlighterToolActive;
     public bool IsTextToolActive => Toolbar.IsTextToolActive;
+    public bool IsSmartEraserToolActive => Toolbar.IsSmartEraserToolActive;
     public bool IsCropToolActive => Toolbar.IsCropToolActive;
 
     public float ZoomLevel { get => Viewport.ZoomLevel; set => Viewport.ZoomLevel = value; }
