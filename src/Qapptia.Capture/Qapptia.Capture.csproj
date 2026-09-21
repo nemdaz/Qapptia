@@ -17,4 +17,8 @@
     <ProjectReference Include="..\Qapptia.UI.Components\Qapptia.UI.Components.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Qapptia.Capture.Tests" />
+  </ItemGroup>
+
 </Project>

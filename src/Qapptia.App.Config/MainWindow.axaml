@@ -47,7 +47,7 @@
                         <Grid ColumnDefinitions="120,*,Auto" RowDefinitions="Auto,Auto" Margin="0,4,0,0">
                             <!-- Directorio de guardado -->
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="Guardar en:" VerticalAlignment="Center" Margin="0,0,8,0" />
-                            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding SavePath}" Margin="0,0,8,0" />
+                            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding SavePath}" Margin="0,0,8,0" IsReadOnly="True" />
                             <Button Grid.Row="0" Grid.Column="2" Content="Examinar..." Command="{Binding BrowsePathCommand}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
                             
                             <!-- Formato de archivo -->

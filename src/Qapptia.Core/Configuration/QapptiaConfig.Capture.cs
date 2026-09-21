@@ -16,7 +16,7 @@ public sealed partial class QapptiaConfig
 
     [JsonPropertyName("filename_format")]
     [Required]
-    public string FilenameFormat { get; set; } = "Qapptia_YYYYMMDD_HHmmSS";
+    public string FilenameFormat { get; set; } = Qapptia.Core.Constants.DefaultFilenameFormat;
 
     [JsonPropertyName("subfolder_month")]
     public bool SubfolderMonth { get; set; } = true;

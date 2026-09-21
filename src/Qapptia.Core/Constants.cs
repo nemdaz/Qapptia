@@ -34,6 +34,14 @@ public static class Constants
     public const string MediaTypeJpeg = "image/jpeg";
     public const string DefaultMediaType = MediaTypePng;
 
+    // Formatos de fecha para subcarpetas de almacenamiento de capturas
+    public const string SubfolderMonthFormat = "yyyy-MM";
+    public const string SubfolderDayFormat = "yyyy-MM-dd";
+    public const string SubfolderHourFormat = "HH'h'";
+
+    // Formato por defecto para nombres de archivo de captura
+    public const string DefaultFilenameFormat = "Qapptia_YYYYMMDD_HHmmSS";
+
     public static string ResolveMediaType(string filePath)
     {
         string ext = Path.GetExtension(filePath).ToLowerInvariant();

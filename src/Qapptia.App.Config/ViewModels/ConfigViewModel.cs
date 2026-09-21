@@ -120,7 +120,7 @@ public sealed partial class ConfigViewModel : ObservableObject
 
         _config.Theme = ThemeConstants.FromDisplayName(SelectedTheme);
         _config.SavePath = SavePath;
-        _config.FilenameFormat = string.IsNullOrWhiteSpace(FilenameFormat) ? "Qapptia_YYYYMMDD_HHmmSS" : FilenameFormat;
+        _config.FilenameFormat = string.IsNullOrWhiteSpace(FilenameFormat) ? Qapptia.Core.Constants.DefaultFilenameFormat : FilenameFormat;
         _config.SubfolderMonth = SubfolderMonth;
         _config.SubfolderDay = SubfolderDay;
         _config.SubfolderHour = SubfolderHour;

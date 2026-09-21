@@ -148,24 +148,28 @@ public sealed class FullscreenCaptureService : IFullscreenCaptureService
         return new CaptureResult(path, finalBytes, w, h);
     }
 
-    private string BuildFilePath()
+    internal string BuildFilePath(DateTime? timestamp = null)
     {
         var cfg = _config.Current;
         string baseDir = string.IsNullOrWhiteSpace(cfg.SavePath)
             ? Qapptia.Core.Constants.DefaultSavePath
             : cfg.SavePath;
 
-        var now = DateTime.Now;
+        var now = timestamp ?? DateTime.Now;
         var parts = new List<string> { baseDir };
 
-        if (cfg.SubfolderMonth) parts.Add(now.ToString("yyyy-MM", System.Globalization.CultureInfo.InvariantCulture));
-        if (cfg.SubfolderDay) parts.Add(now.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture));
-        if (cfg.SubfolderHour) parts.Add(now.ToString("HH", System.Globalization.CultureInfo.InvariantCulture));
+        if (cfg.SubfolderMonth) parts.Add(now.ToString(Qapptia.Core.Constants.SubfolderMonthFormat, System.Globalization.CultureInfo.InvariantCulture));
+        if (cfg.SubfolderDay) parts.Add(now.ToString(Qapptia.Core.Constants.SubfolderDayFormat, System.Globalization.CultureInfo.InvariantCulture));
+        if (cfg.SubfolderHour) parts.Add(now.ToString(Qapptia.Core.Constants.SubfolderHourFormat, System.Globalization.CultureInfo.InvariantCulture));
 
         var dir = Path.Combine(parts.ToArray());
         Directory.CreateDirectory(dir);
 
-        var fmt = cfg.FilenameFormat
+        var template = string.IsNullOrWhiteSpace(cfg.FilenameFormat)
+            ? Qapptia.Core.Constants.DefaultFilenameFormat
+            : cfg.FilenameFormat;
+
+        var fmt = template
             .Replace("YYYYMMDD", now.ToString("yyyyMMdd", System.Globalization.CultureInfo.InvariantCulture))
             .Replace("HHmmSS", now.ToString("HHmmss", System.Globalization.CultureInfo.InvariantCulture))
             .Replace("HHmm", now.ToString("HHmm", System.Globalization.CultureInfo.InvariantCulture))
