@@ -45,7 +45,7 @@ public sealed class FullscreenCaptureService : IFullscreenCaptureService
 
         if (job.IncludeCursor && _config.Current.ShowMouse)
         {
-            OverlayCursor(image, screen.OriginX, screen.OriginY);
+            await OverlayCursorAsync(image, screen.OriginX, screen.OriginY, ct);
         }
 
         using var fullPng = image.Encode(SKEncodedImageFormat.Png, 100);
@@ -63,7 +63,7 @@ public sealed class FullscreenCaptureService : IFullscreenCaptureService
                 new SKImageInfo(screen.Width, screen.Height, SKColorType.Bgra8888, SKAlphaType.Unpremul),
                 Marshal.UnsafeAddrOfPinnedArrayElement(screen.BgraPixels, 0),
                 screen.Width * 4);
-            OverlayCursor(bitmap, screen.OriginX, screen.OriginY);
+            await OverlayCursorAsync(bitmap, screen.OriginX, screen.OriginY, ct);
         }
 
         return screen;
@@ -85,11 +85,11 @@ public sealed class FullscreenCaptureService : IFullscreenCaptureService
         return await FinalizeAsync(pngData.ToArray(), cropped.Width, cropped.Height, job, ct);
     }
 
-    private void OverlayCursor(SKBitmap bitmap, int originX, int originY)
+    private async Task OverlayCursorAsync(SKBitmap bitmap, int originX, int originY, CancellationToken ct = default)
     {
         try
         {
-            var cursor = _cursorCapture.CaptureCursorAsync().GetAwaiter().GetResult();
+            var cursor = await _cursorCapture.CaptureCursorAsync(ct);
             if (cursor is null) return;
 
             using var cursorBmp = new SKBitmap();

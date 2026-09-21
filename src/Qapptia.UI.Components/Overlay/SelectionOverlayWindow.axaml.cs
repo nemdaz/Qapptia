@@ -31,10 +31,12 @@ public partial class SelectionOverlayWindow : Window, IDisposable
                 new Avalonia.PixelSize(frozenScreen.Width, frozenScreen.Height),
                 new Avalonia.Vector(96, 96),
                 Avalonia.Platform.PixelFormat.Bgra8888,
-                Avalonia.Platform.AlphaFormat.Unpremul);
+                Avalonia.Platform.AlphaFormat.Opaque);
 
             using var fb = _backgroundImage.Lock();
             System.Runtime.InteropServices.Marshal.Copy(frozenScreen.BgraPixels, 0, fb.Address, frozenScreen.BgraPixels.Length);
+
+            Position = new PixelPoint(frozenScreen.OriginX, frozenScreen.OriginY);
         }
 
         InitializeComponent();
@@ -60,20 +62,6 @@ public partial class SelectionOverlayWindow : Window, IDisposable
     {
         _tcs = null!; // For XAML previewer only
         InitializeComponent();
-    }
-
-    protected override void OnOpened(EventArgs e)
-    {
-        base.OnOpened(e);
-        var primary = Screens.Primary;
-        if (primary is not null)
-        {
-            // Usar Bounds en lugar de WorkingArea para cubrir también la barra de tareas
-            var bounds = primary.Bounds;
-            Position = new PixelPoint(0, 0);
-            Width = bounds.Width;
-            Height = bounds.Height;
-        }
     }
 
     private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
@@ -127,7 +115,9 @@ public partial class SelectionOverlayWindow : Window, IDisposable
     public override void Render(DrawingContext context)
     {
         base.Render(context);
-        var bounds = new Rect(0, 0, Width, Height);
+        var width = Bounds.Width;
+        var height = Bounds.Height;
+        var bounds = new Rect(0, 0, width, height);
 
         if (_backgroundImage != null)
         {
@@ -145,18 +135,18 @@ public partial class SelectionOverlayWindow : Window, IDisposable
             var w = Math.Abs(_dragEnd.X - _dragStart.X);
             var h = Math.Abs(_dragEnd.Y - _dragStart.Y);
 
-            context.FillRectangle(_dimBrush, new Rect(0, 0, Width, y));
-            context.FillRectangle(_dimBrush, new Rect(0, y + h, Width, Height - y - h));
+            context.FillRectangle(_dimBrush, new Rect(0, 0, width, y));
+            context.FillRectangle(_dimBrush, new Rect(0, y + h, width, height - y - h));
             context.FillRectangle(_dimBrush, new Rect(0, y, x, h));
-            context.FillRectangle(_dimBrush, new Rect(x + w, y, Width - x - w, h));
+            context.FillRectangle(_dimBrush, new Rect(x + w, y, width - x - w, h));
 
             context.DrawRectangle(_selectionPen, new Rect(x, y, w, h));
         }
 
         // Dibuja la cruz punteada que sigue al cursor.
         var dottedPen = new Pen(Brushes.White, 1, new DashStyle(new double[] { 4, 4 }, 0));
-        context.DrawLine(dottedPen, new Point(0, _currentPos.Y), new Point(Width, _currentPos.Y));
-        context.DrawLine(dottedPen, new Point(_currentPos.X, 0), new Point(_currentPos.X, Height));
+        context.DrawLine(dottedPen, new Point(0, _currentPos.Y), new Point(width, _currentPos.Y));
+        context.DrawLine(dottedPen, new Point(_currentPos.X, 0), new Point(_currentPos.X, height));
 
         // Dibuja las coordenadas X, Y del cursor.
         var text = $"X: {(int)_currentPos.X}, Y: {(int)_currentPos.Y}";

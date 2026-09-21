@@ -14,6 +14,7 @@ namespace Qapptia.Platform.Windows;
 /// </summary>
 public sealed class WindowsScreenCapture : IScreenCapture
 {
+    private const uint OpaqueAlphaMask = 0xFF000000;
     private readonly ILogger _logger;
 
     public WindowsScreenCapture(ILogger logger)
@@ -93,6 +94,14 @@ public sealed class WindowsScreenCapture : IScreenCapture
                                 pPixels, (BITMAPINFO*)bmiPtr, DIB_USAGE.DIB_RGB_COLORS);
                             if (rowsCopied == 0)
                                 throw new InvalidOperationException($"GetDIBits failed: {Marshal.GetLastWin32Error()}");
+
+                            // Asegura opacidad total (alfa = 255) ya que GetDIBits no inicializa el canal alfa en mapas de 32 bpp.
+                            uint* pDwords = (uint*)pPixels;
+                            int totalPixels = width * height;
+                            for (int i = 0; i < totalPixels; i++)
+                            {
+                                pDwords[i] |= OpaqueAlphaMask;
+                            }
                         }
                     }
                     finally
