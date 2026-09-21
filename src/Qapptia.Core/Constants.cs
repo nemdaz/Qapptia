@@ -58,11 +58,13 @@ public static class Constants
     }
 
     // Nombres de aplicaciones de la suite
+    public const string LauncherAppName = "Qapptia";
     public const string CaptureAppName = "Qapptia Capture";
     public const string EditorAppName = "Qapptia Editor";
     public const string ConfigAppName = "Qapptia Config";
 
     // Nombres de ejecutables de la suite
+    public const string LauncherExecutableName = "Qapptia.exe";
     public const string CaptureExecutableName = "Qapptia.App.Capture.exe";
     public const string EditorExecutableName = "Qapptia.App.Editor.exe";
     public const string ConfigExecutableName = "Qapptia.App.Config.exe";

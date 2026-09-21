@@ -9,6 +9,7 @@
     <Project Path="src/Qapptia.Platform.Linux/Qapptia.Platform.Linux.csproj" />
     <Project Path="src/Qapptia.Platform.MacOS/Qapptia.Platform.MacOS.csproj" />
     <Project Path="src/Qapptia.Platform.Windows/Qapptia.Platform.Windows.csproj" />
+    <Project Path="src/Qapptia.Launcher/Qapptia.Launcher.csproj" />
     <Project Path="src/Qapptia.UI.Components/Qapptia.UI.Components.csproj" />
   </Folder>
   <Folder Name="/tests/">

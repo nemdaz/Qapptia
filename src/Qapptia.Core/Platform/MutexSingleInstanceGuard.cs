@@ -19,13 +19,37 @@ public sealed class MutexSingleInstanceGuard : ISingleInstanceGuard
     public bool IsHeld => _mutex != null;
     public int? CurrentOwnerPid => IsHeld ? Environment.ProcessId : null;
 
+    private const string MutexPrefix = @"Global\Qapptia.";
     private Mutex? _mutex;
     private readonly string _mutexName;
 
     public MutexSingleInstanceGuard(string key)
     {
         Key = key ?? throw new ArgumentNullException(nameof(key));
-        _mutexName = $@"Global\Qapptia.{key}";
+        _mutexName = $"{MutexPrefix}{key}";
+    }
+
+    /// <summary>
+    /// Comprueba de forma no bloqueante si ya existe una instancia activa asociada a la clave especificada.
+    /// </summary>
+    public static bool IsRunning(string key)
+    {
+        if (string.IsNullOrWhiteSpace(key)) return false;
+
+        try
+        {
+            if (Mutex.TryOpenExisting($"{MutexPrefix}{key}", out var mutex))
+            {
+                mutex.Dispose();
+                return true;
+            }
+        }
+        catch
+        {
+            // Retorna false si la plataforma no soporta named mutexes o no existe la instancia.
+        }
+
+        return false;
     }
 
     public bool Acquire()
