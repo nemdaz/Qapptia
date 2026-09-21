@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using SkiaSharp;
 
 namespace Qapptia.Core;
 
@@ -41,6 +42,9 @@ public static class Constants
 
     // Formato por defecto para nombres de archivo de captura
     public const string DefaultFilenameFormat = "Qapptia_YYYYMMDD_HHmmSS";
+
+    // Color del halo de resaltado del cursor (amarillo vibrante perceptible a primera vista)
+    public static readonly SKColor CursorHaloColor = new(255, 235, 59, 160);
 
     public static string ResolveMediaType(string filePath)
     {

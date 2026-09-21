@@ -104,19 +104,25 @@ public sealed class FullscreenCaptureService : IFullscreenCaptureService
             var drawY = (cursorY - originY) - cursor.HotspotY;
 
             using var canvas = new SKCanvas(bitmap);
-            canvas.DrawBitmap(cursorBmp, drawX, drawY);
 
             if (_config.Current.HighlightMouse)
             {
+                var center = new SKPoint(cursorX - originX, cursorY - originY);
+                var radius = Math.Max(cursor.Width, cursor.Height) * 0.65f + 8f;
+
                 using var highlight = new SKPaint
                 {
-                    Color = new SKColor(255, 255, 0, 80),
+                    Color = Qapptia.Core.Constants.CursorHaloColor,
                     Style = SKPaintStyle.Fill,
-                    IsAntialias = true,
+                    IsAntialias = true
                 };
-                var radius = Math.Max(cursor.Width, cursor.Height) * 0.6f + 8;
-                canvas.DrawCircle(cursorX - originX, cursorY - originY, radius, highlight);
+
+                // Dibuja el halo nítido y perceptible debajo del cursor
+                canvas.DrawCircle(center, radius, highlight);
             }
+
+            // Dibuja el cursor nítido en primer plano sobre el halo
+            canvas.DrawBitmap(cursorBmp, drawX, drawY);
         }
         catch (Exception ex)
         {
