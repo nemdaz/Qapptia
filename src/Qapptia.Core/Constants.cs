@@ -7,6 +7,7 @@ namespace Qapptia.Core;
 public static class Constants
 {
     public const string AppName = "Qapptia";
+    public const string AppVersion = "2.0.0-beta";
     public const string ConfigFileName = "config.json";
     public const string EditorStateFileName = "editor_state.json";
     public const string ShortcutCopyClipboard = "Ctrl+C";

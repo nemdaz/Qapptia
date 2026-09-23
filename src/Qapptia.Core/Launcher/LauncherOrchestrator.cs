@@ -74,7 +74,7 @@ public static class LauncherOrchestrator
     }
 
     /// <summary>
-    /// Resuelve la ruta absoluta al ejecutable hermano en el directorio base, tolerando variantes de plataforma.
+    /// Resuelve la ruta absoluta al ejecutable hermano, priorizando la subcarpeta interna 'app' antes del directorio base.
     /// </summary>
     public static string ResolveExecutablePath(string baseDirectory, string executableName)
     {
@@ -84,22 +84,36 @@ public static class LauncherOrchestrator
             resolvedName = resolvedName[..^4];
         }
 
-        string fullPath = Path.Combine(baseDirectory, resolvedName);
-        if (File.Exists(fullPath))
+        string appSubdir = Path.Combine(baseDirectory, "app");
+        string appPath = Path.Combine(appSubdir, resolvedName);
+        if (File.Exists(appPath))
         {
-            return fullPath;
+            return appPath;
+        }
+
+        string flatPath = Path.Combine(baseDirectory, resolvedName);
+        if (File.Exists(flatPath))
+        {
+            return flatPath;
         }
 
         string alternativeName = resolvedName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
             ? resolvedName[..^4]
             : resolvedName + ".exe";
-        string altPath = Path.Combine(baseDirectory, alternativeName);
-        if (File.Exists(altPath))
+
+        string altAppPath = Path.Combine(appSubdir, alternativeName);
+        if (File.Exists(altAppPath))
         {
-            return altPath;
+            return altAppPath;
         }
 
-        return fullPath;
+        string altFlatPath = Path.Combine(baseDirectory, alternativeName);
+        if (File.Exists(altFlatPath))
+        {
+            return altFlatPath;
+        }
+
+        return Directory.Exists(appSubdir) ? appPath : flatPath;
     }
 
     /// <summary>
@@ -112,7 +126,8 @@ public static class LauncherOrchestrator
             if (!launcher.IsInstanceActive(IpcChannels.Capture))
             {
                 string capturePath = ResolveExecutablePath(baseDirectory, Constants.CaptureExecutableName);
-                launcher.StartProcess(capturePath, null, baseDirectory);
+                string workingDir = Path.GetDirectoryName(capturePath) ?? baseDirectory;
+                launcher.StartProcess(capturePath, null, workingDir);
             }
         }
 
@@ -121,7 +136,8 @@ public static class LauncherOrchestrator
             if (!launcher.IsInstanceActive(IpcChannels.Editor))
             {
                 string editorPath = ResolveExecutablePath(baseDirectory, Constants.EditorExecutableName);
-                launcher.StartProcess(editorPath, plan.AdditionalArguments, baseDirectory);
+                string workingDir = Path.GetDirectoryName(editorPath) ?? baseDirectory;
+                launcher.StartProcess(editorPath, plan.AdditionalArguments, workingDir);
             }
             else
             {
@@ -134,7 +150,8 @@ public static class LauncherOrchestrator
             if (!launcher.IsInstanceActive(IpcChannels.Config))
             {
                 string configPath = ResolveExecutablePath(baseDirectory, Constants.ConfigExecutableName);
-                launcher.StartProcess(configPath, plan.AdditionalArguments, baseDirectory);
+                string workingDir = Path.GetDirectoryName(configPath) ?? baseDirectory;
+                launcher.StartProcess(configPath, plan.AdditionalArguments, workingDir);
             }
             else
             {
