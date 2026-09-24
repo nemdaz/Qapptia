@@ -19,9 +19,7 @@ public static class QapptiaIpcClient
         int timeoutMs = 1000,
         CancellationToken ct = default)
     {
-        var state = IpcChannelState.Load(channel);
-        var pipeName = state?.PipeName ?? IpcChannels.GetPipeName(channel);
-
+        var pipeName = IpcChannels.GetPipeName(channel);
         return await SendToPipeAsync(pipeName, request, timeoutMs, ct).ConfigureAwait(false);
     }
 

@@ -57,8 +57,7 @@ public sealed class IpcMessageDispatcher
 /// <summary>
 /// Servidor de Named Pipes para un canal. Acepta conexiones entrantes en loop, cada
 /// conexión en su propia <see cref="Task"/>. Implementa <see cref="IDisposable"/> para
-/// liberar recursos al detener la app. Escribe el <see cref="IpcChannelState"/> (pid+token)
-/// en disco al iniciar y lo borra al detenerse.
+/// liberar recursos al detener la app.
 /// </summary>
 public sealed class QapptiaIpcServer : IDisposable
 {
@@ -66,39 +65,27 @@ public sealed class QapptiaIpcServer : IDisposable
     private readonly IpcMessageDispatcher _dispatcher;
     private readonly ILogger _logger;
     private readonly CancellationTokenSource _cts = new();
-    private readonly string _token;
     private readonly string _channel;
     private readonly List<Task> _acceptTasks = new();
     private readonly List<NamedPipeServerStream> _pendingServers = new();
     private const int MaxConcurrentInstances = 4;
     private readonly object _sync = new();
 
-    public string Token => _token;
-
     public QapptiaIpcServer(
         string channel,
         string pipeName,
         IpcMessageDispatcher dispatcher,
-        ILogger logger,
-        string? token = null)
+        ILogger logger)
     {
         _channel = channel ?? throw new ArgumentNullException(nameof(channel));
         _pipeName = pipeName ?? throw new ArgumentNullException(nameof(pipeName));
         _dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
         _logger = logger;
-        _token = token ?? Guid.NewGuid().ToString("N");
     }
 
     public Task StartAsync(CancellationToken ct = default)
     {
-        var state = new IpcChannelState
-        {
-            Pid = Environment.ProcessId,
-            Token = _token,
-            PipeName = _pipeName,
-        };
-        IpcChannelState.Save(_channel, state);
-        _logger.Information("IPC server escuchando en {Pipe} (token {Token}…)", _pipeName, _token[..8]);
+        _logger.Information("IPC server escuchando en {Pipe}", _pipeName);
 
         for (var i = 0; i < MaxConcurrentInstances; i++)
         {
@@ -182,7 +169,6 @@ public sealed class QapptiaIpcServer : IDisposable
         }
         catch (OperationCanceledException) { }
         catch (AggregateException) { }
-        IpcChannelState.Delete(_channel, expectedToken: _token);
         _logger.Information("IPC server detenido en {Pipe}", _pipeName);
     }
 
@@ -197,6 +183,5 @@ public sealed class QapptiaIpcServer : IDisposable
             try { s.Dispose(); } catch { }
         }
         try { _cts.Dispose(); } catch { }
-        IpcChannelState.Delete(_channel, expectedToken: _token);
     }
 }
