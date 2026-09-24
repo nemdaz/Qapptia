@@ -289,6 +289,7 @@ public partial class EditorViewModel : ObservableObject, IDisposable
     public bool IsTextToolActive => Toolbar.IsTextToolActive;
     public bool IsSmartEraserToolActive => Toolbar.IsSmartEraserToolActive;
     public bool IsCropToolActive => Toolbar.IsCropToolActive;
+    public bool IsColorSelectionEnabled => Toolbar.IsColorSelectionEnabled;
 
     public float ZoomLevel { get => Viewport.ZoomLevel; set => Viewport.ZoomLevel = value; }
     public ObservableCollection<string> ZoomOptions => Viewport.ZoomOptions;

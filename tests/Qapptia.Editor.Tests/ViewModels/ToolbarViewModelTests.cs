@@ -248,4 +248,67 @@ public sealed class ToolbarViewModelTests : IDisposable
         group.ActiveTool.Should().Be(ShapeFactory.FreehandLine);
         group.OtherTools.Should().ContainSingle().Which.Should().Be(ShapeFactory.Line);
     }
+
+    [Fact]
+    public void ToolbarViewModelSmartEraserDisablesColorSelectionAndClearsPaletteSelection()
+    {
+        var vm = new ToolbarViewModel(_stateService);
+        vm.SelectTool(ShapeFactory.Arrow);
+        vm.IsColorSelectionEnabled.Should().BeTrue();
+        vm.AvailableColors.Any(c => c.IsSelected).Should().BeTrue();
+
+        vm.SelectTool(ShapeFactory.SmartEraser);
+
+        vm.ActiveTool.Should().Be(ShapeFactory.SmartEraser);
+        vm.ActiveTool.SupportsColor.Should().BeFalse();
+        vm.IsSmartEraserToolActive.Should().BeTrue();
+        vm.IsColorSelectionEnabled.Should().BeFalse();
+        vm.AvailableColors.All(c => !c.IsSelected).Should().BeTrue();
+
+        var state = _stateService.Load();
+        state.Tools.ActiveTool.Should().Be("SmartEraser");
+        state.Palette.ToolFavoriteColors.ContainsKey("smarteraser").Should().BeFalse();
+    }
+
+    [Fact]
+    public void ToolbarViewModelSelectColorIgnoredWhenSmartEraserIsActive()
+    {
+        var vm = new ToolbarViewModel(_stateService);
+        vm.SelectTool(ShapeFactory.SmartEraser);
+        var initialColor = vm.ActiveColor;
+
+        var targetColor = vm.AvailableColors[2];
+        vm.SelectColor(targetColor);
+
+        // No debe cambiar el color activo ni marcarse como seleccionado
+        vm.ActiveColor.Should().Be(initialColor);
+        targetColor.IsSelected.Should().BeFalse();
+
+        var state = _stateService.Load();
+        state.Palette.ToolFavoriteColors.ContainsKey("smarteraser").Should().BeFalse();
+    }
+
+    [Fact]
+    public void ToolbarViewModelSwitchingBetweenSmartEraserAndColorToolsRestoresSelection()
+    {
+        var vm = new ToolbarViewModel(_stateService);
+        vm.SelectTool(ShapeFactory.Rectangle);
+        var targetColor = vm.AvailableColors[1];
+        vm.SelectColor(targetColor);
+        vm.ActiveColor.Should().Be(targetColor.Color);
+        targetColor.IsSelected.Should().BeTrue();
+
+        // Cambiar a SmartEraser: se deshabilita y se limpia la selección visual de la paleta
+        vm.SelectTool(ShapeFactory.SmartEraser);
+        vm.IsColorSelectionEnabled.Should().BeFalse();
+        vm.AvailableColors.All(c => !c.IsSelected).Should().BeTrue();
+
+        // Volver a Rectangle: se restaura el color favorito persistido y se marca en la paleta
+        vm.SelectTool(ShapeFactory.Rectangle);
+        vm.IsColorSelectionEnabled.Should().BeTrue();
+        vm.ActiveColor.Should().Be(targetColor.Color);
+        vm.AvailableColors.Single(c => c.IsSelected).Color.Should().Be(targetColor.Color);
+    }
 }
+
+

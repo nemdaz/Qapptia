@@ -15,6 +15,7 @@ public sealed class SmartEraserTool : VectorTool<SmartEraserGeometry>
     public override string Id => "SmartEraser";
     public override string DisplayName => "Borrador inteligente";
     public override string? Shortcut => "W";
+    public override bool SupportsColor => false;
 
     public override Color ResolveInitialColor(Color activePaletteColor, Point startPoint, Func<Point, Color>? sampleCanvasColor = null)
     {

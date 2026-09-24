@@ -19,6 +19,7 @@ public class TextWidgetTool : Tool
     public override ToolType Type => ToolType.Widget;
     public override StandardCursorType DefaultCursor => StandardCursorType.Ibeam;
     public override Type TargetShapeType => typeof(TextGeometry);
+    public override bool SupportsColor => true;
 
     /// <summary>
     /// Crea y alinea una nueva geometría de texto según las coordenadas de clic y métricas de fuente.

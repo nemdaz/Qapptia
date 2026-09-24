@@ -37,6 +37,9 @@
     <Style Selector="RadioButton:checked PathIcon">
         <Setter Property="Foreground" Value="{DynamicResource M3OnPrimaryContainerBrush}" />
     </Style>
+    <Style Selector="RadioButton:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
 
     <!-- ToggleButtons / Herramientas con tema ToggleButton -->
     <Style Selector="ToggleButton">
@@ -56,6 +59,9 @@
     </Style>
     <Style Selector="ToggleButton:checked PathIcon">
         <Setter Property="Foreground" Value="{DynamicResource M3OnPrimaryContainerBrush}" />
+    </Style>
+    <Style Selector="ToggleButton:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
     </Style>
 
     <!-- Pestañas (TabControl y TabItem) -->

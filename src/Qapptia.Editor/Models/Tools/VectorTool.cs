@@ -13,6 +13,7 @@ public abstract class VectorTool : Tool
 {
     public override ToolType Type => ToolType.Vector;
     public override StandardCursorType DefaultCursor => StandardCursorType.Cross;
+    public override bool SupportsColor => true;
 
     /// <summary>
     /// Resuelve el color inicial para la nueva figura a dibujar (usando la paleta activa o muestreando el lienzo).

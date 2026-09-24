@@ -57,6 +57,8 @@ public partial class ToolbarViewModel : ObservableObject
 
     public ObservableCollection<PaletteColorItem> AvailableColors { get; }
 
+    public bool IsColorSelectionEnabled => ActiveTool.SupportsColor;
+
     public event EventHandler<Tool>? ToolChanged;
     public event EventHandler<Color>? ColorChanged;
 
@@ -86,8 +88,9 @@ public partial class ToolbarViewModel : ObservableObject
         var activeGroup = Groups.FirstOrDefault(g => g.ContainsTool(_activeTool));
         activeGroup?.SelectTool(_activeTool);
 
-        // Cargar color activo: de la herramienta guardada, o global, o primer favorito
-        if (state.Palette.ToolFavoriteColors.TryGetValue(_activeTool.Id.ToLowerInvariant(), out var toolColorHex) &&
+        // Cargar color activo: de la herramienta guardada (si soporta color), o global, o primer favorito
+        if (_activeTool.SupportsColor &&
+            state.Palette.ToolFavoriteColors.TryGetValue(_activeTool.Id.ToLowerInvariant(), out var toolColorHex) &&
             Color.TryParse(toolColorHex, out var parsedToolColor))
         {
             _activeColor = parsedToolColor;
@@ -102,11 +105,11 @@ public partial class ToolbarViewModel : ObservableObject
         }
 
         AvailableColors = new ObservableCollection<PaletteColorItem>(
-            Constants.FavoriteColors.Select(c => new PaletteColorItem(c, c == _activeColor))
+            Constants.FavoriteColors.Select(c => new PaletteColorItem(c, _activeTool.SupportsColor && c == _activeColor))
         );
 
-        // Garantizar que siempre haya al menos un color seleccionado
-        if (!AvailableColors.Any(c => c.IsSelected) && AvailableColors.Count > 0)
+        // Garantizar que siempre haya un color activo si no se pudo determinar ninguno
+        if (_activeTool.SupportsColor && _activeColor.A == 0 && AvailableColors.Count > 0)
         {
             AvailableColors[0].IsSelected = true;
             _activeColor = AvailableColors[0].Color;
@@ -126,45 +129,75 @@ public partial class ToolbarViewModel : ObservableObject
         OnPropertyChanged(nameof(IsTextToolActive));
         OnPropertyChanged(nameof(IsSmartEraserToolActive));
         OnPropertyChanged(nameof(IsCropToolActive));
+        OnPropertyChanged(nameof(IsColorSelectionEnabled));
 
         // 1. Notificar inmediatamente para confirmar estado previo y limpiar selección del lienzo
         ToolChanged?.Invoke(this, value);
 
-        // 2. Persistir herramienta activa y restaurar su color favorito únicamente si altera geometría continua
+        // 2. Persistir herramienta activa y restaurar su color favorito únicamente si soporta color
         if (value.AltersCanvasGeometry)
         {
             var state = _stateService.Load();
             state.Tools.ActiveTool = value.Id;
 
-            if (state.Palette.ToolFavoriteColors.TryGetValue(value.Id.ToLowerInvariant(), out var toolColorHex) &&
-                Color.TryParse(toolColorHex, out var parsedToolColor))
+            if (value.SupportsColor)
             {
-                ActiveColor = parsedToolColor;
+                if (state.Palette.ToolFavoriteColors.TryGetValue(value.Id.ToLowerInvariant(), out var toolColorHex) &&
+                    Color.TryParse(toolColorHex, out var parsedToolColor))
+                {
+                    ActiveColor = parsedToolColor;
+                }
             }
 
             _stateService.Save(state);
+        }
+
+        // 3. Manejo de selección de paleta de colores según soporte de la herramienta
+        if (value.SupportsColor)
+        {
+            UpdatePaletteSelection(ActiveColor);
+        }
+        else
+        {
+            ClearPaletteSelection();
         }
     }
 
     partial void OnActiveColorChanged(Color value)
     {
         ActiveBrush = new SolidColorBrush(value);
-        if (AvailableColors != null)
+        if (ActiveTool.SupportsColor)
         {
-            bool anyMatch = false;
-            foreach (var item in AvailableColors)
-            {
-                item.IsSelected = (item.Color == value);
-                if (item.IsSelected) anyMatch = true;
-            }
-
-            if (!anyMatch && AvailableColors.Count > 0)
-            {
-                AvailableColors[0].IsSelected = true;
-            }
+            UpdatePaletteSelection(value);
+        }
+        else
+        {
+            ClearPaletteSelection();
         }
 
         ColorChanged?.Invoke(this, value);
+    }
+
+    private void ClearPaletteSelection()
+    {
+        if (AvailableColors != null)
+        {
+            foreach (var item in AvailableColors)
+            {
+                item.IsSelected = false;
+            }
+        }
+    }
+
+    private void UpdatePaletteSelection(Color color)
+    {
+        if (AvailableColors != null)
+        {
+            foreach (var item in AvailableColors)
+            {
+                item.IsSelected = (item.Color == color);
+            }
+        }
     }
 
     [RelayCommand]
@@ -223,6 +256,11 @@ public partial class ToolbarViewModel : ObservableObject
     [RelayCommand]
     public void SelectColor(PaletteColorItem item)
     {
+        if (!ActiveTool.SupportsColor || item == null)
+        {
+            return;
+        }
+
         ActiveColor = item.Color;
 
         if (ActiveTool.AltersCanvasGeometry)

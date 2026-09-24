@@ -2,9 +2,10 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!-- ====================================================================
-         Set de Iconos Vectoriales Estandarizados (Material 3 / Monocromaticos)
-         Los iconos se adaptan automaticamente a tema claro y oscuro mediante
-         la propiedad Foreground (DynamicResource M3OnSurfaceBrush).
+         Set de Iconos Vectoriales Estandarizados
+         Iconos vectoriales creados a mano, Material Symbols y Phosphor Icons.
+         Se adaptan automáticamente a tema claro y oscuro mediante la propiedad
+         Foreground (DynamicResource M3OnSurfaceBrush).
          ==================================================================== -->
 
     <!-- Archivo y Acciones Principales -->
@@ -15,16 +16,16 @@
 
     <!-- Herramientas Vectoriales y Dibujo -->
     <StreamGeometry x:Key="IconLine">M18.59 4L20 5.41 5.41 20 4 18.59z</StreamGeometry>
-    <StreamGeometry x:Key="IconFreehandLine">M554-120q-54 0-91-37t-37-89q0-76 61.5-137.5T641-460q-3-36-18-54.5T582-533q-30 0-65 25t-83 82q-78 93-114.5 121T241-277q-51 0-86-38t-35-92q0-54 23.5-110.5T223-653q19-26 28-44t9-29q0-7-2.5-10.5T250-740q-10 0-25 12.5T190-689l-70-71q32-39 65-59.5t65-20.5q46 0 78 32t32 80q0 29-15 64t-50 84q-38 54-56.5 95T220-413q0 17 5.5 26.5T241-377q10 0 17.5-5.5T286-409q13-14 31-34.5t44-50.5q63-75 114-107t107-32q67 0 110 45t49 123h99v100h-99q-8 112-58.5 178.5T554-120Zm2-100q32 0 54-36.5T640-358q-46 11-80 43.5T526-250q0 14 8 22t22 8Z</StreamGeometry>
+    <StreamGeometry x:Key="IconFreehandLine">M205.67,189.66a14.61,14.61,0,0,0,0,20.68,8,8,0,0,1-11.32,11.32,30.64,30.64,0,0,1,0-43.32l9.38-9.37A14.63,14.63,0,0,0,183,148.28L116.28,215A30.63,30.63,0,0,1,73,171.72L171.72,73A14.63,14.63,0,0,0,151,52.28L84.28,119A30.63,30.63,0,0,1,41,75.72L82.34,34.34A8,8,0,0,1,93.65,45.66L52.27,87A14.63,14.63,0,0,0,73,107.72L139.72,41A30.63,30.63,0,0,1,183,84.28L84.28,183A14.63,14.63,0,0,0,105,203.72L171.72,137A30.63,30.63,0,0,1,215,180.28Z</StreamGeometry>
     <StreamGeometry x:Key="IconArrowDropDown">M7 10l5 5 5-5z</StreamGeometry>
     <StreamGeometry x:Key="IconArrow">M19 5h-7v2h4.59L4.59 19 6 20.41 18 8.41V13h2V5z</StreamGeometry>
-    <StreamGeometry x:Key="IconEllipse">M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z</StreamGeometry>
-    <StreamGeometry x:Key="IconRectangle">M18 4H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H6V6h12v12z</StreamGeometry>
-    <StreamGeometry x:Key="IconHighlighter">M80 0v-160h800V0H80Zm504-480L480-584 320-424l103 104 161-160Zm-47-160 103 103 160-159-104-104-159 160Zm-84-29 216 216-189 190q-24 24-56.5 24T367-263l-27 23H140l126-125q-24-24-25-57.5t23-57.5l189-189Zm0 0 187-187q24-24 56.5-24t56.5 24l104 103q24 24 24 56.5T857-640L669-453 453-669Z</StreamGeometry>
-    <StreamGeometry x:Key="IconText">M5 4v3h5.5v12h3V7H19V4H5z</StreamGeometry>
-    <StreamGeometry x:Key="IconSmartEraser">M678-220h203v60H618l60-60Zm-499 60-81-84q-18-17-17.5-41.5T97-327l458-498q16-17 40.57-17 24.56 0 41.43 17l205 215q17 17 18 42t-16 42L503-160H179Zm301-60 324-352-207-217-455 503 64 66h274Zm0-260Z</StreamGeometry>
+    <StreamGeometry x:Key="IconEllipse">M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Z</StreamGeometry>
+    <StreamGeometry x:Key="IconRectangle">M208,32H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32Zm0,176H48V48H208V208Z</StreamGeometry>
+    <StreamGeometry x:Key="IconHighlighter">M253.66,106.34a8,8,0,0,0-11.32,0L192,156.69,107.31,72l50.35-50.34a8,8,0,1,0-11.32-11.32L96,60.69A16,16,0,0,0,93.18,79.5L72,100.69a16,16,0,0,0,0,22.62L76.69,128,18.34,186.34a8,8,0,0,0,3.13,13.25l72,24A7.88,7.88,0,0,0,96,224a8,8,0,0,0,5.66-2.34L136,187.31l4.69,4.69a16,16,0,0,0,22.62,0l21.19-21.18A16,16,0,0,0,203.31,168l50.35-50.34A8,8,0,0,0,253.66,106.34ZM93.84,206.85l-55-18.35L88,139.31,124.69,176ZM152,180.69,83.31,112,104,91.31,172.69,160Z</StreamGeometry>
+    <StreamGeometry x:Key="IconText">M208,56V88a8,8,0,0,1-16,0V64H136V192h24a8,8,0,0,1,0,16H96a8,8,0,0,1,0-16h24V64H64V88a8,8,0,0,1-16,0V56a8,8,0,0,1,8-8H200A8,8,0,0,1,208,56Z</StreamGeometry>
+    <StreamGeometry x:Key="IconSmartEraser">M225,80.4,183.6,39a24,24,0,0,0-33.94,0L31,157.66a24,24,0,0,0,0,33.94l30.06,30.06A8,8,0,0,0,66.74,224H216a8,8,0,0,0,0-16h-84.7L225,114.34A24,24,0,0,0,225,80.4ZM108.68,208H70.05L42.33,180.28a8,8,0,0,1,0-11.31L96,115.31,148.69,168Zm105-105L160,156.69,107.31,104,161,50.34a8,8,0,0,1,11.32,0l41.38,41.38a8,8,0,0,1,0,11.31Z</StreamGeometry>
     <StreamGeometry x:Key="IconRotate">M2 13c0 4.97 4.03 9 9 9 1.76 0 3.4-.51 4.79-1.38l-1.46-1.46C13.34 19.69 12.2 20 11 20c-3.86 0-7-3.14-7-7s3.14-7 7-7h.17L9.59 7.59 11 9l4-4-4-4-1.42 1.41L11.17 4H11C6.03 4 2 8.03 2 13zm9 0 6 6 6-6-6-6-6 6zm6 3.17L13.83 13 17 9.83 20.17 13 17 16.17z</StreamGeometry>
-    <StreamGeometry x:Key="IconCrop">M680-40v-160H280q-33 0-56.5-23.5T200-280v-400H40v-80h160v-160h80v640h640v80H760v160h-80Zm0-320v-320H360v-80h320q33 0 56.5 23.5T760-680v320h-80Z</StreamGeometry>
+    <StreamGeometry x:Key="IconCrop">M240,192a8,8,0,0,1-8,8H200v32a8,8,0,0,1-16,0V200H64a8,8,0,0,1-8-8V72H24a8,8,0,0,1,0-16H56V24a8,8,0,0,1,16,0V184H232A8,8,0,0,1,240,192ZM96,72h88v88a8,8,0,0,0,16,0V64a8,8,0,0,0-8-8H96a8,8,0,0,0,0,16Z</StreamGeometry>
 
     <!-- Viewport y Navegacion -->
     <StreamGeometry x:Key="IconFitImage">M5 5h4V3H3v6h2V5zm5 14H5v-4H3v6h6v-2zm9-14h-4V3h6v6h-2V5zm-4 14h4v-4h2v6h-6v-2z</StreamGeometry>

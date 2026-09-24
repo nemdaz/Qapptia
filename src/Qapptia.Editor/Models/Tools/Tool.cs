@@ -37,6 +37,11 @@ public abstract class Tool
     /// </summary>
     public virtual bool IsAction => Type == ToolType.Action;
 
+    /// <summary>
+    /// Indica si la herramienta utiliza y permite seleccionar colores de la paleta.
+    /// </summary>
+    public virtual bool SupportsColor => false;
+
     public string ToolTipText => string.IsNullOrEmpty(Shortcut)
         ? DisplayName
         : $"{DisplayName} ({Shortcut})";
