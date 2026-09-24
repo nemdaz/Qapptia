@@ -41,71 +41,82 @@ public sealed class Program
 #endif
         using var log = Qapptia.Core.Logging.LoggingBootstrap.ConfigureGlobal(logDir, logLevel, "editor");
 
-        using var guard = new MutexSingleInstanceGuard(IpcChannels.Editor);
-        if (!guard.Acquire())
-        {
-            Log.Warning("Instancia de Editor ya existente, intentando despertar...");
-            try
-            {
-                QapptiaIpcClient.SendAsync(IpcChannels.Editor, new WakeUpRequest(), timeoutMs: 1000).GetAwaiter().GetResult();
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "No se pudo despertar la otra instancia de Editor");
-            }
-            return;
-        }
-
-        var dispatcher = new IpcMessageDispatcher(
-            (msg, ct) =>
-            {
-                switch (msg)
-                {
-                    case WakeUpRequest:
-                        Dispatcher.UIThread.Post(() =>
-                        {
-                            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop &&
-                                desktop.MainWindow != null)
-                            {
-                                desktop.MainWindow.Show();
-                                desktop.MainWindow.WindowState = Avalonia.Controls.WindowState.Normal;
-                                desktop.MainWindow.Activate();
-                                desktop.MainWindow.Topmost = true;
-                                desktop.MainWindow.Topmost = false;
-                            }
-                        });
-                        return Task.FromResult<IpcMessage>(new Ack { OriginalType = msg.Type });
-
-                    case ThemeChangedNotification themeMsg:
-                        Log.Information("Editor recibió cambio de tema vía IPC: {Theme}", themeMsg.Theme);
-                        Dispatcher.UIThread.Post(() =>
-                        {
-                            ThemeManager.ApplyTheme(themeMsg.Theme);
-                        });
-                        return Task.FromResult<IpcMessage>(new Ack { OriginalType = msg.Type });
-
-                    default:
-                        return Task.FromResult<IpcMessage>(new Ack { OriginalType = msg.Type });
-                }
-            },
-            Log.Logger.ForContext<IpcMessageDispatcher>());
-
-        using var ipcServer = new QapptiaIpcServer(
-            IpcChannels.Editor,
-            IpcChannels.GetPipeName(IpcChannels.Editor),
-            dispatcher,
-            Log.Logger.ForContext<QapptiaIpcServer>());
-
-        _ = ipcServer.StartAsync();
-
         try
         {
-            Services = ConfigureServices();
-            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+            using var guard = new MutexSingleInstanceGuard(IpcChannels.Editor);
+            if (!guard.Acquire())
+            {
+                Log.Warning("Instancia de Editor ya existente, intentando despertar...");
+                try
+                {
+                    QapptiaIpcClient.SendAsync(IpcChannels.Editor, new WakeUpRequest(), timeoutMs: 1000).GetAwaiter().GetResult();
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "No se pudo despertar la otra instancia de Editor");
+                }
+                return;
+            }
+
+            var dispatcher = new IpcMessageDispatcher(
+                (msg, ct) =>
+                {
+                    switch (msg)
+                    {
+                        case WakeUpRequest:
+                            Dispatcher.UIThread.Post(() =>
+                            {
+                                if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop &&
+                                    desktop.MainWindow != null)
+                                {
+                                    desktop.MainWindow.Show();
+                                    desktop.MainWindow.WindowState = Avalonia.Controls.WindowState.Normal;
+                                    desktop.MainWindow.Activate();
+                                    desktop.MainWindow.Topmost = true;
+                                    desktop.MainWindow.Topmost = false;
+                                }
+                            });
+                            return Task.FromResult<IpcMessage>(new Ack { OriginalType = msg.Type });
+
+                        case ThemeChangedNotification themeMsg:
+                            Log.Information("Editor recibió cambio de tema vía IPC: {Theme}", themeMsg.Theme);
+                            Dispatcher.UIThread.Post(() =>
+                            {
+                                ThemeManager.ApplyTheme(themeMsg.Theme);
+                            });
+                            return Task.FromResult<IpcMessage>(new Ack { OriginalType = msg.Type });
+
+                        default:
+                            return Task.FromResult<IpcMessage>(new Ack { OriginalType = msg.Type });
+                    }
+                },
+                Log.Logger.ForContext<IpcMessageDispatcher>());
+
+            using var ipcServer = new QapptiaIpcServer(
+                IpcChannels.Editor,
+                IpcChannels.GetPipeName(IpcChannels.Editor),
+                dispatcher,
+                Log.Logger.ForContext<QapptiaIpcServer>());
+
+            _ = ipcServer.StartAsync();
+
+            try
+            {
+                Services = ConfigureServices();
+                BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+            }
+            finally
+            {
+                try { ipcServer.StopAsync().GetAwaiter().GetResult(); } catch { }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Fatal(ex, "Fallo fatal en App.Editor durante el ciclo de vida o arranque");
         }
         finally
         {
-            try { ipcServer.StopAsync().GetAwaiter().GetResult(); } catch { }
+            Log.CloseAndFlush();
         }
     }
 
@@ -120,7 +131,8 @@ public sealed class Program
 
         // Módulos transversales de Plataforma (mismo estándar que App.Capture)
 #if WINDOWS
-        if (OperatingSystem.IsWindows()) services.AddWindowsPlatform();
+        // NT 6.1 corresponde a Windows 7
+        if (OperatingSystem.IsWindowsVersionAtLeast(6, 1)) services.AddWindowsPlatform();
 #elif LINUX
         if (OperatingSystem.IsLinux()) services.AddLinuxPlatform();
 #elif MAC

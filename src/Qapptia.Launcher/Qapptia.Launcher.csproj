@@ -7,8 +7,7 @@
     <Product>Qapptia</Product>
     <Title>Qapptia</Title>
     <AssemblyTitle>Qapptia</AssemblyTitle>
-    <TargetFramework Condition="$([MSBuild]::IsOSPlatform('Windows'))">net10.0-windows</TargetFramework>
-    <TargetFramework Condition="!$([MSBuild]::IsOSPlatform('Windows'))">net10.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <ApplicationIcon>Assets\app_icon.ico</ApplicationIcon>
   </PropertyGroup>
 

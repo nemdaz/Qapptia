@@ -33,16 +33,7 @@ internal static class Program
     [STAThread]
     private static void Main(string[] args)
     {
-        using var guard = new MutexSingleInstanceGuard(IpcChannels.Capture);
-        if (!guard.Acquire())
-        {
-            Console.Error.WriteLine("Otra instancia de App.Capture ya está corriendo.");
-            return;
-        }
-
-        // Redirige logs a LocalAppData para evitar errores de permisos.
         var logDir = Qapptia.Core.Constants.DefaultLogDirectory;
-
 #if DEBUG
         var logLevel = LogEventLevel.Debug;
 #else
@@ -50,30 +41,46 @@ internal static class Program
 #endif
         using var _log = LoggingBootstrap.ConfigureGlobal(logDir, logLevel, "capture");
 
-        using var host = BuildHost(args);
-        var appLogger = host.Services.GetRequiredService<Serilog.ILogger>();
-
-        var lifetime = new ClassicDesktopStyleApplicationLifetime
-        {
-            Args = args,
-            ShutdownMode = ShutdownMode.OnExplicitShutdown,
-        };
-        AppBuilder.Configure<HeadlessCaptureApp>()
-            .UsePlatformDetect()
-            .AfterSetup(b =>
-            {
-                if (b.Instance is HeadlessCaptureApp app)
-                {
-                    app.AppHost = host;
-                }
-            })
-            .SetupWithLifetime(lifetime);
-
-        var hostTask = Task.Run(() => host.StartAsync());
-        if (hostTask.IsFaulted) hostTask.GetAwaiter().GetResult();
-
         try
         {
+            using var guard = new MutexSingleInstanceGuard(IpcChannels.Capture);
+            if (!guard.Acquire())
+            {
+                Log.Warning("Otra instancia de App.Capture ya está en ejecución.");
+                try
+                {
+                    QapptiaIpcClient.SendAsync(IpcChannels.Capture, new WakeUpRequest(), timeoutMs: 1000).GetAwaiter().GetResult();
+                }
+                catch (Exception ex)
+                {
+                    Log.Debug(ex, "No se pudo entregar WakeUpRequest a la instancia de captura existente.");
+                }
+                return;
+            }
+
+            Log.Information("Iniciando host de App.Capture en {OS}...", Environment.OSVersion);
+            using var host = BuildHost(args);
+            var appLogger = host.Services.GetRequiredService<Serilog.ILogger>();
+
+            var lifetime = new ClassicDesktopStyleApplicationLifetime
+            {
+                Args = args,
+                ShutdownMode = ShutdownMode.OnExplicitShutdown,
+            };
+            AppBuilder.Configure<HeadlessCaptureApp>()
+                .UsePlatformDetect()
+                .AfterSetup(b =>
+                {
+                    if (b.Instance is HeadlessCaptureApp app)
+                    {
+                        app.AppHost = host;
+                    }
+                })
+                .SetupWithLifetime(lifetime);
+
+            var hostTask = Task.Run(() => host.StartAsync());
+            if (hostTask.IsFaulted) hostTask.GetAwaiter().GetResult();
+
             lifetime.Start(Array.Empty<string>());
             try
             {
@@ -86,8 +93,11 @@ internal static class Program
         }
         catch (Exception ex)
         {
-            appLogger.Error(ex, "Fatal en App.Capture");
-            throw;
+            Log.Fatal(ex, "Fallo fatal en App.Capture durante el ciclo de vida o arranque");
+        }
+        finally
+        {
+            Log.CloseAndFlush();
         }
     }
 
@@ -103,7 +113,8 @@ internal static class Program
         builder.Services.AddSingleton<IConfigService>(_ => new JsonConfigService(configPath));
 
 #if WINDOWS
-        if (OperatingSystem.IsWindows()) builder.Services.AddWindowsPlatform();
+        // NT 6.1 corresponde a Windows 7
+        if (OperatingSystem.IsWindowsVersionAtLeast(6, 1)) builder.Services.AddWindowsPlatform();
 #elif LINUX
         if (OperatingSystem.IsLinux()) builder.Services.AddLinuxPlatform();
         else if (OperatingSystem.IsMacOS())

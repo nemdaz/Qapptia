@@ -41,7 +41,7 @@ public static class LoggingBootstrap
                 retainedFileCountLimit: 12, // Guarda logs de un año
                 fileSizeLimitBytes: 50_000_000,
                 rollOnFileSizeLimit: true,
-                shared: false))
+                shared: true))
             .CreateLogger();
     }
 

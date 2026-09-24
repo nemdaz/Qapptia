@@ -1,29 +1,46 @@
 using System;
-using System.Drawing;
+using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
-using System.Windows.Forms;
 using Qapptia.Core;
 using Qapptia.Core.Abstractions;
-using Qapptia.Core.Extensions;
 using Qapptia.Platform.Windows.UI;
 using Serilog;
+using Windows.Win32;
+using Windows.Win32.Foundation;
+using Windows.Win32.UI.Shell;
+using Windows.Win32.UI.WindowsAndMessaging;
 
 namespace Qapptia.Platform.Windows;
 
+/// <summary>
+/// Implementación de bajo nivel del ciclo de vida del icono de bandeja de sistema (Shell_NotifyIconW) en Win32.
+/// Delega la renderización y presentación del menú contextual a <see cref="NativeTrayMenuRenderer"/>.
+/// </summary>
 public sealed class WindowsTrayIconService : ITrayIconService
 {
+    private const int TrayIconId = 1;
+    private const uint WM_USER = 0x0400;
+    private const uint WM_TRAYICON = WM_USER + 100;
+    private const uint WM_CLOSE = 0x0010;
+    private const uint WM_DESTROY = 0x0002;
+
+    private const uint WM_LBUTTONUP = 0x0202;
+    private const uint WM_LBUTTONDBLCLK = 0x0203;
+    private const uint WM_RBUTTONUP = 0x0205;
+    private const uint WM_CONTEXTMENU = 0x007B;
+
     private readonly ILogger _logger;
     private readonly Thread _staThread;
     private readonly ManualResetEventSlim _ready = new();
 
-    private NotifyIcon? _notifyIcon;
-    private ContextMenuStrip? _contextMenu;
+    private IntPtr _hwnd = IntPtr.Zero;
+    private IntPtr _hIcon = IntPtr.Zero;
+    private TrayMenuDefinition? _menuDefinition;
+    private string? _iconPath;
     private bool _disposed;
-
-    // Almacenamos la definición de inicio temporalmente hasta que arranque el hilo.
-    private TrayMenuDefinition? _initialMenu;
-    private string? _initialIconPath;
+    private WndProcDelegate? _wndProcDelegate;
 
     public WindowsTrayIconService(ILogger logger)
     {
@@ -32,7 +49,7 @@ public sealed class WindowsTrayIconService : ITrayIconService
         _staThread = new Thread(RunMessageLoop)
         {
             IsBackground = true,
-            Name = "WindowsTrayIconLoop"
+            Name = "WindowsNativeTrayIconLoop"
         };
         _staThread.SetApartmentState(ApartmentState.STA);
     }
@@ -41,130 +58,170 @@ public sealed class WindowsTrayIconService : ITrayIconService
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
-        _initialMenu = menu;
-        _initialIconPath = iconPath;
+        _menuDefinition = menu;
+        _iconPath = iconPath;
 
         _staThread.Start();
-        _ready.Wait(); // Esperamos a que el icono esté creado
+        _ready.Wait();
     }
 
     private void RunMessageLoop()
     {
         try
         {
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
+            _wndProcDelegate = WndProc;
+            IntPtr hInst = GetModuleHandle(null);
 
-            _contextMenu = new ContextMenuStrip
+            var wndClass = new WNDCLASSEX
             {
-                BackColor = Color.FromArgb(249, 249, 249),
-                ForeColor = Color.Black,
-                ShowImageMargin = false,
-                ShowCheckMargin = false, // Desactivado porque solo hay acciones instantáneas
-                Renderer = new ModernTrayMenuRenderer(),
-                Font = new Font("Segoe UI", 9f, FontStyle.Regular)
+                cbSize = Marshal.SizeOf<WNDCLASSEX>(),
+                lpfnWndProc = _wndProcDelegate,
+                hInstance = hInst,
+                lpszClassName = "QapptiaNativeTrayWindow_" + Guid.NewGuid().ToString("N")
             };
 
-            _contextMenu.Opening += (s, e) =>
+            ushort regResult = RegisterClassEx(ref wndClass);
+            if (regResult == 0)
             {
-                if (Environment.OSVersion.Version.Build >= 22000) // Windows 11
-                {
-                    int DWMWCP_ROUND = 2;
-                    _ = DwmSetWindowAttribute(_contextMenu.Handle, 33, ref DWMWCP_ROUND, sizeof(int));
-                }
-
-                foreach (ToolStripItem item in _contextMenu.Items)
-                {
-                    if (item is ToolStripMenuItem menuItem && menuItem.Tag is TrayMenuActionItem action && action.ShortcutTextProvider != null)
-                    {
-                        var rawShortcut = action.ShortcutTextProvider() ?? "";
-                        menuItem.ShortcutKeyDisplayString = rawShortcut.ToShortcutTitleCase();
-                    }
-                }
-            };
-
-            if (_initialMenu != null)
-            {
-                foreach (var item in _initialMenu.Items)
-                {
-                    if (item is TrayMenuSeparatorItem)
-                    {
-                        _contextMenu.Items.Add(new ToolStripSeparator());
-                    }
-                    else if (item is TrayMenuActionItem actionItem)
-                    {
-                        var menuItem = new ToolStripMenuItem(actionItem.Text)
-                        {
-                            Tag = actionItem,
-                            Checked = actionItem.IsChecked
-                        };
-                        menuItem.Click += (s, e) =>
-                        {
-                            System.Threading.Tasks.Task.Run(() => actionItem.OnClick?.Invoke());
-                        };
-                        _contextMenu.Items.Add(menuItem);
-                    }
-                }
+                _logger.Warning("No se pudo registrar la clase Win32 para la bandeja de sistema.");
             }
 
-            _notifyIcon = new NotifyIcon
-            {
-                ContextMenuStrip = _contextMenu,
-                Text = Constants.CaptureAppName,
-                Visible = true
-            };
+            _hwnd = CreateWindowEx(
+                0,
+                wndClass.lpszClassName,
+                "QapptiaTrayMessageWindow",
+                0,
+                0, 0, 0, 0,
+                IntPtr.Zero,
+                IntPtr.Zero,
+                hInst,
+                IntPtr.Zero);
 
-            if (!string.IsNullOrEmpty(_initialIconPath) && System.IO.File.Exists(_initialIconPath))
+            if (_hwnd == IntPtr.Zero)
             {
-                // Especificar SmallIconSize evita el escalado borroso nativo de Windows en la bandeja del sistema.
-                _notifyIcon.Icon = new Icon(_initialIconPath, SystemInformation.SmallIconSize);
+                _logger.Error("Error al crear ventana de mensajería Win32 para la bandeja.");
+                return;
             }
 
-            _logger.Information("WindowsTrayIconService inicializado (NotifyIcon nativo).");
+            int cx = GetSystemMetrics(49); // SM_CXSMICON
+            int cy = GetSystemMetrics(50); // SM_CYSMICON
+            if (!string.IsNullOrEmpty(_iconPath) && File.Exists(_iconPath))
+            {
+                _hIcon = LoadImage(IntPtr.Zero, _iconPath, 1, cx, cy, 0x10); // IMAGE_ICON, LR_LOADFROMFILE
+            }
+
+            if (_hIcon == IntPtr.Zero)
+            {
+                _hIcon = ExtractIcon(hInst, Environment.ProcessPath ?? "", 0);
+            }
+
+            unsafe
+            {
+                var notifyData = new NOTIFYICONDATAW
+                {
+                    cbSize = (uint)sizeof(NOTIFYICONDATAW),
+                    hWnd = (HWND)_hwnd,
+                    uID = TrayIconId,
+                    uFlags = NOTIFY_ICON_DATA_FLAGS.NIF_MESSAGE | NOTIFY_ICON_DATA_FLAGS.NIF_ICON | NOTIFY_ICON_DATA_FLAGS.NIF_TIP,
+                    uCallbackMessage = WM_TRAYICON,
+                    hIcon = (HICON)_hIcon
+                };
+
+                CopyStringToBuffer(Constants.CaptureAppName, notifyData.szTip.AsSpan());
+
+                BOOL added = PInvoke.Shell_NotifyIcon(NOTIFY_ICON_MESSAGE.NIM_ADD, in notifyData);
+                if (added)
+                {
+                    _logger.Information("WindowsTrayIconService inicializado (Win32 Shell_NotifyIconW nativo).");
+                }
+                else
+                {
+                    int lastError = Marshal.GetLastWin32Error();
+                    _logger.Warning("Shell_NotifyIcon retorno false al registrar icono (Win32 Error: {Error}).", lastError);
+                }
+            }
         }
         catch (Exception ex)
         {
-            _logger.Error(ex, "Error al inicializar WindowsTrayIconService.");
+            _logger.Error(ex, "Error crítico al inicializar bandeja de sistema Win32.");
         }
         finally
         {
             _ready.Set();
         }
 
-        // Bombea los mensajes de Windows para el NotifyIcon
-        Application.Run();
+        while (GetMessage(out MSG msg, IntPtr.Zero, 0, 0) > 0)
+        {
+            TranslateMessage(ref msg);
+            DispatchMessage(ref msg);
+        }
+    }
 
-        // Limpieza final cuando sale del loop
-        _notifyIcon?.Dispose();
-        _contextMenu?.Dispose();
+    private IntPtr WndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam)
+    {
+        if (msg == WM_TRAYICON)
+        {
+            uint mouseMsg = (uint)(lParam.ToInt64() & 0xFFFF);
+            switch (mouseMsg)
+            {
+                case WM_RBUTTONUP:
+                case WM_CONTEXTMENU:
+                    if (_menuDefinition != null && _hwnd != IntPtr.Zero)
+                    {
+                        NativeTrayMenuRenderer.Show(_hwnd, _menuDefinition);
+                    }
+                    return IntPtr.Zero;
+
+                case WM_LBUTTONUP:
+                case WM_LBUTTONDBLCLK:
+                    if (_menuDefinition != null)
+                    {
+                        NativeTrayMenuRenderer.ExecuteDefaultAction(_menuDefinition);
+                    }
+                    return IntPtr.Zero;
+            }
+        }
+        else if (msg == WM_CLOSE)
+        {
+            DestroyWindow(hWnd);
+            return IntPtr.Zero;
+        }
+        else if (msg == WM_DESTROY)
+        {
+            PostQuitMessage(0);
+            return IntPtr.Zero;
+        }
+
+        return DefWindowProc(hWnd, msg, wParam, lParam);
     }
 
     public void ShowNotification(string title, string message, TrayNotificationType type = TrayNotificationType.Info, int timeoutMs = Constants.NotificationDurationMs)
     {
-        if (_disposed) return;
+        if (_disposed || _hwnd == IntPtr.Zero) return;
 
-        var icon = type switch
+        NOTIFY_ICON_INFOTIP_FLAGS infoFlags = type switch
         {
-            TrayNotificationType.Warning => ToolTipIcon.Warning,
-            TrayNotificationType.Error => ToolTipIcon.Error,
-            _ => ToolTipIcon.Info
+            TrayNotificationType.Warning => NOTIFY_ICON_INFOTIP_FLAGS.NIIF_WARNING,
+            TrayNotificationType.Error => NOTIFY_ICON_INFOTIP_FLAGS.NIIF_ERROR,
+            _ => NOTIFY_ICON_INFOTIP_FLAGS.NIIF_INFO
         };
 
-        void Execute()
+        unsafe
         {
-            if (_notifyIcon != null && _notifyIcon.Visible)
+            var notifyData = new NOTIFYICONDATAW
             {
-                _notifyIcon.ShowBalloonTip(timeoutMs, title, message, icon);
-            }
-        }
+                cbSize = (uint)sizeof(NOTIFYICONDATAW),
+                hWnd = (HWND)_hwnd,
+                uID = TrayIconId,
+                uFlags = NOTIFY_ICON_DATA_FLAGS.NIF_INFO,
+                dwInfoFlags = infoFlags
+            };
+            notifyData.Anonymous.uTimeout = (uint)timeoutMs;
 
-        if (_contextMenu != null && _contextMenu.InvokeRequired)
-        {
-            _contextMenu.BeginInvoke((MethodInvoker)Execute);
-        }
-        else
-        {
-            Execute();
+            CopyStringToBuffer(message ?? "", notifyData.szInfo.AsSpan());
+            CopyStringToBuffer(title ?? "", notifyData.szInfoTitle.AsSpan());
+
+            PInvoke.Shell_NotifyIcon(NOTIFY_ICON_MESSAGE.NIM_MODIFY, in notifyData);
         }
     }
 
@@ -173,22 +230,116 @@ public sealed class WindowsTrayIconService : ITrayIconService
         if (_disposed) return;
         _disposed = true;
 
-        if (_contextMenu != null && _contextMenu.InvokeRequired)
+        if (_hwnd != IntPtr.Zero)
         {
-            _contextMenu.Invoke((MethodInvoker)delegate
+            unsafe
             {
-                Application.ExitThread();
-            });
-        }
-        else
-        {
-            Application.ExitThread();
+                var notifyData = new NOTIFYICONDATAW
+                {
+                    cbSize = (uint)sizeof(NOTIFYICONDATAW),
+                    hWnd = (HWND)_hwnd,
+                    uID = TrayIconId
+                };
+                PInvoke.Shell_NotifyIcon(NOTIFY_ICON_MESSAGE.NIM_DELETE, in notifyData);
+            }
+            PostMessage(_hwnd, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
         }
 
-        _staThread.Join(1000); // Esperar brevemente a que cierre el hilo
+        if (_hIcon != IntPtr.Zero)
+        {
+            DestroyIcon(_hIcon);
+            _hIcon = IntPtr.Zero;
+        }
+
+        _staThread.Join(1000);
+        _ready.Dispose();
     }
 
-    [DllImport("dwmapi.dll")]
-    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
-}
+    private static unsafe void CopyStringToBuffer(string text, Span<char> buffer)
+    {
+        buffer.Clear();
+        if (string.IsNullOrEmpty(text)) return;
+        ReadOnlySpan<char> span = text.AsSpan();
+        int len = Math.Min(span.Length, buffer.Length - 1);
+        span[..len].CopyTo(buffer);
+    }
 
+    #region Win32 Shell & Window P/Invoke
+
+    private delegate IntPtr WndProcDelegate(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct WNDCLASSEX
+    {
+        public int cbSize;
+        public int style;
+        public WndProcDelegate lpfnWndProc;
+        public int cbClsExtra;
+        public int cbWndExtra;
+        public IntPtr hInstance;
+        public IntPtr hIcon;
+        public IntPtr hCursor;
+        public IntPtr hbrBackground;
+        public string? lpszMenuName;
+        public string lpszClassName;
+        public IntPtr hIconSm;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MSG
+    {
+        public IntPtr hwnd;
+        public uint message;
+        public IntPtr wParam;
+        public IntPtr lParam;
+        public uint time;
+        public int ptX;
+        public int ptY;
+    }
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+    private static extern IntPtr GetModuleHandle(string? lpModuleName);
+
+    [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern ushort RegisterClassEx(ref WNDCLASSEX lpwcx);
+
+    [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern IntPtr CreateWindowEx(
+        int dwExStyle, string lpClassName, string lpWindowName, int dwStyle,
+        int x, int y, int nWidth, int nHeight, IntPtr hWndParent, IntPtr hMenu, IntPtr hInstance, IntPtr lpParam);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool DestroyWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern void PostQuitMessage(int nExitCode);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr DefWindowProc(IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    private static extern sbyte GetMessage(out MSG lpMsg, IntPtr hWnd, uint wMsgFilterMin, uint wMsgFilterMax);
+
+    [DllImport("user32.dll")]
+    private static extern bool TranslateMessage(ref MSG lpMsg);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr DispatchMessage(ref MSG lpMsg);
+
+    [DllImport("user32.dll")]
+    private static extern bool PostMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern IntPtr LoadImage(IntPtr hInst, string name, uint type, int cx, int cy, uint fuLoad);
+
+    [DllImport("user32.dll")]
+    private static extern bool DestroyIcon(IntPtr hIcon);
+
+    [DllImport("user32.dll")]
+    private static extern int GetSystemMetrics(int nIndex);
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    private static extern IntPtr ExtractIcon(IntPtr hInst, string pszExeFileName, int nIconIndex);
+
+    #endregion
+}

@@ -7,6 +7,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <!-- Plataforma mínima soportada para Windows (Windows 7 / NT 6.1) -->
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::IsOSPlatform('Windows'))">7.0</SupportedOSPlatformVersion>
 
     <!-- Identidad del producto -->
     <Company>Qapptia</Company>
@@ -38,6 +40,18 @@
     <Configuration Condition="'$(Configuration)' == ''">Debug</Configuration>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <OutputPath>$(MSBuildThisFileDirectory)bin\$(Configuration)\</OutputPath>
+  </PropertyGroup>
+
+  <!-- Optimizaciones de tamaño y runtime para compilaciones Release de producción -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <!-- Desactivar motor de depuración remota de CoreCLR (elimina mscordbi.dll y mscordaccore.dll) -->
+    <DebuggerSupport>false</DebuggerSupport>
+    <!-- Desactivar telemetría de eventos EventSource en BCL (elimina EventLog.Messages.dll) -->
+    <EventSourceSupport>false</EventSourceSupport>
+    <!-- Compactar mensajes de excepciones en System.Private.CoreLib -->
+    <UseSystemResourceKeys>true</UseSystemResourceKeys>
+    <!-- Desactivar serializador binario inseguro obsoleto -->
+    <EnableUnsafeBinaryFormatterSerialization>false</EnableUnsafeBinaryFormatterSerialization>
   </PropertyGroup>
 
 </Project>

@@ -15,9 +15,10 @@ using Xunit;
 
 namespace Qapptia.Capture.Tests;
 
-public sealed class AreaCapturePerformanceTests
+public sealed class AreaCapturePerformanceTests : IDisposable
 {
     private const uint OpaqueAlphaMask = 0xFF000000;
+    private readonly string _tempDir;
     private readonly Mock<IScreenCapture> _screenCaptureMock = new();
     private readonly Mock<ICursorCapture> _cursorCaptureMock = new();
     private readonly Mock<IClipboardService> _clipboardMock = new();
@@ -27,14 +28,26 @@ public sealed class AreaCapturePerformanceTests
 
     public AreaCapturePerformanceTests()
     {
+        _tempDir = Path.Combine(Path.GetTempPath(), "QapptiaTests_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(_tempDir);
+
         var appConfig = new QapptiaConfig
         {
             ShowMouse = true,
             HighlightMouse = false,
             CaptureAllScreens = false,
-            CopyToClipboardArea = false
+            CopyToClipboardArea = false,
+            SavePath = _tempDir
         };
         _configMock.Setup(c => c.Current).Returns(appConfig);
+    }
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_tempDir))
+        {
+            try { Directory.Delete(_tempDir, recursive: true); } catch { }
+        }
     }
 
     [Fact]
