@@ -34,7 +34,7 @@
             </Border>
 
             <!-- Control de tamaño -->
-            <Button Content="-" Padding="6,2" FontSize="11" FontWeight="Bold" Click="DecreaseSize_Click" 
+            <Button Content="-" Padding="6,2" FontSize="11" Click="DecreaseSize_Click" 
                     Background="{DynamicResource M3HoverBrush}" Foreground="{DynamicResource M3OnSurfaceBrush}" CornerRadius="3" MinWidth="22" HorizontalContentAlignment="Center" />
             <TextBox x:Name="SizeTextBox" 
                      Text="24" 
@@ -57,7 +57,7 @@
                      TextChanged="SizeTextBox_TextChanged"
                      LostFocus="SizeTextBox_LostFocus"
                      ToolTip.Tip="Tamaño del texto (Enter para confirmar)" />
-            <Button Content="+" Padding="6,2" FontSize="11" FontWeight="Bold" Click="IncreaseSize_Click" 
+            <Button Content="+" Padding="6,2" FontSize="11" Click="IncreaseSize_Click" 
                     Background="{DynamicResource M3HoverBrush}" Foreground="{DynamicResource M3OnSurfaceBrush}" CornerRadius="3" MinWidth="22" HorizontalContentAlignment="Center" />
             
             <!-- Icono de información -->

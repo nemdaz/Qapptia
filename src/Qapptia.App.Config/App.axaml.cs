@@ -22,7 +22,9 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = new MainWindow();
+            var startInAboutTab = desktop.Args != null &&
+                System.Linq.Enumerable.Any(desktop.Args, a => string.Equals(a, Constants.ArgAbout, StringComparison.OrdinalIgnoreCase));
+            desktop.MainWindow = new MainWindow(startInAboutTab);
         }
 
         base.OnFrameworkInitializationCompleted();

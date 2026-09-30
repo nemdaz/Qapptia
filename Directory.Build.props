@@ -10,6 +10,11 @@
     <!-- Plataforma mínima soportada para Windows (Windows 7 / NT 6.1) -->
     <SupportedOSPlatformVersion Condition="$([MSBuild]::IsOSPlatform('Windows'))">7.0</SupportedOSPlatformVersion>
 
+    <!-- Constantes de compilación de plataforma para el SDK agnóstico net10.0 -->
+    <DefineConstants Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(DefineConstants);WINDOWS</DefineConstants>
+    <DefineConstants Condition="$([MSBuild]::IsOSPlatform('Linux'))">$(DefineConstants);LINUX</DefineConstants>
+    <DefineConstants Condition="$([MSBuild]::IsOSPlatform('OSX'))">$(DefineConstants);MAC</DefineConstants>
+
     <!-- Identidad del producto -->
     <Company>Qapptia</Company>
     <Product>Qapptia</Product>

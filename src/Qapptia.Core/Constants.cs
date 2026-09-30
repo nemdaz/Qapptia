@@ -75,6 +75,35 @@ public static class Constants
     public const string ArgConfig = "--config";
     public const string ArgCapture = "--capture";
     public const string ArgRestart = "--restart";
+    public const string ArgAbout = "--about";
+
+    // URLs de servicios web, descargas y patrocinio / sponsor
+    public const string DefaultSponsorUrl = "https://localhost:8080/sponsor";
+    public const string DefaultDownloadUrl = "https://localhost:8080/download";
+    public const string DefaultVersionApiUrl = "https://localhost:8080/api/version";
+    public const int DefaultHttpTimeoutMs = 5000;
+    public const int StartupUpdateCheckDelayMs = 3000;
+    public const int UpdateCheckCooldownMs = 2000;
+    public static readonly TimeSpan PeriodicUpdateCheckInterval = TimeSpan.FromHours(24);
+
+    // Textos de patrocinio / sponsor compartidos (numerados para estabilidad ante cambios de textos)
+    public const string SponsorText1 = "Invítame un café";
+    public const string SponsorText2 = "Apoyar proyecto";
+    public const string SponsorText3 = "Contribuir";
+    public const string SponsorText4 = "Impulsar desarrollo";
+    public const string SponsorDefaultActionTitle = "Apoyar";
+
+    // Claves de iconos vectoriales de patrocinio / sponsor (numeradas para estabilidad)
+    public const string SponsorIcon1 = "IconSponsorCoffeeHeart";
+    public const string SponsorIcon2 = "IconSponsorRamenHeart";
+    public const string SponsorIcon3 = "IconSponsorCoffeeCup";
+    public const string SponsorIcon4 = "IconSponsorHeartBadge";
+
+    // Identificadores del set de estilos de patrocinio / sponsor (definidos en MaterialTheme.axaml)
+    public const string SponsorStyleA = "SponsorStyleA";
+    public const string SponsorStyleB = "SponsorStyleB";
+    public const string SponsorStyleC = "SponsorStyleC";
+    public const string SponsorStyleD = "SponsorStyleD";
 
     // Notificaciones del sistema
     public const int NotificationDurationMs = 5000;
@@ -83,6 +112,8 @@ public static class Constants
     public const string NotificationTitleConfig = ConfigAppName;
     public const string NotificationMessageCaptureStarted = "El capturador está activo en segundo plano.";
     public const string NotificationMessageCaptureRestarted = "El capturador se ha reiniciado correctamente.";
+    public const string NotificationTitleUpdateAvailable = "Actualización disponible";
+    public const string NotificationMessageUpdateAvailableFormat = "Qapptia v{0} está disponible para descargar.";
 
     // Nombres de recursos y carpetas de assets
     public const string AssetsDirectoryName = "Assets";

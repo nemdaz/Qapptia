@@ -1,24 +1,23 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Themes.Fluent;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Serilog;
 using Qapptia.Capture;
+using Qapptia.Core.Abstractions;
 using Qapptia.Core.Configuration;
 using Qapptia.Core.Ipc;
 using Qapptia.Core.Logging;
 using Qapptia.Core.Platform;
-using Qapptia.Core.Abstractions;
-
-
+using Qapptia.Core.Services;
+using Serilog;
 using Serilog.Events;
-using System.Diagnostics;
-using Avalonia.Platform;
-using Avalonia.Themes.Fluent;
+using CaptureConstants = Qapptia.App.Capture.Common.Constants;
 #if WINDOWS
 using Qapptia.Platform.Windows;
 #elif LINUX
@@ -128,6 +127,9 @@ internal static class Program
         builder.Services.AddHostedService(sp => (CaptureWorker)sp.GetRequiredService<ICaptureActionHandler>());
         builder.Services.AddHostedService<IpcServerHostedService>();
 
+        builder.Services.AddSingleton<IUpdateCheckService, HttpUpdateCheckService>();
+        builder.Services.AddHostedService<UpdateCheckBackgroundService>();
+
         return builder.Build();
     }
 }
@@ -153,18 +155,22 @@ internal sealed class HeadlessCaptureApp : Application
             var logger = AppHost?.Services.GetService<Serilog.ILogger>();
             var captureHandler = AppHost?.Services.GetService<ICaptureActionHandler>();
             var trayService = AppHost?.Services.GetService<ITrayIconService>();
+            var shellService = AppHost?.Services.GetService<IShellService>();
 
             var menuDef = new TrayMenuDefinition();
 
             var config = AppHost?.Services.GetService<IConfigService>();
 
-            menuDef.Items.Add(new TrayMenuActionItem("Capturar pantalla", () => captureHandler?.HandleFullscreenCaptureAsync(CancellationToken.None), shortcutTextProvider: () => config?.Current.ShortcutScreen));
-            menuDef.Items.Add(new TrayMenuActionItem("Capturar área", () => captureHandler?.HandleAreaCaptureAsync(CancellationToken.None), shortcutTextProvider: () => config?.Current.ShortcutArea));
+            menuDef.Items.Add(new TrayMenuActionItem(CaptureConstants.TrayMenuCaptureScreen, () => captureHandler?.HandleFullscreenCaptureAsync(CancellationToken.None), shortcutTextProvider: () => config?.Current.ShortcutScreen));
+            menuDef.Items.Add(new TrayMenuActionItem(CaptureConstants.TrayMenuCaptureArea, () => captureHandler?.HandleAreaCaptureAsync(CancellationToken.None), shortcutTextProvider: () => config?.Current.ShortcutArea));
             menuDef.Items.Add(new TrayMenuSeparatorItem());
-            menuDef.Items.Add(new TrayMenuActionItem("Editor", () => LaunchApp(Qapptia.Core.Constants.EditorExecutableName, Qapptia.Core.Constants.ArgEditor)));
-            menuDef.Items.Add(new TrayMenuActionItem("Configuración", () => LaunchApp(Qapptia.Core.Constants.ConfigExecutableName, Qapptia.Core.Constants.ArgConfig)));
+            menuDef.Items.Add(new TrayMenuActionItem(CaptureConstants.TrayMenuEditor, () => LaunchApp(Qapptia.Core.Constants.EditorExecutableName, Qapptia.Core.Constants.ArgEditor)));
+            menuDef.Items.Add(new TrayMenuActionItem(CaptureConstants.TrayMenuConfig, () => LaunchApp(Qapptia.Core.Constants.ConfigExecutableName, Qapptia.Core.Constants.ArgConfig)));
             menuDef.Items.Add(new TrayMenuSeparatorItem());
-            menuDef.Items.Add(new TrayMenuActionItem("Reiniciar", () =>
+            menuDef.Items.Add(new TrayMenuActionItem(Qapptia.Core.Constants.SponsorDefaultActionTitle, () => shellService?.OpenUrl(Qapptia.Core.Constants.DefaultSponsorUrl), textProvider: () => SponsorVisualHelper.GetRandomCombination().Text));
+            menuDef.Items.Add(new TrayMenuActionItem(CaptureConstants.TrayMenuAbout, () => LaunchApp(Qapptia.Core.Constants.ConfigExecutableName, Qapptia.Core.Constants.ArgAbout)));
+            menuDef.Items.Add(new TrayMenuSeparatorItem());
+            menuDef.Items.Add(new TrayMenuActionItem(CaptureConstants.TrayMenuRestart, () =>
             {
                 var exePath = Process.GetCurrentProcess().MainModule?.FileName;
                 if (!string.IsNullOrEmpty(exePath))
@@ -173,7 +179,7 @@ internal sealed class HeadlessCaptureApp : Application
                 }
                 desktop.Shutdown();
             }));
-            menuDef.Items.Add(new TrayMenuActionItem("Salir", () => desktop.Shutdown()));
+            menuDef.Items.Add(new TrayMenuActionItem(CaptureConstants.TrayMenuExit, () => desktop.Shutdown()));
 
             var iconPath = Path.Combine(AppContext.BaseDirectory, Qapptia.Core.Constants.AssetsDirectoryName, Qapptia.Core.Constants.TrayIconFileName);
             trayService?.Initialize(menuDef, iconPath);

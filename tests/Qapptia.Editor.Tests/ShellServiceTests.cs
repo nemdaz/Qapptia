@@ -16,8 +16,10 @@ public class MockShellService : IShellService
 {
     public string? LastOpenedFile { get; private set; }
     public string? LastShownInFolderFile { get; private set; }
+    public string? LastOpenedUrl { get; private set; }
     public bool OpenFileResult { get; set; } = true;
     public bool ShowInFolderResult { get; set; } = true;
+    public bool OpenUrlResult { get; set; } = true;
 
     public bool OpenFile(string filePath)
     {
@@ -29,6 +31,12 @@ public class MockShellService : IShellService
     {
         LastShownInFolderFile = filePath;
         return ShowInFolderResult;
+    }
+
+    public bool OpenUrl(string url)
+    {
+        LastOpenedUrl = url;
+        return OpenUrlResult;
     }
 }
 
@@ -135,6 +143,8 @@ public sealed class ShellServiceTests : IDisposable
         service.OpenFile("any_file.png").Should().BeFalse();
         service.ShowInFolder(string.Empty).Should().BeFalse();
         service.ShowInFolder("any_file.png").Should().BeFalse();
+        service.OpenUrl(string.Empty).Should().BeFalse();
+        service.OpenUrl("https://example.com").Should().BeFalse();
     }
 
 #if WINDOWS

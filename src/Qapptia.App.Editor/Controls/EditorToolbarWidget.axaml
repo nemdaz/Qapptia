@@ -305,14 +305,33 @@
             </Border>
             </StackPanel>
 
-            <!-- Right aligned actions (Capture status & settings) -->
+            <!-- Right aligned actions (Sponsor, Capture status, Config & About) -->
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <!-- Patrocinio / Sponsor (Botón pastel con contorno, colores, icono y texto aleatorios) -->
+                <Button Classes="sponsor-button"
+                        Classes.SponsorStyleA="{Binding IsSponsorStyleA}"
+                        Classes.SponsorStyleB="{Binding IsSponsorStyleB}"
+                        Classes.SponsorStyleC="{Binding IsSponsorStyleC}"
+                        Classes.SponsorStyleD="{Binding IsSponsorStyleD}"
+                        Command="{Binding SponsorCommand}"
+                        ToolTip.Tip="{Binding SponsorText}"
+                        Padding="8,3"
+                        Height="30"
+                        VerticalAlignment="Center"
+                        VerticalContentAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <Image Source="{Binding SponsorIcon}" Width="18" Height="18" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding SponsorText}" VerticalAlignment="Center" FontSize="14" />
+                    </StackPanel>
+                </Button>
+
                 <!-- Estado del Capturador en segundo plano (Fondo Verde/Rojo compacto) -->
-                <Border Background="{DynamicResource M3SurfaceVariantBrush}" CornerRadius="6" Padding="2">
+                <Border Background="{DynamicResource M3SurfaceVariantBrush}" CornerRadius="6" Padding="2" VerticalAlignment="Center">
                     <Button Command="{Binding LaunchOrWakeCaptureCommand}"
                             ToolTip.Tip="{Binding CaptureStatusToolTip}"
                             Background="Transparent"
-                            Padding="2">
+                            Padding="2"
+                            VerticalContentAlignment="Center">
                         <Border Background="{Binding CaptureStatusBackgroundBrush}"
                                 CornerRadius="4"
                                 Padding="2"
@@ -323,10 +342,17 @@
                     </Button>
                 </Border>
 
-                <!-- Configuración -->
-                <Border Background="{DynamicResource M3SurfaceVariantBrush}" CornerRadius="6" Padding="2">
-                    <Button Command="{Binding OpenConfigCommand}" ToolTip.Tip="Configuración" Background="Transparent" Padding="4">
+                <!-- Configuración (tuerca) -->
+                <Border Background="{DynamicResource M3SurfaceVariantBrush}" CornerRadius="6" Padding="2" VerticalAlignment="Center">
+                    <Button Command="{Binding OpenConfigCommand}" ToolTip.Tip="Configuración" Background="Transparent" Padding="4" VerticalContentAlignment="Center">
                         <PathIcon Data="{StaticResource IconConfig}" Width="16" Height="16" />
+                    </Button>
+                </Border>
+
+                <!-- Acerca de (solo icono a la derecha de Configuración) -->
+                <Border Background="{DynamicResource M3SurfaceVariantBrush}" CornerRadius="6" Padding="2" VerticalAlignment="Center">
+                    <Button Command="{Binding OpenAboutCommand}" ToolTip.Tip="Acerca de Qapptia" Background="Transparent" Padding="4" VerticalContentAlignment="Center">
+                        <PathIcon Data="{StaticResource IconInfo}" Width="16" Height="16" />
                     </Button>
                 </Border>
             </StackPanel>

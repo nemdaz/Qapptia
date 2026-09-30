@@ -33,7 +33,19 @@ public partial class EditorViewModel : ObservableObject, IDisposable
 
     private readonly IClipboardService? _clipboardService;
     private readonly ICaptureAppService _captureAppService;
+    private readonly IShellService _shellService;
+    private readonly SponsorVisualInfo _sponsorVisual;
     private CancellationTokenSource? _toastCts;
+
+    public string SponsorText => _sponsorVisual.Text;
+    public string SponsorIconKey => _sponsorVisual.IconKey;
+    public string SponsorStyleKey => _sponsorVisual.StyleKey;
+    public bool IsSponsorStyleA => _sponsorVisual.StyleKey == SponsorVisualHelper.StyleA;
+    public bool IsSponsorStyleB => _sponsorVisual.StyleKey == SponsorVisualHelper.StyleB;
+    public bool IsSponsorStyleC => _sponsorVisual.StyleKey == SponsorVisualHelper.StyleC;
+    public bool IsSponsorStyleD => _sponsorVisual.StyleKey == SponsorVisualHelper.StyleD;
+    public IImage? SponsorIcon => Application.Current?.TryGetResource(SponsorIconKey, null, out var res) == true ? res as IImage : null;
+
 
     public SidebarViewModel Sidebar { get; }
     public ToolbarViewModel Toolbar { get; }
@@ -113,6 +125,8 @@ public partial class EditorViewModel : ObservableObject, IDisposable
         var navService = navigationService ?? new NavigationService(Log.Logger.ForContext<NavigationService>());
         var canvasService = canvasStateService ?? new CanvasStateService(Log.Logger.ForContext<CanvasStateService>());
         var shell = shellService ?? NullShellService.Instance;
+        _shellService = shell;
+        _sponsorVisual = SponsorVisualHelper.GetRandomCombination();
 
         _captureAppService = captureAppService ?? NullCaptureAppService.Instance;
         _isCaptureActive = _captureAppService.IsRunning;
@@ -453,6 +467,43 @@ public partial class EditorViewModel : ObservableObject, IDisposable
             Log.Error(ex, "Error opening config app from editor");
         }
     }
+
+    [RelayCommand]
+    public void OpenAbout()
+    {
+        try
+        {
+            var exeName = Qapptia.Core.Constants.ConfigExecutableName;
+            var exePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, exeName);
+            if (File.Exists(exePath))
+            {
+                Process.Start(new ProcessStartInfo(exePath, Qapptia.Core.Constants.ArgAbout) { UseShellExecute = true });
+            }
+            else
+            {
+                ShowToast(Constants.ToastConfigNotFound, NotificationType.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowToast(Constants.ToastConfigError, NotificationType.Error);
+            Log.Error(ex, "Error opening config app about tab from editor");
+        }
+    }
+
+    [RelayCommand]
+    public void Sponsor()
+    {
+        try
+        {
+            _shellService.OpenUrl(Qapptia.Core.Constants.DefaultSponsorUrl);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error opening sponsor URL from editor");
+        }
+    }
+
 
     private void OnCaptureStatusChanged(object? sender, bool isRunning)
     {

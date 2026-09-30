@@ -4,6 +4,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:Qapptia.App.Config.ViewModels"
         xmlns:controls="using:Qapptia.App.Config.Controls"
+        xmlns:core="using:Qapptia.Core"
         mc:Ignorable="d" d:DesignWidth="580" d:DesignHeight="500"
         Width="580" Height="550"
         WindowStartupLocation="CenterScreen"
@@ -28,7 +29,7 @@
     <Grid RowDefinitions="*,Auto" Margin="16">
         
         <!-- Tabs -->
-        <TabControl Grid.Row="0" Margin="0,0,0,16">
+        <TabControl Grid.Row="0" Margin="0,0,0,16" SelectedIndex="{Binding SelectedTabIndex}">
             
             <!-- Pestaña General -->
             <TabItem Header="General">
@@ -123,6 +124,94 @@
                                FontSize="14"
                                Foreground="{DynamicResource M3OnSurfaceVariantBrush}" />
                 </Panel>
+            </TabItem>
+
+            <!-- Pestaña Acerca de -->
+            <TabItem Header="Acerca de">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Spacing="16" Margin="16">
+                        
+                        <!-- Banner Superior: Nombre y Versión -->
+                        <Border Background="{DynamicResource M3SurfaceVariantBrush}" CornerRadius="8" Padding="14">
+                            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto">
+                                <Image Grid.Row="0" Grid.RowSpan="2" Grid.Column="0" 
+                                       Source="avares://Qapptia.App.Config/Assets/app_icon.ico" 
+                                       Width="64" Height="64" Margin="0,0,16,0" VerticalAlignment="Center"
+                                       RenderOptions.BitmapInterpolationMode="HighQuality" />
+                                <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <TextBlock Text="Qapptia" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource M3OnSurfaceBrush}" />
+                                    <Border Background="{DynamicResource M3PrimaryBrush}" CornerRadius="4" Padding="6,2" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Source={x:Static core:Constants.AppVersion}, StringFormat='v{0}'}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource M3OnPrimaryBrush}" />
+                                    </Border>
+                                </StackPanel>
+                                <TextBlock Grid.Row="1" Grid.Column="1" 
+                                           Text="Herramienta de captura de pantalla y edición vectorial de alta precisión." 
+                                           FontSize="12" Foreground="{DynamicResource M3OnSurfaceVariantBrush}" Margin="0,4,0,0" TextWrapping="Wrap" />
+                            </Grid>
+                        </Border>
+
+                        <!-- Sección Patrocinio / Sponsor (Random Icon + Random Text) -->
+                        <HeaderedContentControl Header="Patrocinio y apoyo">
+                            <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                                <TextBlock Grid.Column="0" 
+                                           Text="Qapptia es un proyecto libre e independiente. Tu patrocinio impulsa la creación de nuevas características." 
+                                           FontSize="12" Foreground="{DynamicResource M3OnSurfaceBrush}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,16,0" />
+                                <Button Grid.Column="1" 
+                                        Command="{Binding SponsorCommand}"
+                                        ToolTip.Tip="{Binding SponsorText}"
+                                        Width="210"
+                                        Height="36"
+                                        HorizontalContentAlignment="Center"
+                                        VerticalContentAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        Classes="sponsor-button"
+                                        Classes.SponsorStyleA="{Binding IsSponsorStyleA}"
+                                        Classes.SponsorStyleB="{Binding IsSponsorStyleB}"
+                                        Classes.SponsorStyleC="{Binding IsSponsorStyleC}"
+                                        Classes.SponsorStyleD="{Binding IsSponsorStyleD}">
+                                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Image Source="{Binding SponsorIcon}" Width="18" Height="18" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding SponsorText}" FontSize="14" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+                        </HeaderedContentControl>
+
+                        <!-- Sección Comprobación y Actualización -->
+                        <HeaderedContentControl Header="Actualizaciones de software">
+                            <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                                <StackPanel Grid.Column="0" Spacing="6" VerticalAlignment="Center" Margin="0,0,16,0">
+                                    <TextBlock Text="{Binding UpdateStatusMessage}" 
+                                               FontSize="12" 
+                                               Foreground="{DynamicResource M3OnSurfaceBrush}" 
+                                               TextWrapping="Wrap" />
+                                    <ProgressBar IsIndeterminate="True" 
+                                                 Height="4" 
+                                                 IsVisible="{Binding IsCheckingUpdate}" 
+                                                 HorizontalAlignment="Stretch" />
+                                </StackPanel>
+
+                                <Button Grid.Column="1" 
+                                        Command="{Binding UpdateActionCommand}" 
+                                        IsEnabled="{Binding CanExecuteUpdateAction}" 
+                                        ToolTip.Tip="{Binding UpdateButtonText}"
+                                        Width="210"
+                                        Height="36"
+                                        HorizontalContentAlignment="Center"
+                                        VerticalContentAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        Classes="outline-button"
+                                        Classes.accent="{Binding IsUpdateAvailable}">
+                                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <PathIcon Data="{StaticResource IconRefresh}" Width="16" Height="16" VerticalAlignment="Center" IsVisible="{Binding !IsUpdateAvailable}" />
+                                        <TextBlock Text="{Binding UpdateButtonText}" FontSize="14" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+                        </HeaderedContentControl>
+
+                    </StackPanel>
+                </ScrollViewer>
             </TabItem>
 
         </TabControl>

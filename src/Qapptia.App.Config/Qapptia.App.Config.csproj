@@ -11,7 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <AvaloniaResource Include="Assets\config_icon.ico" />
+    <AvaloniaResource Include="Assets\**" />
   </ItemGroup>
 
   <ItemGroup>
@@ -30,6 +30,16 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Qapptia.Core\Qapptia.Core.csproj" />
     <ProjectReference Include="..\Qapptia.UI.Components\Qapptia.UI.Components.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+    <ProjectReference Include="..\Qapptia.Platform.Windows\Qapptia.Platform.Windows.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="!$([MSBuild]::IsOSPlatform('Windows'))">
+    <ProjectReference Include="..\Qapptia.Platform.Linux\Qapptia.Platform.Linux.csproj" />
+    <ProjectReference Include="..\Qapptia.Platform.MacOS\Qapptia.Platform.MacOS.csproj" />
   </ItemGroup>
 </Project>

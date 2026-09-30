@@ -110,4 +110,35 @@ public sealed class WindowsShellService : IShellService
             return false;
         }
     }
+
+    public bool OpenUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            _logger.Warning("URL vacía al intentar abrir en el navegador.");
+            return false;
+        }
+
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
+            (!string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) &&
+             !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)))
+        {
+            _logger.Warning("Esquema de URL no permitido o inválido por seguridad: {Url}", url);
+            return false;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(uri.AbsoluteUri)
+            {
+                UseShellExecute = true
+            });
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "Error al abrir la URL en Windows: {Url}", url);
+            return false;
+        }
+    }
 }

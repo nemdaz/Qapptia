@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -27,7 +28,9 @@ sealed class Program
             Log.Warning("Instancia de Config ya existente, intentando despertar...");
             try
             {
-                QapptiaIpcClient.SendAsync(IpcChannels.Config, new WakeUpRequest(), timeoutMs: 1000).GetAwaiter().GetResult();
+                var isAbout = args.Any(a => string.Equals(a, Qapptia.Core.Constants.ArgAbout, StringComparison.OrdinalIgnoreCase));
+                var request = new WakeUpRequest { Argument = isAbout ? Qapptia.Core.Constants.ArgAbout : null };
+                QapptiaIpcClient.SendAsync(IpcChannels.Config, request, timeoutMs: 1000).GetAwaiter().GetResult();
             }
             catch (Exception ex)
             {
@@ -41,7 +44,7 @@ sealed class Program
             {
                 switch (msg)
                 {
-                    case WakeUpRequest:
+                    case WakeUpRequest wakeMsg:
                         Dispatcher.UIThread.Post(() =>
                         {
                             if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop &&
@@ -52,6 +55,12 @@ sealed class Program
                                 desktop.MainWindow.Activate();
                                 desktop.MainWindow.Topmost = true;
                                 desktop.MainWindow.Topmost = false;
+
+                                if (string.Equals(wakeMsg.Argument, Qapptia.Core.Constants.ArgAbout, StringComparison.OrdinalIgnoreCase) &&
+                                    desktop.MainWindow.DataContext is ViewModels.ConfigViewModel vm)
+                                {
+                                    vm.SelectedTabIndex = 3;
+                                }
                             }
                         });
                         return Task.FromResult<IpcMessage>(new Ack { OriginalType = msg.Type });

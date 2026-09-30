@@ -115,6 +115,29 @@ public sealed class MacShellService : IShellService
             return false;
         }
     }
+
+    public bool OpenUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return false;
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
+            (!string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) &&
+             !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)))
+        {
+            _logger?.Warning("Esquema no permitido en macOS: {Url}", url);
+            return false;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo("open", $"\"{uri.AbsoluteUri}\"") { UseShellExecute = false });
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger?.Error(ex, "Error al abrir URL en macOS: {Url}", url);
+            return false;
+        }
+    }
 }
 
 public static class ServiceCollectionExtensions

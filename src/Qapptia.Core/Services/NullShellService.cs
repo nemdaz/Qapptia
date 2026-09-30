@@ -12,4 +12,5 @@ public sealed class NullShellService : IShellService
 
     public bool OpenFile(string filePath) => false;
     public bool ShowInFolder(string filePath) => false;
+    public bool OpenUrl(string url) => false;
 }

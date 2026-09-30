@@ -113,6 +113,29 @@ public sealed class LinuxShellService : IShellService
             return false;
         }
     }
+
+    public bool OpenUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return false;
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
+            (!string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) &&
+             !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)))
+        {
+            _logger?.Warning("Esquema no permitido en Linux: {Url}", url);
+            return false;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo("xdg-open", $"\"{uri.AbsoluteUri}\"") { UseShellExecute = false });
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger?.Error(ex, "Error al abrir URL en Linux: {Url}", url);
+            return false;
+        }
+    }
 }
 
 public static class ServiceCollectionExtensions

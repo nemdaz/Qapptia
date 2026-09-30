@@ -6,11 +6,13 @@ namespace Qapptia.App.Config;
 
 public partial class MainWindow : Window
 {
-    public MainWindow()
+    public MainWindow() : this(false) { }
+
+    public MainWindow(bool startInAboutTab)
     {
         InitializeComponent();
 
-        var vm = new ConfigViewModel();
+        var vm = new ConfigViewModel(startInAboutTab: startInAboutTab);
         vm.RequestClose = Close;
         vm.RequestBrowsePath = ShowFolderDialogAsync;
 
@@ -24,7 +26,7 @@ public partial class MainWindow : Window
 
         var result = await topLevel.StorageProvider.OpenFolderPickerAsync(new Avalonia.Platform.Storage.FolderPickerOpenOptions
         {
-            Title = "Selecciona carpeta de guardado",
+            Title = Common.Constants.DialogSelectFolderTitle,
             AllowMultiple = false
         });
 

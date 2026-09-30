@@ -10,12 +10,178 @@
     <!-- Botones estándar -->
     <Style Selector="Button">
         <Setter Property="Foreground" Value="{DynamicResource M3OnSurfaceBrush}" />
+        <Setter Property="FontWeight" Value="Normal" />
     </Style>
     <Style Selector="Button PathIcon">
         <Setter Property="Foreground" Value="{DynamicResource M3OnSurfaceBrush}" />
     </Style>
+    <Style Selector="Button TextBlock">
+        <Setter Property="FontWeight" Value="Normal" />
+    </Style>
     <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource M3HoverBrush}" />
+    </Style>
+
+    <!-- Botón con contorno neutro (estilo Outline para botones de acción) -->
+    <Style Selector="Button.outline-button">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="{DynamicResource M3OutlineVariantBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="FontWeight" Value="Normal" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.outline-button /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="{DynamicResource M3OutlineVariantBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="6" />
+    </Style>
+    <Style Selector="Button.outline-button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource M3HoverBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource M3OutlineBrush}" />
+    </Style>
+    <Style Selector="Button.outline-button:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource M3SurfaceVariantBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource M3OutlineBrush}" />
+    </Style>
+
+    <!-- =================================================================== -->
+    <!-- SET DE ESTILOS DE PATROCINIO / SPONSOR                              -->
+    <!-- Identificadores unificados: SponsorStyleA, SponsorStyleB, etc.      -->
+    <!-- =================================================================== -->
+
+    <!-- Botón Sponsor / Apoyar base (por defecto Estilo A: Mostaza pastel) -->
+    <Style Selector="Button.sponsor-button, Button.SponsorButton">
+        <Setter Property="Background" Value="#FDE68A" />
+        <Setter Property="BorderBrush" Value="#D97706" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Foreground" Value="#78350F" />
+        <Setter Property="FontWeight" Value="Normal" />
+        <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.sponsor-button /template/ ContentPresenter#PART_ContentPresenter, Button.SponsorButton /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#FDE68A" />
+        <Setter Property="BorderBrush" Value="#D97706" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="6" />
+    </Style>
+    <Style Selector="Button.sponsor-button:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.SponsorButton:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#FCD34D" />
+        <Setter Property="BorderBrush" Value="#B45309" />
+    </Style>
+    <Style Selector="Button.sponsor-button:pressed /template/ ContentPresenter#PART_ContentPresenter, Button.SponsorButton:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#F59E0B" />
+        <Setter Property="BorderBrush" Value="#92400E" />
+    </Style>
+    <Style Selector="Button.sponsor-button TextBlock, Button.SponsorButton TextBlock">
+        <Setter Property="Foreground" Value="#78350F" />
+        <Setter Property="FontWeight" Value="Normal" />
+    </Style>
+
+    <!-- SET DE ESTILO A: Mostaza Pastel (SponsorStyleA) -->
+    <Style Selector="Button.SponsorStyleA, Button.sponsor-style-a">
+        <Setter Property="Background" Value="#FDE68A" />
+        <Setter Property="BorderBrush" Value="#D97706" />
+        <Setter Property="Foreground" Value="#78350F" />
+        <Setter Property="FontWeight" Value="Normal" />
+    </Style>
+    <Style Selector="Button.SponsorStyleA /template/ ContentPresenter#PART_ContentPresenter, Button.sponsor-style-a /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#FDE68A" />
+        <Setter Property="BorderBrush" Value="#D97706" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="6" />
+    </Style>
+    <Style Selector="Button.SponsorStyleA:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.sponsor-style-a:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#FCD34D" />
+        <Setter Property="BorderBrush" Value="#B45309" />
+    </Style>
+    <Style Selector="Button.SponsorStyleA:pressed /template/ ContentPresenter#PART_ContentPresenter, Button.sponsor-style-a:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#F59E0B" />
+        <Setter Property="BorderBrush" Value="#92400E" />
+    </Style>
+    <Style Selector="Button.SponsorStyleA TextBlock, Button.sponsor-style-a TextBlock">
+        <Setter Property="Foreground" Value="#78350F" />
+        <Setter Property="FontWeight" Value="Normal" />
+    </Style>
+
+    <!-- SET DE ESTILO B: Menta Pastel (SponsorStyleB) -->
+    <Style Selector="Button.SponsorStyleB, Button.sponsor-style-b">
+        <Setter Property="Background" Value="#A7F3D0" />
+        <Setter Property="BorderBrush" Value="#059669" />
+        <Setter Property="Foreground" Value="#064E3B" />
+        <Setter Property="FontWeight" Value="Normal" />
+    </Style>
+    <Style Selector="Button.SponsorStyleB /template/ ContentPresenter#PART_ContentPresenter, Button.sponsor-style-b /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#A7F3D0" />
+        <Setter Property="BorderBrush" Value="#059669" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="6" />
+    </Style>
+    <Style Selector="Button.SponsorStyleB:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.sponsor-style-b:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#6EE7B7" />
+        <Setter Property="BorderBrush" Value="#047857" />
+    </Style>
+    <Style Selector="Button.SponsorStyleB:pressed /template/ ContentPresenter#PART_ContentPresenter, Button.sponsor-style-b:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#34D399" />
+        <Setter Property="BorderBrush" Value="#065F46" />
+    </Style>
+    <Style Selector="Button.SponsorStyleB TextBlock, Button.sponsor-style-b TextBlock">
+        <Setter Property="Foreground" Value="#064E3B" />
+        <Setter Property="FontWeight" Value="Normal" />
+    </Style>
+
+    <!-- SET DE ESTILO C: Melocotón Pastel (SponsorStyleC) -->
+    <Style Selector="Button.SponsorStyleC, Button.sponsor-style-c">
+        <Setter Property="Background" Value="#FED7AA" />
+        <Setter Property="BorderBrush" Value="#EA580C" />
+        <Setter Property="Foreground" Value="#7C2D12" />
+        <Setter Property="FontWeight" Value="Normal" />
+    </Style>
+    <Style Selector="Button.SponsorStyleC /template/ ContentPresenter#PART_ContentPresenter, Button.sponsor-style-c /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#FED7AA" />
+        <Setter Property="BorderBrush" Value="#EA580C" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="6" />
+    </Style>
+    <Style Selector="Button.SponsorStyleC:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.sponsor-style-c:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#FDBA74" />
+        <Setter Property="BorderBrush" Value="#C2410C" />
+    </Style>
+    <Style Selector="Button.SponsorStyleC:pressed /template/ ContentPresenter#PART_ContentPresenter, Button.sponsor-style-c:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#FB923C" />
+        <Setter Property="BorderBrush" Value="#9A3412" />
+    </Style>
+    <Style Selector="Button.SponsorStyleC TextBlock, Button.sponsor-style-c TextBlock">
+        <Setter Property="Foreground" Value="#7C2D12" />
+        <Setter Property="FontWeight" Value="Normal" />
+    </Style>
+
+    <!-- SET DE ESTILO D: Lavanda Pastel (SponsorStyleD) -->
+    <Style Selector="Button.SponsorStyleD, Button.sponsor-style-d">
+        <Setter Property="Background" Value="#DDD6FE" />
+        <Setter Property="BorderBrush" Value="#7C3AED" />
+        <Setter Property="Foreground" Value="#4C1D95" />
+        <Setter Property="FontWeight" Value="Normal" />
+    </Style>
+    <Style Selector="Button.SponsorStyleD /template/ ContentPresenter#PART_ContentPresenter, Button.sponsor-style-d /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#DDD6FE" />
+        <Setter Property="BorderBrush" Value="#7C3AED" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="6" />
+    </Style>
+    <Style Selector="Button.SponsorStyleD:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.sponsor-style-d:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#C4B5FD" />
+        <Setter Property="BorderBrush" Value="#6D28D9" />
+    </Style>
+    <Style Selector="Button.SponsorStyleD:pressed /template/ ContentPresenter#PART_ContentPresenter, Button.sponsor-style-d:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#A78BFA" />
+        <Setter Property="BorderBrush" Value="#5B21B6" />
+    </Style>
+    <Style Selector="Button.SponsorStyleD TextBlock, Button.sponsor-style-d TextBlock">
+        <Setter Property="Foreground" Value="#4C1D95" />
+        <Setter Property="FontWeight" Value="Normal" />
     </Style>
 
     <!-- RadioButtons / Herramientas -->

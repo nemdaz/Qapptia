@@ -19,6 +19,7 @@ public abstract class IpcMessage
 public sealed class WakeUpRequest : IpcMessage
 {
     public override IpcMessageType Type => IpcMessageType.WakeUp;
+    public string? Argument { get; set; }
 }
 
 /// <summary>
