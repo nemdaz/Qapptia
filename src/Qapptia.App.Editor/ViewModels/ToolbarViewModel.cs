@@ -17,7 +17,7 @@ public partial class ToolbarViewModel : ObservableObject
     private readonly IEditorStateService _stateService;
     private Tool? _previousTool;
 
-    public static IReadOnlyList<Tool> AvailableTools { get; } = new Tool[]
+    public static IReadOnlyList<Tool> AvailableTools => new Tool[]
     {
         ShapeFactory.Line,
         ShapeFactory.FreehandLine,
@@ -88,9 +88,10 @@ public partial class ToolbarViewModel : ObservableObject
         var activeGroup = Groups.FirstOrDefault(g => g.ContainsTool(_activeTool));
         activeGroup?.SelectTool(_activeTool);
 
-        // Cargar color activo: de la herramienta guardada (si soporta color), o global, o primer favorito
+        // Cargar color activo de forma transversal para la herramienta activa
+        string activeKey = _activeTool.Id.ToLowerInvariant();
         if (_activeTool.SupportsColor &&
-            state.Palette.ToolFavoriteColors.TryGetValue(_activeTool.Id.ToLowerInvariant(), out var toolColorHex) &&
+            state.Palette.ToolFavoriteColors.TryGetValue(activeKey, out var toolColorHex) &&
             Color.TryParse(toolColorHex, out var parsedToolColor))
         {
             _activeColor = parsedToolColor;
@@ -116,6 +117,13 @@ public partial class ToolbarViewModel : ObservableObject
         }
 
         _activeBrush = new SolidColorBrush(_activeColor);
+
+        // Registrar transversalmente el color activo inicial de la herramienta en el diccionario si aún no existía
+        if (_activeTool.SupportsColor && !state.Palette.ToolFavoriteColors.ContainsKey(activeKey))
+        {
+            state.Palette.ToolFavoriteColors[activeKey] = $"#{_activeColor.A:X2}{_activeColor.R:X2}{_activeColor.G:X2}{_activeColor.B:X2}";
+            _stateService.Save(state);
+        }
     }
 
     partial void OnActiveToolChanged(Tool value)
@@ -134,7 +142,7 @@ public partial class ToolbarViewModel : ObservableObject
         // 1. Notificar inmediatamente para confirmar estado previo y limpiar selección del lienzo
         ToolChanged?.Invoke(this, value);
 
-        // 2. Persistir herramienta activa y restaurar su color favorito únicamente si soporta color
+        // 2. Persistir herramienta activa y restaurar su color favorito de forma transversal
         if (value.AltersCanvasGeometry)
         {
             var state = _stateService.Load();
@@ -142,11 +150,20 @@ public partial class ToolbarViewModel : ObservableObject
 
             if (value.SupportsColor)
             {
-                if (state.Palette.ToolFavoriteColors.TryGetValue(value.Id.ToLowerInvariant(), out var toolColorHex) &&
+                string key = value.Id.ToLowerInvariant();
+
+                if (state.Palette.ToolFavoriteColors.TryGetValue(key, out var toolColorHex) &&
                     Color.TryParse(toolColorHex, out var parsedToolColor))
                 {
                     ActiveColor = parsedToolColor;
                 }
+                else
+                {
+                    // Si la herramienta aún no tiene color asignado en el estado, se registra su color actual
+                    state.Palette.ToolFavoriteColors[key] = $"#{ActiveColor.A:X2}{ActiveColor.R:X2}{ActiveColor.G:X2}{ActiveColor.B:X2}";
+                }
+
+                state.Palette.ActiveFavoriteColor = $"#{ActiveColor.A:X2}{ActiveColor.R:X2}{ActiveColor.G:X2}{ActiveColor.B:X2}";
             }
 
             _stateService.Save(state);
@@ -261,14 +278,22 @@ public partial class ToolbarViewModel : ObservableObject
             return;
         }
 
+        bool wasSameColor = (ActiveColor == item.Color);
         ActiveColor = item.Color;
 
         if (ActiveTool.AltersCanvasGeometry)
         {
             var state = _stateService.Load();
-            state.Palette.ActiveFavoriteColor = $"#{item.Color.A:X2}{item.Color.R:X2}{item.Color.G:X2}{item.Color.B:X2}";
-            state.Palette.ToolFavoriteColors[ActiveTool.Id.ToLowerInvariant()] = state.Palette.ActiveFavoriteColor;
+            string hex = $"#{item.Color.A:X2}{item.Color.R:X2}{item.Color.G:X2}{item.Color.B:X2}";
+            state.Palette.ActiveFavoriteColor = hex;
+            state.Palette.ToolFavoriteColors[ActiveTool.Id.ToLowerInvariant()] = hex;
             _stateService.Save(state);
+        }
+
+        if (wasSameColor)
+        {
+            UpdatePaletteSelection(item.Color);
+            ColorChanged?.Invoke(this, item.Color);
         }
     }
 }

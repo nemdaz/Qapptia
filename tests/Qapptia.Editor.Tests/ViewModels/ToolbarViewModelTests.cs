@@ -309,6 +309,66 @@ public sealed class ToolbarViewModelTests : IDisposable
         vm.ActiveColor.Should().Be(targetColor.Color);
         vm.AvailableColors.Single(c => c.IsSelected).Color.Should().Be(targetColor.Color);
     }
+
+    [Fact]
+    public void ToolbarViewModelRemembersToolColorAcrossToolSwitches()
+    {
+        var vm = new ToolbarViewModel(_stateService);
+
+        // 1. Configurar Línea en Amarillo
+        vm.SelectTool(ShapeFactory.Line);
+        var yellowItem = vm.AvailableColors.First(c => c.Color == Color.Parse("#F7EB0C"));
+        vm.SelectColor(yellowItem);
+        vm.ActiveColor.Should().Be(yellowItem.Color);
+
+        // 2. Conmutar a Flecha en Rojo
+        vm.SelectTool(ShapeFactory.Arrow);
+        var redItem = vm.AvailableColors.First(c => c.Color == Color.Parse("#FF0000"));
+        vm.SelectColor(redItem);
+        vm.ActiveColor.Should().Be(redItem.Color);
+
+        // 3. Conmutar a Rectángulo
+        vm.SelectTool(ShapeFactory.Rectangle);
+
+        // 4. Volver a Línea: debe recordar exactamente Amarillo
+        vm.SelectTool(ShapeFactory.Line);
+        vm.ActiveColor.Should().Be(yellowItem.Color);
+        vm.AvailableColors.Single(c => c.IsSelected).Color.Should().Be(yellowItem.Color);
+    }
+
+    [Fact]
+    public void ToolbarViewModelPersistsEachToolColorIndependentlyAcrossSwitches()
+    {
+        var vm = new ToolbarViewModel(_stateService);
+
+        // 1. Configurar Línea en Amarillo
+        vm.SelectTool(ShapeFactory.Line);
+        var yellowItem = vm.AvailableColors.First(c => c.Color == Color.Parse("#F7EB0C"));
+        vm.SelectColor(yellowItem);
+        vm.ActiveColor.Should().Be(yellowItem.Color);
+
+        // 2. Configurar Mano Alzada en Cian
+        vm.SelectTool(ShapeFactory.FreehandLine);
+        var cyanItem = vm.AvailableColors.First(c => c.Color == Color.Parse("#00B7C3"));
+        vm.SelectColor(cyanItem);
+        vm.ActiveColor.Should().Be(cyanItem.Color);
+
+        // 3. Conmutar a Flecha en Rojo
+        vm.SelectTool(ShapeFactory.Arrow);
+        var redItem = vm.AvailableColors.First(c => c.Color == Color.Parse("#FF0000"));
+        vm.SelectColor(redItem);
+        vm.ActiveColor.Should().Be(redItem.Color);
+
+        // 4. Volver a Línea: debe recordar Amarillo
+        vm.SelectTool(ShapeFactory.Line);
+        vm.ActiveColor.Should().Be(yellowItem.Color);
+        vm.AvailableColors.Single(c => c.IsSelected).Color.Should().Be(yellowItem.Color);
+
+        // 5. Volver a Mano Alzada: debe recordar Cian
+        vm.SelectTool(ShapeFactory.FreehandLine);
+        vm.ActiveColor.Should().Be(cyanItem.Color);
+        vm.AvailableColors.Single(c => c.IsSelected).Color.Should().Be(cyanItem.Color);
+    }
 }
 
 
