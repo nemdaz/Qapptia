@@ -3,12 +3,12 @@ using System;
 namespace Qapptia.Core.Services;
 
 /// <summary>
-/// Información visual de patrocinio / sponsor generada aleatoriamente (icono, texto y clave de estilo).
+/// Información visual de apoyo y contribución generada aleatoriamente (icono, texto y clave de estilo).
 /// </summary>
 public readonly record struct SponsorVisualInfo(string IconKey, string Text, string StyleKey);
 
 /// <summary>
-/// Catálogo y despachador de combinaciones aleatorias de iconos, textos y estilos de patrocinio / sponsor.
+/// Catálogo y despachador de combinaciones aleatorias de iconos, textos y estilos de apoyo.
 /// Produce combinaciones dinámicas (4 iconos x 4 textos x 4 estilos = 64 combinaciones) al iniciar las vistas.
 /// </summary>
 public static class SponsorVisualHelper
@@ -43,7 +43,7 @@ public static class SponsorVisualHelper
     ];
 
     /// <summary>
-    /// Selecciona aleatoriamente una combinación de icono, texto y set de estilo de patrocinio / sponsor.
+    /// Selecciona aleatoriamente una combinación de icono, texto y set de estilo de apoyo.
     /// </summary>
     public static SponsorVisualInfo GetRandomCombination()
     {

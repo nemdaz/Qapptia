@@ -8,6 +8,10 @@ public static class Constants
 {
     public const string AppName = "Qapptia";
     public const string AppVersion = "2.0.0-beta";
+    public const string AppDescription = "Herramienta de captura de pantalla, recortes y anotaciones. Mantiene un enfoque en la agilidad para documentar evidencias en el proceso de Pruebas de Software (QA) y practicidad para propósitos generales.";
+    public const string AboutSupportHeader = "Apoyar el proyecto";
+    public const string AboutSupportDescription = "Este es un proyecto libre e independiente. Tu apoyo impulsa la creación de nuevas características y su desarrollo continuo.";
+    public const string AboutUpdatesHeader = "Actualizaciones de software";
     public const string ConfigFileName = "config.json";
     public const string EditorStateFileName = "editor_state.json";
     public const string ShortcutCopyClipboard = "Ctrl+C";
@@ -77,7 +81,7 @@ public static class Constants
     public const string ArgRestart = "--restart";
     public const string ArgAbout = "--about";
 
-    // URLs de servicios web, descargas y patrocinio / sponsor
+    // URLs de servicios web, descargas y apoyo al proyecto
     public const string DefaultSponsorUrl = "https://localhost:8080/sponsor";
     public const string DefaultDownloadUrl = "https://localhost:8080/download";
     public const string DefaultVersionApiUrl = "https://localhost:8080/api/version";
@@ -86,20 +90,20 @@ public static class Constants
     public const int UpdateCheckCooldownMs = 2000;
     public static readonly TimeSpan PeriodicUpdateCheckInterval = TimeSpan.FromHours(24);
 
-    // Textos de patrocinio / sponsor compartidos (numerados para estabilidad ante cambios de textos)
+    // Textos de apoyo y contribución compartidos (numerados para estabilidad ante cambios de textos)
     public const string SponsorText1 = "Invítame un café";
     public const string SponsorText2 = "Apoyar proyecto";
     public const string SponsorText3 = "Contribuir";
     public const string SponsorText4 = "Impulsar desarrollo";
     public const string SponsorDefaultActionTitle = "Apoyar";
 
-    // Claves de iconos vectoriales de patrocinio / sponsor (numeradas para estabilidad)
+    // Claves de iconos vectoriales de apoyo (numeradas para estabilidad)
     public const string SponsorIcon1 = "IconSponsorCoffeeHeart";
     public const string SponsorIcon2 = "IconSponsorRamenHeart";
     public const string SponsorIcon3 = "IconSponsorCoffeeCup";
     public const string SponsorIcon4 = "IconSponsorHeartBadge";
 
-    // Identificadores del set de estilos de patrocinio / sponsor (definidos en MaterialTheme.axaml)
+    // Identificadores del set de estilos de apoyo (definidos en MaterialTheme.axaml)
     public const string SponsorStyleA = "SponsorStyleA";
     public const string SponsorStyleB = "SponsorStyleB";
     public const string SponsorStyleC = "SponsorStyleC";

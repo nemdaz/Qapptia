@@ -88,6 +88,7 @@ public sealed class ThemeChangedNotification : IpcMessage
 /// <summary>
 /// Enumera los tipos de mensaje del protocolo IPC de Qapptia.
 /// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter<IpcMessageType>))]
 public enum IpcMessageType
 {
     WakeUp = 1,

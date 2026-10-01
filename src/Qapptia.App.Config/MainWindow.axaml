@@ -5,15 +5,15 @@
         xmlns:vm="using:Qapptia.App.Config.ViewModels"
         xmlns:controls="using:Qapptia.App.Config.Controls"
         xmlns:core="using:Qapptia.Core"
-        mc:Ignorable="d" d:DesignWidth="580" d:DesignHeight="500"
-        Width="580" Height="550"
+        mc:Ignorable="d" d:DesignWidth="580" d:DesignHeight="530"
+        Width="580" Height="530"
         WindowStartupLocation="CenterScreen"
         CanResize="False"
         x:Class="Qapptia.App.Config.MainWindow"
         x:DataType="vm:ConfigViewModel"
         Background="{DynamicResource M3SurfaceBrush}"
         Icon="avares://Qapptia.App.Config/Assets/config_icon.ico"
-        Title="Qapptia - Configuración">
+        Title="Configuración">
 
     <Window.Styles>
         <!-- Footer Message Colors -->
@@ -26,15 +26,23 @@
         </Style>
     </Window.Styles>
 
-    <Grid RowDefinitions="*,Auto" Margin="16">
+    <Grid RowDefinitions="*,Auto">
         
         <!-- Tabs -->
-        <TabControl Grid.Row="0" Margin="0,0,0,16" SelectedIndex="{Binding SelectedTabIndex}">
+        <TabControl Grid.Row="0" Margin="16,12,16,8" SelectedIndex="{Binding SelectedTabIndex}">
             
             <!-- Pestaña General -->
             <TabItem Header="General">
-                <StackPanel Spacing="24" Margin="16">
+                <StackPanel Spacing="16" Margin="16">
                     
+                    <!-- Inicio del sistema -->
+                    <HeaderedContentControl Header="Inicio del sistema">
+                        <CheckBox Content="Iniciar automáticamente al encender el equipo"
+                                  IsChecked="{Binding AutoStart}"
+                                  IsEnabled="{Binding IsAutoStartSupported}"
+                                  Margin="0,4,0,0" />
+                    </HeaderedContentControl>
+
                     <!-- Apariencia / Tema M3 -->
                     <HeaderedContentControl Header="Apariencia">
                         <Grid ColumnDefinitions="120,*" Margin="0,4,0,0">
@@ -53,7 +61,7 @@
                             
                             <!-- Formato de archivo -->
                             <TextBlock Grid.Row="1" Grid.Column="0" Text="Formato archivo:" VerticalAlignment="Center" Margin="0,12,8,0" />
-                            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding FilenameFormat}" Margin="0,12,8,0" PlaceholderText="Ej. Qapptia_YYYYMMDD_HHmmSS" />
+                            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding FilenameFormat}" Margin="0,12,8,0" PlaceholderText="Ej. Captura_YYYYMMDD_HHmmSS" />
                             <Button Grid.Row="1" Grid.Column="2" Content="?" Width="32" Height="32" Margin="0,12,0,0" Padding="0" HorizontalAlignment="Left" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
                                 <Button.Flyout>
                                     <Flyout>
@@ -73,16 +81,16 @@
                         </StackPanel>
                     </HeaderedContentControl>
 
-                    </StackPanel>
+                </StackPanel>
             </TabItem>
             
             <!-- Pestaña Captura -->
             <TabItem Header="Captura">
-                <StackPanel Spacing="24" Margin="16">
+                <StackPanel Spacing="16" Margin="16">
                         
                     <!-- Cursor -->
                     <HeaderedContentControl Header="Cursor">
-                        <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,4,0,0">
+                        <StackPanel Orientation="Horizontal" Spacing="24" Margin="0,4,0,0">
                             <CheckBox Content="Capturar cursor" IsChecked="{Binding ShowMouse}" />
                             <CheckBox Content="Resaltar (Halo)" IsChecked="{Binding HighlightMouse}" IsEnabled="{Binding ShowMouse}" />
                         </StackPanel>
@@ -112,24 +120,29 @@
                         </Grid>
                     </HeaderedContentControl>
 
-                    </StackPanel>
+                </StackPanel>
             </TabItem>
 
             <!-- Pestaña Editor -->
             <TabItem Header="Editor">
-                <Panel Margin="8">
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10" Margin="16">
+                    <PathIcon Data="{StaticResource IconConfig}" Width="32" Height="32" Foreground="{DynamicResource M3OnSurfaceVariantBrush}" Opacity="0.4" HorizontalAlignment="Center" />
                     <TextBlock Text="Configuración del Editor" 
                                HorizontalAlignment="Center" 
-                               VerticalAlignment="Center" 
                                FontSize="14"
+                               FontWeight="SemiBold"
                                Foreground="{DynamicResource M3OnSurfaceVariantBrush}" />
-                </Panel>
+                    <TextBlock Text="Opciones avanzadas del lienzo y herramientas disponibles próximamente."
+                               HorizontalAlignment="Center"
+                               FontSize="12"
+                               Foreground="{DynamicResource M3OnSurfaceVariantBrush}"
+                               Opacity="0.7" />
+                </StackPanel>
             </TabItem>
 
             <!-- Pestaña Acerca de -->
             <TabItem Header="Acerca de">
-                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-                    <StackPanel Spacing="16" Margin="16">
+                <StackPanel Spacing="16" Margin="16">
                         
                         <!-- Banner Superior: Nombre y Versión -->
                         <Border Background="{DynamicResource M3SurfaceVariantBrush}" CornerRadius="8" Padding="14">
@@ -139,22 +152,22 @@
                                        Width="64" Height="64" Margin="0,0,16,0" VerticalAlignment="Center"
                                        RenderOptions.BitmapInterpolationMode="HighQuality" />
                                 <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                    <TextBlock Text="Qapptia" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource M3OnSurfaceBrush}" />
+                                    <TextBlock Text="{x:Static core:Constants.LauncherAppName}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource M3OnSurfaceBrush}" />
                                     <Border Background="{DynamicResource M3PrimaryBrush}" CornerRadius="4" Padding="6,2" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding Source={x:Static core:Constants.AppVersion}, StringFormat='v{0}'}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource M3OnPrimaryBrush}" />
                                     </Border>
                                 </StackPanel>
                                 <TextBlock Grid.Row="1" Grid.Column="1" 
-                                           Text="Herramienta de captura de pantalla y edición vectorial de alta precisión." 
+                                           Text="{x:Static core:Constants.AppDescription}" 
                                            FontSize="12" Foreground="{DynamicResource M3OnSurfaceVariantBrush}" Margin="0,4,0,0" TextWrapping="Wrap" />
                             </Grid>
                         </Border>
 
-                        <!-- Sección Patrocinio / Sponsor (Random Icon + Random Text) -->
-                        <HeaderedContentControl Header="Patrocinio y apoyo">
+                        <!-- Sección Apoyo / Colaboración (Random Icon + Random Text) -->
+                        <HeaderedContentControl Header="{x:Static core:Constants.AboutSupportHeader}">
                             <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
                                 <TextBlock Grid.Column="0" 
-                                           Text="Qapptia es un proyecto libre e independiente. Tu patrocinio impulsa la creación de nuevas características." 
+                                           Text="{x:Static core:Constants.AboutSupportDescription}" 
                                            FontSize="12" Foreground="{DynamicResource M3OnSurfaceBrush}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,16,0" />
                                 <Button Grid.Column="1" 
                                         Command="{Binding SponsorCommand}"
@@ -178,7 +191,7 @@
                         </HeaderedContentControl>
 
                         <!-- Sección Comprobación y Actualización -->
-                        <HeaderedContentControl Header="Actualizaciones de software">
+                        <HeaderedContentControl Header="{x:Static core:Constants.AboutUpdatesHeader}">
                             <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
                                 <StackPanel Grid.Column="0" Spacing="6" VerticalAlignment="Center" Margin="0,0,16,0">
                                     <TextBlock Text="{Binding UpdateStatusMessage}" 
@@ -211,17 +224,41 @@
                         </HeaderedContentControl>
 
                     </StackPanel>
-                </ScrollViewer>
             </TabItem>
 
         </TabControl>
 
-        <!-- Footer -->
-        <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto">
-            <TextBlock Grid.Column="0" Text="{Binding FooterMessage}" VerticalAlignment="Center" TextWrapping="Wrap" Classes="footerMessage" Classes.error="{Binding IsFooterError}" />
-            <Button Grid.Column="1" Content="Guardar" Command="{Binding SaveCommand}" Margin="0,0,8,0" Classes="accent" />
-            <Button Grid.Column="2" Content="Cerrar" Command="{Binding CloseCommand}" />
-        </Grid>
+        <!-- Barra inferior de acciones (Footer) -->
+        <Border Grid.Row="1" 
+                Background="{DynamicResource M3SurfaceContainerLowBrush}" 
+                BorderBrush="{DynamicResource M3OutlineVariantBrush}" 
+                BorderThickness="0,1,0,0" 
+                Padding="16,12">
+            <Grid ColumnDefinitions="*,Auto,Auto">
+                <TextBlock Grid.Column="0" 
+                           Text="{Binding FooterMessage}" 
+                           VerticalAlignment="Center" 
+                           TextWrapping="Wrap" 
+                           Classes="footerMessage" 
+                           Classes.error="{Binding IsFooterError}" 
+                           Margin="0,0,12,0" />
+                <Button Grid.Column="1" 
+                        Content="Guardar" 
+                        Command="{Binding SaveCommand}" 
+                        MinWidth="90" 
+                        Height="32" 
+                        HorizontalContentAlignment="Center" 
+                        Classes="accent" 
+                        Margin="0,0,8,0" />
+                <Button Grid.Column="2" 
+                        Content="Cerrar" 
+                        Command="{Binding CloseCommand}" 
+                        IsCancel="True"
+                        MinWidth="90" 
+                        Height="32" 
+                        HorizontalContentAlignment="Center" />
+            </Grid>
+        </Border>
         
     </Grid>
 </Window>

@@ -42,41 +42,29 @@ public static class IpcChannels
 /// </summary>
 public sealed class IpcMessageJsonConverterFactory : JsonConverterFactory
 {
-    private static readonly Dictionary<IpcMessageType, Type> _typeMap = new()
-    {
-        [IpcMessageType.WakeUp] = typeof(WakeUpRequest),
-        [IpcMessageType.Quit] = typeof(QuitRequest),
-        [IpcMessageType.RefreshTrayIcon] = typeof(RefreshTrayIconRequest),
-        [IpcMessageType.Ping] = typeof(Ping),
-        [IpcMessageType.Ack] = typeof(Ack),
-        [IpcMessageType.Error] = typeof(ErrorResponse),
-        [IpcMessageType.Pong] = typeof(Pong),
-        [IpcMessageType.ThemeChanged] = typeof(ThemeChangedNotification),
-    };
-
     public override bool CanConvert(Type typeToConvert) => typeToConvert == typeof(IpcMessage);
 
     public override JsonConverter? CreateConverter(Type typeToConvert, JsonSerializerOptions options)
     {
-        return new IpcMessageJsonConverter(_typeMap);
+        return new IpcMessageJsonConverter();
     }
 
     private sealed class IpcMessageJsonConverter : JsonConverter<IpcMessage>
     {
-        private readonly Dictionary<IpcMessageType, Type> _typeMap;
-        private readonly Dictionary<string, IpcMessageType> _nameMap;
+        private static readonly Dictionary<string, IpcMessageType> s_nameMap = InitializeNameMap();
+        private static readonly Qapptia.Core.Serialization.QapptiaJsonContext s_context = Qapptia.Core.Serialization.QapptiaJsonContext.Default;
 
-        public IpcMessageJsonConverter(Dictionary<IpcMessageType, Type> typeMap)
+        private static Dictionary<string, IpcMessageType> InitializeNameMap()
         {
-            _typeMap = typeMap;
-            _nameMap = new(StringComparer.OrdinalIgnoreCase);
+            var map = new Dictionary<string, IpcMessageType>(StringComparer.OrdinalIgnoreCase);
             var snakeCase = JsonNamingPolicy.SnakeCaseLower;
-            foreach (var kv in typeMap)
+            foreach (IpcMessageType type in Enum.GetValues<IpcMessageType>())
             {
-                var name = kv.Key.ToString()!;
-                _nameMap[name] = kv.Key;
-                _nameMap[snakeCase.ConvertName(name)] = kv.Key;
+                var name = type.ToString();
+                map[name] = type;
+                map[snakeCase.ConvertName(name)] = type;
             }
+            return map;
         }
 
         public override IpcMessage? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -89,18 +77,54 @@ public sealed class IpcMessageJsonConverterFactory : JsonConverterFactory
                 throw new JsonException("IpcMessage requiere propiedad 'type' string");
 
             var typeName = typeEl.GetString()!;
-            if (!_nameMap.TryGetValue(typeName, out var typeEnum))
+            if (!s_nameMap.TryGetValue(typeName, out var typeEnum))
                 throw new JsonException($"Tipo de IpcMessage desconocido: {typeName}");
 
-            if (!_typeMap.TryGetValue(typeEnum, out var concrete))
-                throw new JsonException($"No hay tipo concreto para IpcMessageType {typeEnum}");
-
-            return (IpcMessage?)JsonSerializer.Deserialize(doc.RootElement, concrete, options);
+            return typeEnum switch
+            {
+                IpcMessageType.WakeUp => doc.RootElement.Deserialize(s_context.WakeUpRequest),
+                IpcMessageType.Quit => doc.RootElement.Deserialize(s_context.QuitRequest),
+                IpcMessageType.RefreshTrayIcon => doc.RootElement.Deserialize(s_context.RefreshTrayIconRequest),
+                IpcMessageType.Ping => doc.RootElement.Deserialize(s_context.Ping),
+                IpcMessageType.Ack => doc.RootElement.Deserialize(s_context.Ack),
+                IpcMessageType.Error => doc.RootElement.Deserialize(s_context.ErrorResponse),
+                IpcMessageType.Pong => doc.RootElement.Deserialize(s_context.Pong),
+                IpcMessageType.ThemeChanged => doc.RootElement.Deserialize(s_context.ThemeChangedNotification),
+                _ => throw new JsonException($"No hay tipo concreto para IpcMessageType {typeEnum}")
+            };
         }
 
         public override void Write(Utf8JsonWriter writer, IpcMessage value, JsonSerializerOptions options)
         {
-            JsonSerializer.Serialize(writer, value, value.GetType(), options);
+            switch (value)
+            {
+                case WakeUpRequest req:
+                    JsonSerializer.Serialize(writer, req, s_context.WakeUpRequest);
+                    break;
+                case QuitRequest req:
+                    JsonSerializer.Serialize(writer, req, s_context.QuitRequest);
+                    break;
+                case RefreshTrayIconRequest req:
+                    JsonSerializer.Serialize(writer, req, s_context.RefreshTrayIconRequest);
+                    break;
+                case Ping req:
+                    JsonSerializer.Serialize(writer, req, s_context.Ping);
+                    break;
+                case Ack req:
+                    JsonSerializer.Serialize(writer, req, s_context.Ack);
+                    break;
+                case ErrorResponse req:
+                    JsonSerializer.Serialize(writer, req, s_context.ErrorResponse);
+                    break;
+                case Pong req:
+                    JsonSerializer.Serialize(writer, req, s_context.Pong);
+                    break;
+                case ThemeChangedNotification req:
+                    JsonSerializer.Serialize(writer, req, s_context.ThemeChangedNotification);
+                    break;
+                default:
+                    throw new JsonException($"Tipo de IpcMessage no soportado: {value?.GetType().FullName}");
+            }
         }
     }
 }

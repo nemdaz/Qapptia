@@ -307,7 +307,7 @@
 
             <!-- Right aligned actions (Sponsor, Capture status, Config & About) -->
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                <!-- Patrocinio / Sponsor (Botón pastel con contorno, colores, icono y texto aleatorios) -->
+                <!-- Botón de apoyo (Colores, icono y texto aleatorios) -->
                 <Button Classes="sponsor-button"
                         Classes.SponsorStyleA="{Binding IsSponsorStyleA}"
                         Classes.SponsorStyleB="{Binding IsSponsorStyleB}"

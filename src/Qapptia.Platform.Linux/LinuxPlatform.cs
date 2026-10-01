@@ -138,6 +138,114 @@ public sealed class LinuxShellService : IShellService
     }
 }
 
+public sealed class LinuxAutoStartService : IAutoStartService
+{
+    private static readonly string DesktopFileName = $"{Qapptia.Core.Constants.LauncherAppName.ToLowerInvariant()}.desktop";
+    private readonly ILogger? _logger;
+
+    public LinuxAutoStartService(ILogger? logger = null)
+    {
+        _logger = logger?.ForContext<LinuxAutoStartService>();
+    }
+
+    public bool IsSupported => OperatingSystem.IsLinux();
+
+    private static string GetAutostartFilePath()
+    {
+        string? xdgConfig = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
+        string configDir = !string.IsNullOrWhiteSpace(xdgConfig)
+            ? xdgConfig
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config");
+        return Path.Combine(configDir, "autostart", DesktopFileName);
+    }
+
+    public bool IsAutoStartEnabled()
+    {
+        if (!OperatingSystem.IsLinux()) return false;
+
+        try
+        {
+            string path = GetAutostartFilePath();
+            if (!File.Exists(path)) return false;
+
+            var lines = File.ReadAllLines(path);
+            foreach (var line in lines)
+            {
+                var trimmed = line.Trim();
+                if (trimmed.StartsWith("Hidden=", StringComparison.OrdinalIgnoreCase) &&
+                    bool.TryParse(trimmed.AsSpan(7), out var hidden) && hidden)
+                {
+                    return false;
+                }
+                if (trimmed.StartsWith("X-GNOME-Autostart-enabled=", StringComparison.OrdinalIgnoreCase) &&
+                    bool.TryParse(trimmed.AsSpan(26), out var gnomeEnabled) && !gnomeEnabled)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger?.Warning(ex, "Error al consultar estado de autostart en Linux");
+            return false;
+        }
+    }
+
+    public bool SetAutoStartEnabled(bool enabled)
+    {
+        if (!OperatingSystem.IsLinux()) return false;
+
+        try
+        {
+            string desktopFilePath = GetAutostartFilePath();
+            string autostartDir = Path.GetDirectoryName(desktopFilePath)!;
+
+            if (enabled)
+            {
+                if (!Directory.Exists(autostartDir))
+                {
+                    Directory.CreateDirectory(autostartDir);
+                }
+
+                string launcherPath = Qapptia.Core.Launcher.LauncherOrchestrator.ResolveLauncherPath().Trim('"');
+                string content = $"""
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name={Qapptia.Core.Constants.LauncherAppName}
+Comment=Herramienta de captura y edicion de pantalla
+Exec="{launcherPath}" {Qapptia.Core.Constants.ArgCapture}
+Icon={Qapptia.Core.Constants.LauncherAppName.ToLowerInvariant()}
+Terminal=false
+Categories=Utility;Graphics;
+StartupNotify=false
+X-GNOME-Autostart-enabled=true
+
+""";
+                File.WriteAllText(desktopFilePath, content);
+                _logger?.Information("Autostart de Linux registrado en {Path}", desktopFilePath);
+            }
+            else
+            {
+                if (File.Exists(desktopFilePath))
+                {
+                    File.Delete(desktopFilePath);
+                    _logger?.Information("Autostart de Linux eliminado de {Path}", desktopFilePath);
+                }
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger?.Error(ex, "Error al configurar autostart en Linux (enabled={Enabled})", enabled);
+            return false;
+        }
+    }
+}
+
 public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddLinuxPlatform(this IServiceCollection services)
@@ -152,6 +260,7 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<IClipboardService, LinuxClipboardService>();
         services.TryAddSingleton<ITrayIconService, LinuxTrayIconService>();
         services.TryAddSingleton<IShellService, LinuxShellService>();
+        services.TryAddSingleton<IAutoStartService, LinuxAutoStartService>();
         return services;
     }
 }

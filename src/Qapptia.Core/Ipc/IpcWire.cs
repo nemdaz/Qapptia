@@ -20,14 +20,14 @@ public static class IpcWire
         DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
         Converters =
         {
-            new IpcMessageJsonConverterFactory(),
-            new System.Text.Json.Serialization.JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower),
-        },
+            new System.Text.Json.Serialization.JsonStringEnumConverter<IpcMessageType>(JsonNamingPolicy.SnakeCaseLower),
+        }
     };
+    private static readonly Qapptia.Core.Serialization.QapptiaJsonContext s_context = new(s_jsonOpts);
 
     public static byte[] Encode(IpcMessage message)
     {
-        var payloadJson = JsonSerializer.SerializeToUtf8Bytes<IpcMessage>(message, s_jsonOpts);
+        var payloadJson = JsonSerializer.SerializeToUtf8Bytes(message, s_context.IpcMessage);
         if (payloadJson.Length > IpcProtocol.MaxPayloadBytes)
         {
             throw new InvalidOperationException(
@@ -52,7 +52,7 @@ public static class IpcWire
         var payloadBuffer = new byte[payloadLen];
         await ReadExactAsync(stream, payloadBuffer, (int)payloadLen, ct).ConfigureAwait(false);
 
-        var msg = JsonSerializer.Deserialize<IpcMessage>(payloadBuffer, s_jsonOpts);
+        var msg = JsonSerializer.Deserialize(payloadBuffer, s_context.IpcMessage);
         return msg ?? throw new InvalidDataException("IpcMessage deserializado a null");
     }
 

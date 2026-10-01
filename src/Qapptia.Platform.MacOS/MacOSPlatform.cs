@@ -140,6 +140,97 @@ public sealed class MacShellService : IShellService
     }
 }
 
+public sealed class MacOSAutoStartService : IAutoStartService
+{
+    private static readonly string PlistFileName = $"com.{Qapptia.Core.Constants.LauncherAppName.ToLowerInvariant()}.launcher.plist";
+    private static readonly string LauncherLabel = $"com.{Qapptia.Core.Constants.LauncherAppName.ToLowerInvariant()}.launcher";
+    private readonly ILogger? _logger;
+
+    public MacOSAutoStartService(ILogger? logger = null)
+    {
+        _logger = logger?.ForContext<MacOSAutoStartService>();
+    }
+
+    public bool IsSupported => OperatingSystem.IsMacOS();
+
+    private static string GetPlistFilePath()
+    {
+        string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        return Path.Combine(home, "Library", "LaunchAgents", PlistFileName);
+    }
+
+    public bool IsAutoStartEnabled()
+    {
+        if (!OperatingSystem.IsMacOS()) return false;
+
+        try
+        {
+            string path = GetPlistFilePath();
+            return File.Exists(path);
+        }
+        catch (Exception ex)
+        {
+            _logger?.Warning(ex, "Error al consultar estado de autostart en macOS");
+            return false;
+        }
+    }
+
+    public bool SetAutoStartEnabled(bool enabled)
+    {
+        if (!OperatingSystem.IsMacOS()) return false;
+
+        try
+        {
+            string plistPath = GetPlistFilePath();
+            string dir = Path.GetDirectoryName(plistPath)!;
+
+            if (enabled)
+            {
+                if (!Directory.Exists(dir))
+                {
+                    Directory.CreateDirectory(dir);
+                }
+
+                string launcherPath = Qapptia.Core.Launcher.LauncherOrchestrator.ResolveLauncherPath().Trim('"');
+                string plistContent = $"""
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>{LauncherLabel}</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>{launcherPath}</string>
+        <string>{Qapptia.Core.Constants.ArgCapture}</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+</dict>
+</plist>
+""";
+                File.WriteAllText(plistPath, plistContent);
+                _logger?.Information("Autostart de macOS registrado en {Path}", plistPath);
+            }
+            else
+            {
+                if (File.Exists(plistPath))
+                {
+                    File.Delete(plistPath);
+                    _logger?.Information("Autostart de macOS eliminado de {Path}", plistPath);
+                }
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger?.Error(ex, "Error al configurar autostart en macOS (enabled={Enabled})", enabled);
+            return false;
+        }
+    }
+}
+
 public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddMacOSPlatform(this IServiceCollection services)
@@ -154,6 +245,7 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<IClipboardService, MacClipboardService>();
         services.TryAddSingleton<ITrayIconService, MacOSTrayIconService>();
         services.TryAddSingleton<IShellService, MacShellService>();
+        services.TryAddSingleton<IAutoStartService, MacOSAutoStartService>();
         return services;
     }
 }

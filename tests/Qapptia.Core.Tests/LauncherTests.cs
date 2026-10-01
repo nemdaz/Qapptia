@@ -123,6 +123,37 @@ public class LauncherTests
         Assert.False(MutexSingleInstanceGuard.IsRunning(uniqueKey));
     }
 
+    [Fact]
+    public void ResolveLauncherPathReturnsValidPath()
+    {
+        string path = LauncherOrchestrator.ResolveLauncherPath();
+        Assert.False(string.IsNullOrWhiteSpace(path));
+        string expectedExe = OperatingSystem.IsWindows() ? Constants.LauncherExecutableName : Constants.LauncherAppName;
+        Assert.EndsWith(expectedExe, path, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void NullAutoStartServiceBehavesCorrectly()
+    {
+        var service = Qapptia.Core.Services.NullAutoStartService.Instance;
+        Assert.False(service.IsSupported);
+        Assert.False(service.IsAutoStartEnabled());
+        Assert.False(service.SetAutoStartEnabled(true));
+        Assert.False(service.SetAutoStartEnabled(false));
+    }
+
+    [Fact]
+    public void QapptiaConfigAutoStartSerializationRoundtrip()
+    {
+        var config = new Qapptia.Core.Configuration.QapptiaConfig { AutoStart = true };
+        string json = System.Text.Json.JsonSerializer.Serialize(config);
+        Assert.Contains("\"auto_start\":true", json);
+
+        var deserialized = System.Text.Json.JsonSerializer.Deserialize<Qapptia.Core.Configuration.QapptiaConfig>(json);
+        Assert.NotNull(deserialized);
+        Assert.True(deserialized.AutoStart);
+    }
+
     private sealed class FakeProcessLauncher : IProcessLauncher
     {
         public HashSet<string> ActiveChannels { get; } = new(StringComparer.OrdinalIgnoreCase);

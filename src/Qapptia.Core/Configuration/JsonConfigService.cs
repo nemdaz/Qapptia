@@ -19,6 +19,7 @@ public sealed class JsonConfigService : IConfigService
         PropertyNamingPolicy = null,
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
+    private static readonly Qapptia.Core.Serialization.QapptiaJsonContext s_context = new(s_jsonOptions);
 
     private readonly string _path;
     private readonly ILogger _logger;
@@ -43,7 +44,7 @@ public sealed class JsonConfigService : IConfigService
                 var dir = Path.GetDirectoryName(_path);
                 if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
 
-                var json = JsonSerializer.Serialize(_current, s_jsonOptions);
+                var json = JsonSerializer.Serialize(_current, s_context.QapptiaConfig);
                 File.WriteAllText(_path, json);
                 _logger.Information("Config guardado en {Path}", _path);
             }
@@ -75,7 +76,7 @@ public sealed class JsonConfigService : IConfigService
         try
         {
             var json = File.ReadAllText(path);
-            var config = JsonSerializer.Deserialize<QapptiaConfig>(json, s_jsonOptions);
+            var config = JsonSerializer.Deserialize(json, s_context.QapptiaConfig);
             if (config is null)
             {
                 _logger.Warning("config.json vacio o invalido en {Path}; usando defaults", path);

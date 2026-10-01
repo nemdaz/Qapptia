@@ -18,4 +18,7 @@ public sealed partial class QapptiaConfig
 
     [JsonPropertyName("theme")]
     public string Theme { get; set; } = global::Qapptia.Core.Theme.ThemeConstants.System;
+
+    [JsonPropertyName("auto_start")]
+    public bool AutoStart { get; set; } = false;
 }

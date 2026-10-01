@@ -24,6 +24,7 @@ public sealed class HttpUpdateCheckService : IUpdateCheckService, IDisposable
     {
         PropertyNameCaseInsensitive = true
     };
+    private static readonly Qapptia.Core.Serialization.QapptiaJsonContext Context = new(JsonOptions);
 
     public HttpUpdateCheckService(
         HttpClient? httpClient = null,
@@ -73,7 +74,7 @@ public sealed class HttpUpdateCheckService : IUpdateCheckService, IDisposable
                 return UpdateCheckResult.Invalid(_currentVersion, "Respuesta vacía del servidor.");
             }
 
-            var releaseDto = JsonSerializer.Deserialize<ReleaseInfoDto>(jsonContent, JsonOptions);
+            var releaseDto = JsonSerializer.Deserialize(jsonContent, Context.ReleaseInfoDto);
             if (releaseDto == null || string.IsNullOrWhiteSpace(releaseDto.Version))
             {
                 _logger.Warning("El JSON recibido no contiene un atributo de versión válido.");

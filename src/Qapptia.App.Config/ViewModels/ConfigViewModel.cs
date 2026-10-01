@@ -32,6 +32,7 @@ public sealed partial class ConfigViewModel : ObservableObject, IDisposable
     private readonly JsonConfigService _configService;
     private readonly IUpdateCheckService _updateCheckService;
     private readonly IShellService _shellService;
+    private readonly IAutoStartService _autoStartService;
     private readonly SponsorVisualInfo _sponsorVisual;
     private QapptiaConfig _config;
 
@@ -71,6 +72,11 @@ public sealed partial class ConfigViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private string? _downloadUrl;
+
+    [ObservableProperty]
+    private bool _autoStart;
+
+    public bool IsAutoStartSupported => _autoStartService.IsSupported;
 
     [ObservableProperty]
     private string _selectedTheme = ThemeConstants.DisplayNameSystem;
@@ -126,6 +132,7 @@ public sealed partial class ConfigViewModel : ObservableObject, IDisposable
     public ConfigViewModel(
         IUpdateCheckService? updateCheckService = null,
         IShellService? shellService = null,
+        IAutoStartService? autoStartService = null,
         bool startInAboutTab = false)
     {
         var configPath = Qapptia.Core.Constants.DefaultConfigPath;
@@ -134,12 +141,16 @@ public sealed partial class ConfigViewModel : ObservableObject, IDisposable
 
 #if WINDOWS
         _shellService = shellService ?? (OperatingSystem.IsWindowsVersionAtLeast(6, 1) ? new WindowsShellService() : NullShellService.Instance);
+        _autoStartService = autoStartService ?? (OperatingSystem.IsWindowsVersionAtLeast(6, 1) ? new WindowsAutoStartService() : NullAutoStartService.Instance);
 #elif LINUX
         _shellService = shellService ?? new LinuxShellService();
+        _autoStartService = autoStartService ?? new LinuxAutoStartService();
 #elif MAC
         _shellService = shellService ?? new MacOSShellService();
+        _autoStartService = autoStartService ?? new MacOSAutoStartService();
 #else
         _shellService = shellService ?? NullShellService.Instance;
+        _autoStartService = autoStartService ?? NullAutoStartService.Instance;
 #endif
         _updateCheckService = updateCheckService ?? new HttpUpdateCheckService();
         _sponsorVisual = SponsorVisualHelper.GetRandomCombination();
@@ -150,6 +161,7 @@ public sealed partial class ConfigViewModel : ObservableObject, IDisposable
 
     private void LoadFromConfig()
     {
+        AutoStart = _autoStartService.IsSupported ? _autoStartService.IsAutoStartEnabled() : _config.AutoStart;
         SelectedTheme = ThemeConstants.ToDisplayName(_config.Theme);
         SavePath = _config.SavePath;
         FilenameFormat = _config.FilenameFormat;
@@ -186,6 +198,12 @@ public sealed partial class ConfigViewModel : ObservableObject, IDisposable
         {
             ShowFooter("Error: La ruta de guardado es inválida o no existe.", isError: true);
             return;
+        }
+
+        _config.AutoStart = AutoStart;
+        if (_autoStartService.IsSupported)
+        {
+            _autoStartService.SetAutoStartEnabled(AutoStart);
         }
 
         _config.Theme = ThemeConstants.FromDisplayName(SelectedTheme);
@@ -263,7 +281,7 @@ public sealed partial class ConfigViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, "Error al abrir enlace de patrocinio/sponsor.");
+            Serilog.Log.Error(ex, "Error al abrir enlace de apoyo.");
         }
     }
 

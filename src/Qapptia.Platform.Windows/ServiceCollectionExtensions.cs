@@ -24,6 +24,7 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<IClipboardService, WindowsClipboardService>();
         services.TryAddSingleton<ITrayIconService, WindowsTrayIconService>();
         services.TryAddSingleton<IShellService, WindowsShellService>();
+        services.TryAddSingleton<IAutoStartService, WindowsAutoStartService>();
         return services;
     }
 }

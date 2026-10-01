@@ -117,6 +117,55 @@ public static class LauncherOrchestrator
     }
 
     /// <summary>
+    /// Resuelve la ruta absoluta al ejecutable del Lanzador principal (Qapptia / Qapptia.exe).
+    /// Contempla ejecuciones desde la raíz, subcarpeta interna 'app' o entorno de desarrollo.
+    /// </summary>
+    public static string ResolveLauncherPath(string? baseDirectory = null)
+    {
+        string baseDir = baseDirectory ?? AppContext.BaseDirectory;
+        string exeName = OperatingSystem.IsWindows() ? Constants.LauncherExecutableName : Constants.LauncherAppName;
+
+        // 1. Mismo directorio (despliegue plano o bin/Debug)
+        string flatPath = Path.Combine(baseDir, exeName);
+        if (File.Exists(flatPath))
+        {
+            return flatPath;
+        }
+
+        // 2. Directorio padre (si la app actual corre dentro de 'app/')
+        var parent = Directory.GetParent(baseDir);
+        if (parent != null)
+        {
+            string parentPath = Path.Combine(parent.FullName, exeName);
+            if (File.Exists(parentPath))
+            {
+                return parentPath;
+            }
+        }
+
+        // 3. Revisar ruta del proceso actual si existe
+        string? currentProc = Environment.ProcessPath;
+        if (!string.IsNullOrEmpty(currentProc))
+        {
+            string? procDir = Path.GetDirectoryName(currentProc);
+            if (!string.IsNullOrEmpty(procDir))
+            {
+                string procFlat = Path.Combine(procDir, exeName);
+                if (File.Exists(procFlat)) return procFlat;
+
+                var procParent = Directory.GetParent(procDir);
+                if (procParent != null)
+                {
+                    string procParentPath = Path.Combine(procParent.FullName, exeName);
+                    if (File.Exists(procParentPath)) return procParentPath;
+                }
+            }
+        }
+
+        return flatPath;
+    }
+
+    /// <summary>
     /// Ejecuta el despacho del plan asegurando o despertando los procesos correspondientes.
     /// </summary>
     public static async Task DispatchPlanAsync(LaunchPlan plan, string baseDirectory, IProcessLauncher launcher)
