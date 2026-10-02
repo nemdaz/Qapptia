@@ -580,6 +580,54 @@ public sealed class NavigationServiceTests : IDisposable
         calDay.FileCountDisplay.Should().Be("(1)");
         calDay.IsEmptyConfirmed.Should().BeFalse("El día 16 contiene archivos y debe conservar su chevron y opacidad");
     }
+
+    [Fact]
+    public async Task BuildCalendarTreeAsyncWhenWeekCrossesMonthBoundaryShouldNotLeakDaysAcrossMonths()
+    {
+        // 2026-10-01 es jueves de la Semana 40, la cual inició el lunes 2026-09-28
+        var referenceToday = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Local);
+
+        var calendar = await _sut.BuildCalendarTreeAsync(
+            _testDir,
+            Array.Empty<string>(),
+            referenceToday: referenceToday,
+            ct: TestContext.Current.CancellationToken);
+
+        var year2026 = calendar.OfType<CalendarGroupItem>().FirstOrDefault(y => y.Year == 2026);
+        year2026.Should().NotBeNull();
+
+        var monthOct = year2026!.ItemsSource.Items.OfType<CalendarGroupItem>().FirstOrDefault(m => m.Month == 10);
+        monthOct.Should().NotBeNull();
+
+        var monthSep = year2026.ItemsSource.Items.OfType<CalendarGroupItem>().FirstOrDefault(m => m.Month == 9);
+        monthSep.Should().NotBeNull();
+
+        // En Octubre, todos los días generados en sus semanas deben pertenecer exclusivamente al mes 10
+        var octDays = monthOct!.ItemsSource.Items.OfType<CalendarGroupItem>()
+            .SelectMany(w => w.ItemsSource.Items.OfType<CalendarGroupItem>())
+            .ToList();
+        octDays.Should().NotBeEmpty();
+        octDays.Should().OnlyContain(d => d.Date.HasValue && d.Date.Value.Month == 10);
+
+        // En Septiembre, todos los días generados en sus semanas deben pertenecer exclusivamente al mes 9
+        var sepDays = monthSep!.ItemsSource.Items.OfType<CalendarGroupItem>()
+            .SelectMany(w => w.ItemsSource.Items.OfType<CalendarGroupItem>())
+            .ToList();
+        sepDays.Should().NotBeEmpty();
+        sepDays.Should().OnlyContain(d => d.Date.HasValue && d.Date.Value.Month == 9);
+
+        // El índice de búsqueda rápida debe resolver 1 de octubre bajo la ruta de Octubre y no sobreescrito por Septiembre
+        var dayOct1 = _sut.FindCalendarDay(new DateTime(2026, 10, 1));
+        dayOct1.Should().NotBeNull();
+        dayOct1!.Month.Should().Be(10);
+        dayOct1.FullPath.Should().StartWith("cal://2026/10");
+
+        // El 30 de septiembre debe resolverse bajo la ruta de Septiembre
+        var daySep30 = _sut.FindCalendarDay(new DateTime(2026, 9, 30));
+        daySep30.Should().NotBeNull();
+        daySep30!.Month.Should().Be(9);
+        daySep30.FullPath.Should().StartWith("cal://2026/09");
+    }
 }
 
 

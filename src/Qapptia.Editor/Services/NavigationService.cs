@@ -274,6 +274,8 @@ public sealed class NavigationService : INavigationService
                             DateTime day = monday.AddDays(dayOffset);
                             // Omitir días futuros que sobrepasen la fecha actual
                             if (day > today) continue;
+                            // Omitir días que pertenezcan a otro mes (p. ej. en semanas compartidas entre meses)
+                            if (day.Month != month) continue;
 
                             string rawDayName = culture.DateTimeFormat.GetDayName(day.DayOfWeek);
                             string dayName = rawDayName.ToLower(culture);
