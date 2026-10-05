@@ -18,4 +18,9 @@ public interface ITrayIconService : IDisposable
     /// Muestra una notificación nativa del sistema en la bandeja de entrada o centro de notificaciones del SO.
     /// </summary>
     void ShowNotification(string title, string message, TrayNotificationType type = TrayNotificationType.Info, int timeoutMs = Constants.NotificationDurationMs);
+
+    /// <summary>
+    /// Revalida, restaura o recrea el icono en la bandeja del sistema si el shell o la barra de tareas se reinició.
+    /// </summary>
+    void RefreshIcon();
 }

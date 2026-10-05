@@ -91,6 +91,20 @@ public class LauncherTests
     }
 
     [Fact]
+    public async Task DispatchPlanAsyncWhenCaptureOnlyAndAlreadyRunningSendsWakeUpToCapture()
+    {
+        var mock = new FakeProcessLauncher();
+        mock.ActiveChannels.Add(IpcChannels.Capture);
+        var plan = new LaunchPlan(LaunchTarget.CaptureOnly, null, ShouldEnsureCapture: true, ShouldEnsureEditor: false, ShouldEnsureConfig: false);
+
+        await LauncherOrchestrator.DispatchPlanAsync(plan, @"C:\Qapptia", mock);
+
+        Assert.Empty(mock.StartedProcesses);
+        Assert.Single(mock.WokenChannels);
+        Assert.Contains(IpcChannels.Capture, mock.WokenChannels);
+    }
+
+    [Fact]
     public async Task DispatchPlanAsyncWhenConfigRequestedStartsOrWakesConfig()
     {
         var mock = new FakeProcessLauncher();

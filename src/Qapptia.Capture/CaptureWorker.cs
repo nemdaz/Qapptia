@@ -1,5 +1,6 @@
 using System.Threading.Channels;
 using Microsoft.Extensions.Hosting;
+using Qapptia.Core;
 using Qapptia.Core.Abstractions;
 using Qapptia.Core.Capture;
 using Qapptia.Core.Configuration;
@@ -17,6 +18,7 @@ public sealed class CaptureWorker : BackgroundService, ICaptureActionHandler
     private readonly IPowerEvents _powerEvents;
     private readonly IShutterSoundService _shutterSound;
     private readonly ILogger _logger;
+    private readonly ITrayIconService? _trayService;
     private readonly Channel<CaptureJob> _channel = Channel.CreateBounded<CaptureJob>(4);
 
     private IHotkeyHandle? _hotkeyScreen;
@@ -33,7 +35,8 @@ public sealed class CaptureWorker : BackgroundService, ICaptureActionHandler
         IConfigService config,
         IPowerEvents powerEvents,
         IShutterSoundService shutterSound,
-        ILogger logger)
+        ILogger logger,
+        ITrayIconService? trayService = null)
     {
         _hotkeys = hotkeys;
         _fullscreenCapture = fullscreenCapture;
@@ -42,6 +45,7 @@ public sealed class CaptureWorker : BackgroundService, ICaptureActionHandler
         _powerEvents = powerEvents;
         _shutterSound = shutterSound;
         _logger = logger;
+        _trayService = trayService;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -56,6 +60,12 @@ public sealed class CaptureWorker : BackgroundService, ICaptureActionHandler
     public async Task HandleWakeUpAsync(CancellationToken ct)
     {
         _logger.Information("WakeUp recibido");
+        _trayService?.RefreshIcon();
+        _trayService?.ShowNotification(
+            Constants.NotificationTitleCapture,
+            Constants.NotificationMessageCaptureActive,
+            TrayNotificationType.Info,
+            Constants.NotificationDurationMs);
     }
 
     public async Task HandleQuitAsync(CancellationToken ct)
@@ -70,6 +80,7 @@ public sealed class CaptureWorker : BackgroundService, ICaptureActionHandler
         _config.Reload();
         UnregisterHotkeys();
         RegisterHotkeys();
+        _trayService?.RefreshIcon();
     }
 
     public async Task HandleFullscreenCaptureAsync(CancellationToken ct)
@@ -206,11 +217,15 @@ public sealed class CaptureWorker : BackgroundService, ICaptureActionHandler
         _powerEvents.PowerModeChanged += (_, mode) =>
         {
             _logger.Information("Power event: {Mode}", mode);
-            if (mode == PowerMode.Resume && _powerEvents.RequiresHotkeyReRegistrationAfterResume)
+            if (mode == PowerMode.Resume)
             {
-                UnregisterHotkeys();
-                RegisterHotkeys();
-                _logger.Information("Hotkeys re-registrados tras resume");
+                if (_powerEvents.RequiresHotkeyReRegistrationAfterResume)
+                {
+                    UnregisterHotkeys();
+                    RegisterHotkeys();
+                    _logger.Information("Hotkeys re-registrados tras resume");
+                }
+                _trayService?.RefreshIcon();
             }
         };
     }

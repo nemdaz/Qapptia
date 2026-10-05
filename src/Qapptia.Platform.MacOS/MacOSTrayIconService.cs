@@ -24,6 +24,11 @@ public sealed class MacOSTrayIconService : ITrayIconService
         _logger.Information("Notificación del sistema ({Type}): {Title} - {Message}", type, title, message);
     }
 
+    public void RefreshIcon()
+    {
+        // No-op en entornos sin soporte nativo de System Tray
+    }
+
     public void Dispose()
     {
         if (_disposed) return;

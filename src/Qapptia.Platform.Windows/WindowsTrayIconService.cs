@@ -23,8 +23,15 @@ public sealed class WindowsTrayIconService : ITrayIconService
     private const int TrayIconId = 1;
     private const uint WM_USER = 0x0400;
     private const uint WM_TRAYICON = WM_USER + 100;
+    private const uint WM_REFRESH_TRAYICON = WM_USER + 101;
     private const uint WM_CLOSE = 0x0010;
     private const uint WM_DESTROY = 0x0002;
+    private const uint WM_QUERYENDSESSION = 0x0011;
+    private const uint WM_ENDSESSION = 0x0016;
+    private const uint WM_POWERBROADCAST = 0x0218;
+    private const uint WM_DISPLAYCHANGE = 0x007E;
+    private const long PBT_APMRESUMEAUTOMATIC = 0x0012;
+    private const long PBT_APMRESUMESUSPEND = 0x0007;
 
     private const uint WM_LBUTTONUP = 0x0202;
     private const uint WM_LBUTTONDBLCLK = 0x0203;
@@ -37,6 +44,7 @@ public sealed class WindowsTrayIconService : ITrayIconService
 
     private IntPtr _hwnd = IntPtr.Zero;
     private IntPtr _hIcon = IntPtr.Zero;
+    private uint _wmTaskbarCreated;
     private TrayMenuDefinition? _menuDefinition;
     private string? _iconPath;
     private bool _disposed;
@@ -71,6 +79,7 @@ public sealed class WindowsTrayIconService : ITrayIconService
         {
             _wndProcDelegate = WndProc;
             IntPtr hInst = GetModuleHandle(null);
+            _wmTaskbarCreated = RegisterWindowMessage("TaskbarCreated");
 
             var wndClass = new WNDCLASSEX
             {
@@ -115,31 +124,7 @@ public sealed class WindowsTrayIconService : ITrayIconService
                 _hIcon = ExtractIcon(hInst, Environment.ProcessPath ?? "", 0);
             }
 
-            unsafe
-            {
-                var notifyData = new NOTIFYICONDATAW
-                {
-                    cbSize = (uint)sizeof(NOTIFYICONDATAW),
-                    hWnd = (HWND)_hwnd,
-                    uID = TrayIconId,
-                    uFlags = NOTIFY_ICON_DATA_FLAGS.NIF_MESSAGE | NOTIFY_ICON_DATA_FLAGS.NIF_ICON | NOTIFY_ICON_DATA_FLAGS.NIF_TIP,
-                    uCallbackMessage = WM_TRAYICON,
-                    hIcon = (HICON)_hIcon
-                };
-
-                CopyStringToBuffer(Constants.CaptureAppName, notifyData.szTip.AsSpan());
-
-                BOOL added = PInvoke.Shell_NotifyIcon(NOTIFY_ICON_MESSAGE.NIM_ADD, in notifyData);
-                if (added)
-                {
-                    _logger.Information("WindowsTrayIconService inicializado (Win32 Shell_NotifyIconW nativo).");
-                }
-                else
-                {
-                    int lastError = Marshal.GetLastWin32Error();
-                    _logger.Warning("Shell_NotifyIcon retorno false al registrar icono (Win32 Error: {Error}).", lastError);
-                }
-            }
+            AddOrUpdateTrayIcon();
         }
         catch (Exception ex)
         {
@@ -180,6 +165,41 @@ public sealed class WindowsTrayIconService : ITrayIconService
                     }
                     return IntPtr.Zero;
             }
+        }
+        else if (msg == WM_REFRESH_TRAYICON || (_wmTaskbarCreated != 0 && msg == _wmTaskbarCreated))
+        {
+            _logger.Information("Recreando/refrescando icono de bandeja tras mensaje del shell (0x{Msg:X4}).", msg);
+            AddOrUpdateTrayIcon();
+            return IntPtr.Zero;
+        }
+        else if (msg == WM_POWERBROADCAST)
+        {
+            long powerEvent = wParam.ToInt64();
+            if (powerEvent == PBT_APMRESUMEAUTOMATIC || powerEvent == PBT_APMRESUMESUSPEND)
+            {
+                _logger.Information("Reanudación del sistema detectada (WM_POWERBROADCAST: 0x{PowerEvent:X4}). Restaurando icono.", powerEvent);
+                AddOrUpdateTrayIcon();
+            }
+            return (IntPtr)1;
+        }
+        else if (msg == WM_DISPLAYCHANGE)
+        {
+            _logger.Debug("Cambio de configuración de pantalla detectado (WM_DISPLAYCHANGE).");
+            AddOrUpdateTrayIcon();
+            return IntPtr.Zero;
+        }
+        else if (msg == WM_QUERYENDSESSION)
+        {
+            return (IntPtr)1;
+        }
+        else if (msg == WM_ENDSESSION)
+        {
+            if (wParam != IntPtr.Zero)
+            {
+                _logger.Information("Fin de sesión del sistema en curso (WM_ENDSESSION). Eliminando icono de bandeja.");
+                RemoveTrayIcon();
+            }
+            return IntPtr.Zero;
         }
         else if (msg == WM_CLOSE)
         {
@@ -225,6 +245,66 @@ public sealed class WindowsTrayIconService : ITrayIconService
         }
     }
 
+    public void RefreshIcon()
+    {
+        if (_disposed || _hwnd == IntPtr.Zero) return;
+        PostMessage(_hwnd, WM_REFRESH_TRAYICON, IntPtr.Zero, IntPtr.Zero);
+    }
+
+    private void AddOrUpdateTrayIcon()
+    {
+        if (_disposed || _hwnd == IntPtr.Zero || _hIcon == IntPtr.Zero) return;
+
+        unsafe
+        {
+            var notifyData = new NOTIFYICONDATAW
+            {
+                cbSize = (uint)sizeof(NOTIFYICONDATAW),
+                hWnd = (HWND)_hwnd,
+                uID = TrayIconId,
+                uFlags = NOTIFY_ICON_DATA_FLAGS.NIF_MESSAGE | NOTIFY_ICON_DATA_FLAGS.NIF_ICON | NOTIFY_ICON_DATA_FLAGS.NIF_TIP,
+                uCallbackMessage = WM_TRAYICON,
+                hIcon = (HICON)_hIcon
+            };
+
+            CopyStringToBuffer(Constants.CaptureAppName, notifyData.szTip.AsSpan());
+
+            BOOL added = PInvoke.Shell_NotifyIcon(NOTIFY_ICON_MESSAGE.NIM_ADD, in notifyData);
+            if (added)
+            {
+                _logger.Information("WindowsTrayIconService: Icono de bandeja registrado exitosamente (NIM_ADD).");
+            }
+            else
+            {
+                BOOL modified = PInvoke.Shell_NotifyIcon(NOTIFY_ICON_MESSAGE.NIM_MODIFY, in notifyData);
+                if (modified)
+                {
+                    _logger.Debug("WindowsTrayIconService: Icono de bandeja actualizado (NIM_MODIFY).");
+                }
+                else
+                {
+                    int lastError = Marshal.GetLastWin32Error();
+                    _logger.Warning("WindowsTrayIconService: Shell_NotifyIcon no pudo registrar ni modificar el icono (Win32 Error: {Error}).", lastError);
+                }
+            }
+        }
+    }
+
+    private void RemoveTrayIcon()
+    {
+        if (_hwnd == IntPtr.Zero) return;
+        unsafe
+        {
+            var notifyData = new NOTIFYICONDATAW
+            {
+                cbSize = (uint)sizeof(NOTIFYICONDATAW),
+                hWnd = (HWND)_hwnd,
+                uID = TrayIconId
+            };
+            PInvoke.Shell_NotifyIcon(NOTIFY_ICON_MESSAGE.NIM_DELETE, in notifyData);
+        }
+    }
+
     public void Dispose()
     {
         if (_disposed) return;
@@ -232,16 +312,7 @@ public sealed class WindowsTrayIconService : ITrayIconService
 
         if (_hwnd != IntPtr.Zero)
         {
-            unsafe
-            {
-                var notifyData = new NOTIFYICONDATAW
-                {
-                    cbSize = (uint)sizeof(NOTIFYICONDATAW),
-                    hWnd = (HWND)_hwnd,
-                    uID = TrayIconId
-                };
-                PInvoke.Shell_NotifyIcon(NOTIFY_ICON_MESSAGE.NIM_DELETE, in notifyData);
-            }
+            RemoveTrayIcon();
             PostMessage(_hwnd, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
         }
 
@@ -296,6 +367,9 @@ public sealed class WindowsTrayIconService : ITrayIconService
         public int ptX;
         public int ptY;
     }
+
+    [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern uint RegisterWindowMessage(string lpString);
 
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
     private static extern IntPtr GetModuleHandle(string? lpModuleName);

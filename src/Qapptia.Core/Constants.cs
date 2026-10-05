@@ -116,6 +116,7 @@ public static class Constants
     public const string NotificationTitleConfig = ConfigAppName;
     public const string NotificationMessageCaptureStarted = "El capturador está activo en segundo plano.";
     public const string NotificationMessageCaptureRestarted = "El capturador se ha reiniciado correctamente.";
+    public const string NotificationMessageCaptureActive = "El capturador ya se encuentra activo en la bandeja del sistema.";
     public const string NotificationTitleUpdateAvailable = "Actualización disponible";
     public const string NotificationMessageUpdateAvailableFormat = "Qapptia v{0} está disponible para descargar.";
 

@@ -178,6 +178,10 @@ public static class LauncherOrchestrator
                 string workingDir = Path.GetDirectoryName(capturePath) ?? baseDirectory;
                 launcher.StartProcess(capturePath, null, workingDir);
             }
+            else if (plan.Target == LaunchTarget.CaptureOnly)
+            {
+                await launcher.SendWakeUpAsync(IpcChannels.Capture).ConfigureAwait(false);
+            }
         }
 
         if (plan.ShouldEnsureEditor)
